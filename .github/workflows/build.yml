@@ -39,7 +39,6 @@ jobs:
           RUN_NUM=${{ github.run_number }}
           ZIP_NAME="TayfNotes-V01Sources-${RUN_NUM}-${COMMIT_HASH}.zip"
           
-          # Gereksiz build ve cache dosyalarını hariç tutarak zip oluştur
           zip -r "$ZIP_NAME" . -x "*.git*" -x "build/**" -x ".dart_tool/**" -x ".idea/**" -x "android/.gradle/**"
           echo "ZIP_NAME=$ZIP_NAME" >> $GITHUB_ENV
 
