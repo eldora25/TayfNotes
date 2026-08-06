@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'models/note.dart';
 import 'services/database_service.dart';
+import 'services/security_service.dart';
+import 'services/reminder_service.dart';
+import 'widgets/checklist_widget.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -57,14 +60,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('TayfNotes (Evernote & ColorNote)'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () {
-              // Arama ekranı veya filtresi entegre edilebilir
-            },
-          )
-        ],
       ),
       body: FutureBuilder<List<Note>>(
         future: _notesFuture,
@@ -97,6 +92,42 @@ class _HomeScreenState extends State<HomeScreen> {
                     : null,
                 child: InkWell(
                   onTap: () async {
+                    if (note.isLocked) {
+                      // Kilitli not kontrolü
+                      String enteredPass = '';
+                      final unlocked = await showDialog<bool>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Şifreli Not'),
+                          content: TextField(
+                            obscureText: true,
+                            decoration: const InputDecoration(hintText: 'Şifreyi girin'),
+                            onChanged: (val) => enteredPass = val,
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, false),
+                              child: const Text('İptal'),
+                            ),
+                            ElevatedButton(
+                              onPressed: () {
+                                if (SecurityService.verifyPassword(enteredPass, note.passwordHash ?? '')) {
+                                  Navigator.pop(context, true);
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Hatalı şifre!')),
+                                  );
+                                }
+                              },
+                              child: const Text('Aç'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (unlocked != true) return;
+                    }
+
+                    if (!context.mounted) return;
                     await Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -110,17 +141,24 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          note.title.isNotEmpty ? note.title : 'İsimsiz',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                note.title.isNotEmpty ? note.title : 'İsimsiz',
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (note.isLocked) const Icon(Icons.lock, size: 16),
+                          ],
                         ),
                         const SizedBox(height: 8),
                         Expanded(
                           child: Text(
-                            note.content,
-                            maxLines: 5,
+                            note.isChecklist ? 'Yapılacaklar Listesi' : note.content,
+                            maxLines: 4,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
@@ -166,6 +204,11 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
   late TextEditingController _contentController;
   late String _notebook;
   late String _colorHex;
+  late bool _isChecklist;
+  late List<String> _checklistItems;
+  late bool _isLocked;
+  String? _passwordHash;
+  DateTime? _reminderDate;
 
   @override
   void initState() {
@@ -173,7 +216,12 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
     _titleController = TextEditingController(text: widget.note?.title ?? '');
     _contentController = TextEditingController(text: widget.note?.content ?? '');
     _notebook = widget.note?.notebook ?? 'Genel';
-    _colorHex = widget.note?.colorHex ?? '#FFF9C4'; // Varsayılan ColorNote sarısı
+    _colorHex = widget.note?.colorHex ?? '#FFF9C4';
+    _isChecklist = widget.note?.isChecklist ?? false;
+    _checklistItems = widget.note?.checklistItems ?? [];
+    _isLocked = widget.note?.isLocked ?? false;
+    _passwordHash = widget.note?.passwordHash;
+    _reminderDate = widget.note?.reminderDate;
   }
 
   @override
@@ -183,6 +231,64 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
         title: Text(widget.note == null ? 'Yeni Not' : 'Notu Düzenle'),
         actions: [
           IconButton(
+            icon: Icon(_isLocked ? Icons.lock : Icons.lock_open),
+            onPressed: () async {
+              if (!_isLocked) {
+                String pass = '';
+                final setPass = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Notu Şifrele'),
+                    content: TextField(
+                      obscureText: true,
+                      decoration: const InputDecoration(hintText: 'Şifre belirleyin'),
+                      onChanged: (val) => pass = val,
+                    ),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('İptal')),
+                      ElevatedButton(
+                        onPressed: () {
+                          if (pass.isNotEmpty) {
+                            setState(() {
+                              _isLocked = true;
+                              _passwordHash = SecurityService.hashPassword(pass);
+                            });
+                            Navigator.pop(context, true);
+                          }
+                        },
+                        child: const Text('Koru'),
+                      ),
+                    ],
+                  ),
+                );
+                if (setPass == true) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Not şifrelendi!')));
+                }
+              } else {
+                setState(() {
+                  _isLocked = false;
+                  _passwordHash = null;
+                });
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Şifre kaldırıldı.')));
+              }
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.alarm),
+            onPressed: () async {
+              final date = await ReminderService.selectReminderDate(context);
+              if (date != null) {
+                setState(() {
+                  _reminderDate = date;
+                });
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Hatırlatıcı ayarlandı: ${date.toString()}'))
+                );
+              }
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.save),
             onPressed: () async {
               final note = widget.note ?? Note();
@@ -191,6 +297,11 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
               note.createdAt = widget.note?.createdAt ?? DateTime.now();
               note.notebook = _notebook;
               note.colorHex = _colorHex;
+              note.isChecklist = _isChecklist;
+              note.checklistItems = _checklistItems;
+              note.isLocked = _isLocked;
+              note.passwordHash = _passwordHash;
+              note.reminderDate = _reminderDate;
               note.tags = [];
               
               await DatabaseService.saveNote(note);
@@ -208,14 +319,36 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
               decoration: const InputDecoration(hintText: 'Başlık', border: InputBorder.none),
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
+            Row(
+              children: [
+                ChoiceChip(
+                  label: const Text('Normal Not'),
+                  selected: !_isChecklist,
+                  onSelected: (val) => setState(() => _isChecklist = false),
+                ),
+                const SizedBox(width: 10),
+                ChoiceChip(
+                  label: const Text('Yapılacaklar (Checklist)'),
+                  selected: _isChecklist,
+                  onSelected: (val) => setState(() => _isChecklist = true),
+                ),
+              ],
+            ),
             const Divider(),
             Expanded(
-              child: TextField(
-                controller: _contentController,
-                decoration: const InputDecoration(hintText: 'Notunuzu yazın...', border: InputBorder.none),
-                maxLines: null,
-                expands: true,
-              ),
+              child: _isChecklist
+                  ? ChecklistWidget(
+                      items: _checklistItems,
+                      onChanged: (updatedItems) {
+                        _checklistItems = updatedItems;
+                      },
+                    )
+                  : TextField(
+                      controller: _contentController,
+                      decoration: const InputDecoration(hintText: 'Notunuzu yazın...', border: InputBorder.none),
+                      maxLines: null,
+                      expands: true,
+                    ),
             ),
           ],
         ),
