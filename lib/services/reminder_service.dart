@@ -13,7 +13,7 @@ class ReminderService {
       if (!context.mounted) return null;
       final TimeOfDay? pickedTime = await showTimePicker(
         context: context,
-        initialTime: TimeOfDay.now,
+        initialTime: TimeOfDay.now(),
       );
 
       if (pickedTime != null) {
