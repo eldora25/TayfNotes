@@ -15,22 +15,25 @@ class Note {
 
   late DateTime updatedAt;
 
-  // ColorNote tarzı renk etiketi (HEX string örn: #FFF59D)
+  // ColorNote tarzı renk etiketi (HEX)
   late String colorHex;
 
-  // Evernote tarzı kategorizasyon ve etiketler
+  // Evernote tarzı kategorizasyon
   late String notebook; 
   
   late List<String> tags;
 
-  // Checklist desteği (ColorNote özelliği)
+  // Checklist desteği
   bool isChecklist = false;
-  
-  List<String> checklistItems = []; // "Yapıldı_GorevAdi" veya "Yapılmadı_GorevAdi" şeklinde tutulabilir
+  List<String> checklistItems = [];
 
   bool isPinned = false;
   bool isArchived = false;
+
+  // Güvenlik ve Şifreleme Özellikleri
   bool isLocked = false;
+  String? passwordHash;
   
-  String? password;
+  // Akıllı Hatırlatıcı
+  DateTime? reminderDate;
 }
