@@ -6,7 +6,7 @@ class DatabaseService {
   static late Isar isar;
 
   static Future<void> initialize() async {
-    final dir = awaitgetApplicationSupportDirectory();
+    final dir = await getApplicationSupportDirectory();
     isar = await Isar.open(
       [NoteSchema],
       directory: dir.path,
