@@ -1,0 +1,66 @@
+name: TayfNotes Build and Release Pipeline
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build-and-backup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.3'
+          channel: 'stable'
+          cache: true
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Build Android APK
+        run: flutter build apk --release --build-number=${{ github.run_number }}
+
+      - name: Prepare Source Code Backup (Excluding unnecessary files)
+        run: |
+          COMMIT_HASH=$(git rev-parse --short HEAD)
+          RUN_NUM=${{ github.run_number }}
+          ZIP_NAME="TayfNotes-V01Sources-${RUN_NUM}-${COMMIT_HASH}.zip"
+          
+          # Gereksiz build ve cache dosyalarını hariç tutarak zip oluştur
+          zip -r "$ZIP_NAME" . -x "*.git*" -x "build/**" -x ".dart_tool/**" -x ".idea/**" -x "android/.gradle/**"
+          echo "ZIP_NAME=$ZIP_NAME" >> $GITHUB_ENV
+
+      - name: Rename and Prepare APK Artifact
+        run: |
+          RUN_NUM=${{ github.run_number }}
+          ORIGINAL_APK="build/app/outputs/flutter-apk/app-release.apk"
+          TARGET_APK="build/app/outputs/flutter-apk/TayfNotes-V01.$RUN_NUM.apk"
+          
+          if [ -f "$ORIGINAL_APK" ]; then
+            cp "$ORIGINAL_APK" "$TARGET_APK"
+          fi
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TayfNotes-V01.${{ github.run_number }}-APK
+          path: build/app/outputs/flutter-apk/TayfNotes-V01.${{ github.run_number }}.apk
+
+      - name: Upload Source Code Backup Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ZIP_NAME }}
+          path: ${{ env.ZIP_NAME }}
