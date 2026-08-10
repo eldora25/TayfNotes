@@ -35,7 +35,7 @@ import com.eldora25.tayfnotes.shared.model.NoteType
 import com.eldora25.tayfnotes.ui.components.ChecklistEditor
 import com.eldora25.tayfnotes.ui.components.ColorSelector
 import com.eldora25.tayfnotes.ui.components.DrawingCanvas
-import com.eldora25.tayfnotes.ui.theme.NeonIcon
+import com.eldora25.tayfnotes.ui.theme.EditorNeonIcon
 import com.eldora25.tayfnotes.util.AudioRecorder
 import com.eldora25.tayfnotes.util.FileExportHelper
 import kotlinx.coroutines.delay
@@ -92,7 +92,7 @@ fun NoteEditorScreen(
         uri?.let { imageUris = imageUris + it.toString() }
     }
 
-    // Auto-save logic - FIXED Madde 10: Uses persistent noteId
+    // Auto-save logic
     LaunchedEffect(title, content, colorHex, reminderTimestamp, folderId, imageUris, audioPath, checklistItems, sketchData) {
         if (title.isNotEmpty() || content.isNotEmpty() || imageUris.isNotEmpty() || audioPath != null || checklistItems.isNotEmpty() || sketchData != null) {
             delay(1000)
@@ -142,7 +142,7 @@ fun NoteEditorScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) { 
-                        NeonIcon(backgroundColor = backgroundColor) {
+                        EditorNeonIcon {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Geri") 
                         }
                     }
@@ -150,14 +150,10 @@ fun NoteEditorScreen(
                 actions = {
                     if (!isSketchMode) {
                         IconButton(onClick = { isSketchMode = true }) {
-                            NeonIcon(backgroundColor = backgroundColor) {
-                                Icon(Icons.Default.Gesture, contentDescription = "Sketch")
-                            }
+                            EditorNeonIcon { Icon(Icons.Default.Gesture, contentDescription = "Sketch") }
                         }
                         IconButton(onClick = { galleryLauncher.launch("image/*") }) {
-                            NeonIcon(backgroundColor = backgroundColor) {
-                                Icon(Icons.Default.Image, contentDescription = "Resim")
-                            }
+                            EditorNeonIcon { Icon(Icons.Default.Image, contentDescription = "Resim") }
                         }
                         IconButton(onClick = {
                             if (!isRecording) {
@@ -174,37 +170,42 @@ fun NoteEditorScreen(
                                 isRecording = false 
                             }
                         }) {
-                            NeonIcon(backgroundColor = backgroundColor) {
+                            EditorNeonIcon {
                                 Icon(
                                     if (isRecording) Icons.Default.StopCircle else Icons.Default.Mic, 
                                     contentDescription = "Ses", 
-                                    tint = if (isRecording) Color.Red else LocalContentColor.current
+                                    tint = if (isRecording) Color.Red else Color(0xFFFFD700)
                                 )
                             }
                         }
+                        // Madde 1: Share as TXT
+                        IconButton(onClick = { 
+                            val currentNote = Note(
+                                id = noteId,
+                                title = title,
+                                content = if (checklistItems.isNotEmpty()) Json.encodeToString(checklistItems) else content,
+                                colorHex = colorHex
+                            )
+                            FileExportHelper.exportNoteToTxt(context, currentNote)
+                        }) {
+                            EditorNeonIcon { Icon(Icons.Default.Share, contentDescription = "Paylaş") }
+                        }
+                        
                         IconButton(onClick = { isPreviewMode = !isPreviewMode }) {
-                            NeonIcon(backgroundColor = backgroundColor) {
-                                Icon(if (isPreviewMode) Icons.Default.Edit else Icons.Default.Visibility, contentDescription = "Önizle")
-                            }
+                            EditorNeonIcon { Icon(if (isPreviewMode) Icons.Default.Edit else Icons.Default.Visibility, contentDescription = "Önizle") }
                         }
                         if (note != null) {
                             IconButton(onClick = { showDeleteDialog = true }) {
-                                NeonIcon(backgroundColor = backgroundColor) {
-                                    Icon(Icons.Default.Delete, contentDescription = "Sil")
-                                }
+                                EditorNeonIcon { Icon(Icons.Default.Delete, contentDescription = "Sil") }
                             }
                         }
                     } else {
                         IconButton(onClick = { isSketchMode = false }) {
-                            NeonIcon(backgroundColor = backgroundColor) {
-                                Icon(Icons.Default.TextFields, contentDescription = "Metin Modu")
-                            }
+                            EditorNeonIcon { Icon(Icons.Default.TextFields, contentDescription = "Metin Modu") }
                         }
                     }
                     IconButton(onClick = onBack) {
-                        NeonIcon(backgroundColor = backgroundColor) {
-                            Icon(Icons.Default.Check, contentDescription = "Bitti")
-                        }
+                        EditorNeonIcon { Icon(Icons.Default.Check, contentDescription = "Bitti") }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = backgroundColor.copy(alpha = 0.9f))
@@ -326,6 +327,7 @@ fun NoteEditorScreen(
                 TextButton(onClick = { 
                     onDelete(note)
                     showDeleteDialog = false
+                    onBack()
                 }) { Text("Sil", color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = {

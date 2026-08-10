@@ -26,6 +26,7 @@ import com.eldora25.tayfnotes.data.repository.NoteRepository
 import com.eldora25.tayfnotes.shared.model.Note
 import com.eldora25.tayfnotes.ui.*
 import com.eldora25.tayfnotes.ui.components.BottomNavigationBar
+import com.eldora25.tayfnotes.ui.theme.EditorNeonIcon
 import com.eldora25.tayfnotes.ui.theme.TayfNotesTheme
 import com.eldora25.tayfnotes.ui.viewmodel.NoteViewModel
 import com.eldora25.tayfnotes.ui.viewmodel.NoteViewModelFactory
@@ -126,8 +127,8 @@ class MainActivity : FragmentActivity() {
         val activeCloudProvider by noteViewModel.activeCloudProvider.collectAsState()
         
         val configuration = LocalConfiguration.current
-        // Madde 2, 3: Master-Detail split 0.4 / 0.6 always active for large screens or landscape
-        val isMasterDetail = configuration.screenWidthDp >= 600 || configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+        // Madde 2: Split 0.4 / 0.6 always active
+        val isMasterDetail = true 
         var selectedNoteInMasterDetail by remember { mutableStateOf<Note?>(null) }
 
         val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
@@ -178,7 +179,7 @@ class MainActivity : FragmentActivity() {
                 ) { innerPadding ->
                     Row(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
                         // Madde 2: Left 0.4 column
-                        Box(modifier = Modifier.weight(if (isMasterDetail && currentScreen is Screen.Main) 0.4f else 1f)) {
+                        Box(modifier = Modifier.weight(if (currentScreen is Screen.Main) 0.4f else 1f)) {
                             when (currentScreen) {
                                 is Screen.Main -> MainScreen(
                                     notes = notes,
@@ -188,8 +189,7 @@ class MainActivity : FragmentActivity() {
                                     onAddChecklist = { currentScreen = Screen.EditNote(note = Note(id = System.currentTimeMillis().toString(), title = "", content = "", type = com.eldora25.tayfnotes.shared.model.NoteType.CHECKLIST)) },
                                     onAddSketch = { currentScreen = Screen.EditNote(initialSketch = true) },
                                     onEditNote = { note -> 
-                                        if (isMasterDetail) selectedNoteInMasterDetail = note
-                                        else currentScreen = Screen.EditNote(note)
+                                        selectedNoteInMasterDetail = note
                                     }
                                 )
                                 is Screen.Folders -> FoldersScreen(
@@ -198,7 +198,7 @@ class MainActivity : FragmentActivity() {
                                         noteViewModel.onFolderSelected(folder.id)
                                         currentScreen = Screen.Main
                                     },
-                                    onAddFolder = { name -> noteViewModel.addFolder(name, "#D4AF37") },
+                                    onAddFolder = { name, color -> noteViewModel.addFolder(name, color) },
                                     onUpdateFolder = { folder -> noteViewModel.updateFolder(folder) }
                                 )
                                 is Screen.Calendar -> CalendarScreen(
@@ -248,8 +248,8 @@ class MainActivity : FragmentActivity() {
                             }
                         }
                         
-                        // Madde 2, 3: Right 0.6 Detail Pane
-                        if (isMasterDetail && currentScreen is Screen.Main) {
+                        // Madde 2: Right 0.6 Detail Pane (only for MainScreen)
+                        if (currentScreen is Screen.Main) {
                             VerticalDivider(modifier = Modifier.fillMaxHeight(), thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
                             Box(modifier = Modifier.weight(0.6f)) {
                                 DetailPane(
@@ -261,7 +261,9 @@ class MainActivity : FragmentActivity() {
                                         onClick = { currentScreen = Screen.EditNote(selectedNoteInMasterDetail) },
                                         modifier = Modifier.align(androidx.compose.ui.Alignment.TopEnd).padding(16.dp)
                                     ) {
-                                        Icon(Icons.Default.Edit, contentDescription = "Düzenle")
+                                        EditorNeonIcon {
+                                            Icon(Icons.Default.Edit, contentDescription = "Düzenle")
+                                        }
                                     }
                                 }
                             }

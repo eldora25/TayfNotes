@@ -17,7 +17,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
-import com.eldora25.tayfnotes.ui.theme.NeonIcon
+import com.eldora25.tayfnotes.ui.theme.EditorNeonIcon
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,13 +39,8 @@ fun ColorSelector(
 
     // Madde 1: High Contrast Neon Icon
     IconButton(onClick = { showSheet = true }) {
-        NeonIcon(backgroundColor = bgColor) {
-            Icon(
-                Icons.Default.Palette, 
-                contentDescription = "Renk Seç",
-                tint = if (bgColor.luminance() > 0.45f) Color.Black else Color.White,
-                modifier = Modifier.size(24.dp)
-            )
+        EditorNeonIcon(modifier = Modifier.size(36.dp)) {
+            Box(modifier = Modifier.size(24.dp).background(bgColor, CircleShape).border(1.dp, Color.White, CircleShape))
         }
     }
 

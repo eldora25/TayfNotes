@@ -20,7 +20,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -42,28 +41,28 @@ fun DetailPane(
 ) {
     if (note == null) {
         Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("Görüntülemek için bir not seçin", color = Color.Gray)
+            Text("Görüntülemek için bir not seçin", color = Color.Gray, style = MaterialTheme.typography.titleMedium)
         }
         return
     }
 
     val backgroundColor = try {
         Color(android.graphics.Color.parseColor(note.colorHex))
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         MaterialTheme.colorScheme.surface
     }
 
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(backgroundColor.copy(alpha = 0.05f))
+            .background(backgroundColor.copy(alpha = 0.08f))
             .padding(24.dp)
             .verticalScroll(rememberScrollState())
     ) {
         Text(
             text = note.title.ifEmpty { "Başlıksız Not" },
-            style = MaterialTheme.typography.headlineLarge,
-            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.ExtraBold,
             color = MaterialTheme.colorScheme.onBackground
         )
         
@@ -77,22 +76,27 @@ fun DetailPane(
         HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
 
         if (note.imageUris.isNotEmpty()) {
-            LazyRow(modifier = Modifier.padding(vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            LazyRow(modifier = Modifier.padding(vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(note.imageUris) { uri ->
-                    AsyncImage(
-                        model = uri,
-                        contentDescription = null,
-                        modifier = Modifier.size(300.dp).clip(RoundedCornerShape(8.dp)),
-                        contentScale = ContentScale.Fit
-                    )
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        tonalElevation = 4.dp,
+                        modifier = Modifier.height(250.dp).width(350.dp)
+                    ) {
+                        AsyncImage(
+                            model = uri,
+                            contentDescription = null,
+                            contentScale = ContentScale.FillWidth
+                        )
+                    }
                 }
             }
         }
 
         if (note.type == NoteType.CHECKLIST) {
-            val items = try { Json.decodeFromString<List<ChecklistItem>>(note.content) } catch(e: Exception) { emptyList() }
+            val items = try { Json.decodeFromString<List<ChecklistItem>>(note.content) } catch(_: Exception) { emptyList() }
             items.forEach { item ->
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 4.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 6.dp)) {
                     Checkbox(checked = item.isChecked, onCheckedChange = null, enabled = false)
                     Text(
                         text = item.text,
@@ -111,16 +115,18 @@ fun DetailPane(
         
         if (note.sketchData?.isNotEmpty() == true) {
             val paths = remember(note.sketchData) {
-                try { Json.decodeFromString<List<DrawPath>>(note.sketchData!!) } catch(e: Exception) { emptyList() }
+                try { Json.decodeFromString<List<DrawPath>>(note.sketchData!!) } catch(_: Exception) { emptyList() }
             }
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(32.dp))
+            Text("Sketch Çizimi", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+            Spacer(modifier = Modifier.height(8.dp))
             Surface(
-                modifier = Modifier.fillMaxWidth().height(400.dp),
-                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth().height(450.dp),
+                shape = RoundedCornerShape(16.dp),
                 color = Color.White,
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray)
+                border = androidx.compose.foundation.BorderStroke(1.5.dp, Color.LightGray.copy(0.5f))
             ) {
-                Canvas(modifier = Modifier.fillMaxSize()) {
+                Canvas(modifier = Modifier.fillMaxSize().padding(8.dp)) {
                     paths.forEach { drawDataPath(it) }
                 }
             }
@@ -130,7 +136,7 @@ fun DetailPane(
 
 private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawDataPath(drawPath: DrawPath) {
     val color = if (drawPath.toolType == ToolType.ERASER) Color.White else Color(android.graphics.Color.parseColor(drawPath.colorHex)).run {
-        if (drawPath.toolType == ToolType.MARKER) this.copy(alpha = 0.4f) else this
+        if (drawPath.toolType == ToolType.MARKER) this.copy(alpha = 0.45f) else this
     }
     val fillColor = if (drawPath.isFilled && drawPath.fillColorHex != null) Color(android.graphics.Color.parseColor(drawPath.fillColorHex)) else Color.Transparent
 

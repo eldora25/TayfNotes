@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
@@ -29,25 +30,25 @@ fun Color.contentColor(): Color {
 }
 
 /**
- * Neon Glow Capsule for icons to ensure visibility on any background
+ * Editor specific Neon Icon: Black capsule with Yellow content and Neon Glow
  */
 @Composable
-fun NeonIcon(
-    backgroundColor: Color,
+fun EditorNeonIcon(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {
-    val contrastColor = if (backgroundColor.luminance() > 0.5f) Color.Black else Color.White
-    val neonColor = if (backgroundColor.luminance() > 0.5f) Color.Blue.copy(alpha = 0.6f) else Color.Yellow.copy(alpha = 0.6f)
-    
+    val yellowNeon = Color(0xFFFFD700)
     Box(
         modifier = modifier
-            .shadow(elevation = 10.dp, shape = CircleShape, ambientColor = neonColor, spotColor = neonColor)
-            .background(backgroundColor, CircleShape)
-            .border(2.dp, contrastColor.copy(alpha = 0.7f), CircleShape)
-            .padding(8.dp)
+            .shadow(elevation = 12.dp, shape = CircleShape, ambientColor = yellowNeon, spotColor = yellowNeon)
+            .background(Color.Black, CircleShape)
+            .border(1.5.dp, yellowNeon.copy(alpha = 0.8f), CircleShape)
+            .padding(10.dp),
+        contentAlignment = androidx.compose.ui.Alignment.Center
     ) {
-        content()
+        CompositionLocalProvider(LocalContentColor provides yellowNeon) {
+            content()
+        }
     }
 }
 

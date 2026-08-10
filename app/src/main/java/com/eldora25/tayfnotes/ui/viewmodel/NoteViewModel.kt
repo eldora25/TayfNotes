@@ -92,9 +92,9 @@ class NoteViewModel(
     private val trashIds: Flow<Set<String>> = dataStore.data
         .map { pref -> pref[TRASH_IDS_KEY]?.split(",")?.filter { it.isNotEmpty() }?.toSet() ?: emptySet() }
 
-    val allFolders: StateFlow<List<Folder>> = combine(folderRepository.allFolders, noteRepository.allNotes) { folders, notes ->
+    val allFolders: StateFlow<List<Folder>> = combine(folderRepository.allFolders, noteRepository.allNotes, archiveIds, trashIds) { folders, notes, archives, trash ->
         folders.map { folder ->
-            folder.copy(noteCount = notes.count { it.folderId == folder.id && !trashIds.first().contains(it.id) && !archiveIds.first().contains(it.id) })
+            folder.copy(noteCount = notes.count { it.folderId == folder.id && !trash.contains(it.id) && !archives.contains(it.id) })
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -147,8 +147,6 @@ class NoteViewModel(
         }
     }
 
-    fun deleteNote(note: Note) { viewModelScope.launch { noteRepository.delete(note) } }
-    
     fun trashNote(noteId: String) {
         viewModelScope.launch {
             dataStore.edit { pref ->
@@ -194,7 +192,7 @@ class NoteViewModel(
     }
 
     fun checklistToJson(items: List<ChecklistItem>): String = Json.encodeToString(items)
-    fun jsonToChecklist(json: String): List<ChecklistItem> = try { Json.decodeFromString(json) } catch (e: Exception) { emptyList() }
+    fun jsonToChecklist(json: String): List<ChecklistItem> = try { Json.decodeFromString(json) } catch (_: Exception) { emptyList() }
 }
 
 class NoteViewModelFactory(

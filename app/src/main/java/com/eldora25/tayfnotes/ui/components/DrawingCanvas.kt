@@ -22,7 +22,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
-import com.eldora25.tayfnotes.ui.theme.NeonIcon
+import com.eldora25.tayfnotes.ui.theme.EditorNeonIcon
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -73,8 +73,8 @@ fun DrawingCanvas(
         Surface(
             modifier = Modifier.fillMaxWidth().padding(8.dp),
             shape = RoundedCornerShape(12.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f),
-            tonalElevation = 6.dp
+            color = Color.Black.copy(alpha = 0.85f),
+            tonalElevation = 8.dp
         ) {
             Column {
                 Row(
@@ -83,22 +83,21 @@ fun DrawingCanvas(
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
                     IconButton(onClick = { currentTool = ToolType.PEN }) {
-                        Icon(Icons.Default.Create, contentDescription = "Kalem", tint = if (currentTool == ToolType.PEN) MaterialTheme.colorScheme.primary else LocalContentColor.current)
+                        Icon(Icons.Default.Create, contentDescription = "Kalem", tint = if (currentTool == ToolType.PEN) Color(0xFFFFD700) else Color.White)
                     }
                     IconButton(onClick = { currentTool = ToolType.MARKER }) {
-                        Icon(Icons.Default.Brush, contentDescription = "Fırça", tint = if (currentTool == ToolType.MARKER) MaterialTheme.colorScheme.primary else LocalContentColor.current)
+                        Icon(Icons.Default.Brush, contentDescription = "Fırça", tint = if (currentTool == ToolType.MARKER) Color(0xFFFFD700) else Color.White)
                     }
                     IconButton(onClick = { currentTool = ToolType.ERASER }) {
-                        Icon(Icons.Default.AutoFixNormal, contentDescription = "Silgi", tint = if (currentTool == ToolType.ERASER) MaterialTheme.colorScheme.primary else LocalContentColor.current)
+                        Icon(Icons.Default.AutoFixNormal, contentDescription = "Silgi", tint = if (currentTool == ToolType.ERASER) Color(0xFFFFD700) else Color.White)
                     }
                     IconButton(onClick = { showShapePicker = true }) {
-                        Icon(Icons.Default.Category, contentDescription = "Şekiller", tint = if (currentTool == ToolType.SHAPE) MaterialTheme.colorScheme.primary else LocalContentColor.current)
+                        Icon(Icons.Default.Category, contentDescription = "Şekiller", tint = if (currentTool == ToolType.SHAPE) Color(0xFFFFD700) else Color.White)
                     }
                     
-                    // Madde 1: Neon Colored Picker
                     Box(modifier = Modifier.clickable { showColorPicker = true }) {
-                        NeonIcon(backgroundColor = currentColor, modifier = Modifier.size(36.dp)) {
-                            Icon(Icons.Default.ColorLens, contentDescription = null, tint = if (currentColor.luminance() > 0.5f) Color.Black else Color.White, modifier = Modifier.size(20.dp))
+                        EditorNeonIcon(modifier = Modifier.size(36.dp)) {
+                            Box(modifier = Modifier.size(20.dp).background(currentColor, CircleShape).border(1.dp, Color.White, CircleShape))
                         }
                     }
 
@@ -107,19 +106,20 @@ fun DrawingCanvas(
                         currentPathPoints.clear()
                         onDataChanged("")
                     }) {
-                        Icon(Icons.Default.DeleteSweep, contentDescription = "Temizle")
+                        Icon(Icons.Default.DeleteSweep, contentDescription = "Temizle", tint = Color.Red)
                     }
                 }
                 
                 Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.LineWeight, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Default.LineWeight, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.White)
                     Slider(
                         value = currentStrokeWidth,
                         onValueChange = { currentStrokeWidth = it },
                         valueRange = 1f..100f,
-                        modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
+                        modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
+                        colors = SliderDefaults.colors(thumbColor = Color(0xFFFFD700), activeTrackColor = Color(0xFFFFD700))
                     )
-                    Text("${currentStrokeWidth.toInt()}", style = MaterialTheme.typography.labelSmall)
+                    Text("${currentStrokeWidth.toInt()}", style = MaterialTheme.typography.labelSmall, color = Color.White)
                 }
             }
         }
@@ -156,7 +156,6 @@ fun DrawingCanvas(
                                 )
                                 paths = paths + newPath
                                 currentPathPoints.clear()
-                                // Madde 10: Logic to only notify change when finished or periodically
                                 onDataChanged(Json.encodeToString(paths))
                             }
                         }
@@ -245,10 +244,6 @@ fun DrawingCanvas(
             confirmButton = {}
         )
     }
-}
-
-private fun Color.luminance(): Float {
-    return (0.2126f * red + 0.7152f * green + 0.0722f * blue)
 }
 
 private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawDataPath(drawPath: DrawPath) {

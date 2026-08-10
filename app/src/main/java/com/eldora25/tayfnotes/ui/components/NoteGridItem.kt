@@ -14,6 +14,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
@@ -45,13 +47,14 @@ fun NoteGridItem(
             .fillMaxWidth()
             .padding(4.dp)
             .clickable { onClick() },
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = backgroundColor),
-        border = if (backgroundColor.luminance() > 0.8f) androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray) else null
+        border = if (backgroundColor.luminance() > 0.8f) androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray) else null,
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
             modifier = Modifier
-                .padding(12.dp)
+                .padding(14.dp)
                 .fillMaxWidth()
         ) {
             Row(
@@ -88,7 +91,7 @@ fun NoteGridItem(
                                 checked = item.isChecked, 
                                 onCheckedChange = null, 
                                 enabled = false,
-                                modifier = Modifier.size(16.dp).padding(end = 4.dp),
+                                modifier = Modifier.size(18.dp).padding(end = 6.dp),
                                 colors = CheckboxDefaults.colors(
                                     uncheckedColor = contentColor.copy(alpha = 0.5f),
                                     disabledUncheckedColor = contentColor.copy(alpha = 0.5f),
@@ -107,25 +110,30 @@ fun NoteGridItem(
                         }
                     }
                     if (items.size > 3) {
-                        Text("...", color = contentColor.copy(alpha = 0.5f))
+                        Text("...", color = contentColor.copy(alpha = 0.5f), modifier = Modifier.padding(start = 24.dp))
                     }
                 }
             } else {
                 Text(
                     text = note.content,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = contentColor.copy(alpha = 0.9f),
+                    color = contentColor.copy(alpha = 0.85f),
                     maxLines = 4,
                     overflow = TextOverflow.Ellipsis
                 )
             }
             
             if (note.sketchData?.isNotEmpty() == true) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.background(contentColor.copy(0.1f), RoundedCornerShape(4.dp)).padding(horizontal = 6.dp, vertical = 2.dp)) {
-                    Icon(Icons.Default.Gesture, contentDescription = null, tint = contentColor.copy(0.7f), modifier = Modifier.size(14.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Sketch", style = MaterialTheme.typography.labelSmall, color = contentColor.copy(0.7f))
+                Spacer(modifier = Modifier.height(10.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically, 
+                    modifier = Modifier
+                        .background(contentColor.copy(0.15f), RoundedCornerShape(6.dp))
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Icon(Icons.Default.Gesture, contentDescription = null, tint = contentColor.copy(0.8f), modifier = Modifier.size(14.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Sketch", style = MaterialTheme.typography.labelSmall, color = contentColor.copy(0.8f))
                 }
             }
         }
