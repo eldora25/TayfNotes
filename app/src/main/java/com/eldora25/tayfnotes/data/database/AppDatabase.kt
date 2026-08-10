@@ -9,7 +9,7 @@ import com.eldora25.tayfnotes.data.dao.NoteDao
 import com.eldora25.tayfnotes.data.entity.FolderEntity
 import com.eldora25.tayfnotes.data.entity.NoteEntity
 
-@Database(entities = [NoteEntity::class, FolderEntity::class], version = 5, exportSchema = false)
+@Database(entities = [NoteEntity::class, FolderEntity::class], version = 6, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun noteDao(): NoteDao
     abstract fun folderDao(): FolderDao

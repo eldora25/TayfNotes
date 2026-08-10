@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import com.eldora25.tayfnotes.ui.theme.EditorNeonIcon
@@ -53,7 +54,7 @@ fun DrawingCanvas(
     var paths by remember { 
         mutableStateOf(
             if (initialData != null && initialData.isNotEmpty()) {
-                try { Json.decodeFromString<List<DrawPath>>(initialData) } catch(e: Exception) { emptyList() }
+                try { Json.decodeFromString<List<DrawPath>>(initialData) } catch(_: Exception) { emptyList() }
             } else emptyList()
         )
     }
@@ -61,7 +62,7 @@ fun DrawingCanvas(
     val currentPathPoints = remember { mutableStateListOf<Point>() }
     var currentColor by remember { mutableStateOf(Color.Black) }
     var currentFillColor by remember { mutableStateOf(Color.Transparent) }
-    var currentStrokeWidth by remember { mutableStateOf(5f) }
+    var currentStrokeWidth by remember { mutableStateOf(10f) }
     var currentTool by remember { mutableStateOf(ToolType.PEN) }
     var currentShape by remember { mutableStateOf(ShapeType.RECTANGLE) }
     var isFillEnabled by remember { mutableStateOf(false) }
@@ -70,10 +71,11 @@ fun DrawingCanvas(
     var showShapePicker by remember { mutableStateOf(false) }
 
     Column(modifier = modifier.fillMaxSize().background(Color.White)) {
+        // Toolbar - Madde 2: Black capsule with Yellow/Neon accents
         Surface(
             modifier = Modifier.fillMaxWidth().padding(8.dp),
             shape = RoundedCornerShape(12.dp),
-            color = Color.Black.copy(alpha = 0.85f),
+            color = Color.Black.copy(alpha = 0.9f),
             tonalElevation = 8.dp
         ) {
             Column {
@@ -143,8 +145,8 @@ fun DrawingCanvas(
                         },
                         onDragEnd = {
                             if (currentPathPoints.isNotEmpty()) {
-                                val colorString = String.format("#%06X", (0xFFFFFF and currentColor.value.toLong().toInt()))
-                                val fillColorString = if (isFillEnabled) String.format("#%06X", (0xFFFFFF and currentFillColor.value.toLong().toInt())) else null
+                                val colorString = String.format("#%06X", (0xFFFFFF and currentColor.toArgb()))
+                                val fillColorString = if (isFillEnabled) String.format("#%06X", (0xFFFFFF and currentFillColor.toArgb())) else null
                                 val newPath = DrawPath(
                                     points = currentPathPoints.toList(),
                                     colorHex = colorString,
@@ -165,8 +167,8 @@ fun DrawingCanvas(
             paths.forEach { drawDataPath(it) }
             
             if (currentPathPoints.isNotEmpty()) {
-                val colorString = String.format("#%06X", (0xFFFFFF and currentColor.value.toLong().toInt()))
-                val fillColorString = if (isFillEnabled) String.format("#%06X", (0xFFFFFF and currentFillColor.value.toLong().toInt())) else null
+                val colorString = String.format("#%06X", (0xFFFFFF and currentColor.toArgb()))
+                val fillColorString = if (isFillEnabled) String.format("#%06X", (0xFFFFFF and currentFillColor.toArgb())) else null
                 val previewPath = DrawPath(
                     points = currentPathPoints.toList(),
                     colorHex = colorString,
@@ -184,11 +186,11 @@ fun DrawingCanvas(
     if (showColorPicker) {
         AlertDialog(
             onDismissRequest = { showColorPicker = false },
-            title = { Text("Renk ve Dolgu") },
+            title = { Text("Renk ve Dolgu Seçimi") },
             text = {
                 Column {
                     val colors = listOf(Color.Black, Color.DarkGray, Color.Red, Color.Blue, Color.Green, Color.Yellow, Color.Magenta, Color.Cyan, Color.White)
-                    Text("Çizgi Rengi", style = MaterialTheme.typography.labelSmall)
+                    Text("Ana Renk (Çizgi)", style = MaterialTheme.typography.labelSmall)
                     @OptIn(ExperimentalLayoutApi::class)
                     FlowRow(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                         colors.forEach { color ->
@@ -198,9 +200,10 @@ fun DrawingCanvas(
                     Spacer(modifier = Modifier.height(16.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(checked = isFillEnabled, onCheckedChange = { isFillEnabled = it })
-                        Text("Dolgu Rengi Aktif")
+                        Text("İç Dolgu Aktif")
                     }
                     if (isFillEnabled) {
+                        Text("Dolgu Rengi", style = MaterialTheme.typography.labelSmall)
                         @OptIn(ExperimentalLayoutApi::class)
                         FlowRow(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                             colors.forEach { color ->
@@ -248,7 +251,7 @@ fun DrawingCanvas(
 
 private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawDataPath(drawPath: DrawPath) {
     val color = if (drawPath.toolType == ToolType.ERASER) Color.White else Color(android.graphics.Color.parseColor(drawPath.colorHex)).run {
-        if (drawPath.toolType == ToolType.MARKER) this.copy(alpha = 0.4f) else this
+        if (drawPath.toolType == ToolType.MARKER) this.copy(alpha = 0.45f) else this
     }
     val fillColor = if (drawPath.isFilled && drawPath.fillColorHex != null) Color(android.graphics.Color.parseColor(drawPath.fillColorHex)) else Color.Transparent
 

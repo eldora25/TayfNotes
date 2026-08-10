@@ -3,9 +3,10 @@ package com.eldora25.tayfnotes.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -17,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import com.eldora25.tayfnotes.shared.model.Folder
 
@@ -25,8 +27,9 @@ import com.eldora25.tayfnotes.shared.model.Folder
 fun FoldersScreen(
     folders: List<Folder>,
     onFolderClick: (Folder) -> Unit,
-    onAddFolder: (String, String) -> Unit, // Name, Color
-    onUpdateFolder: (Folder) -> Unit
+    onAddFolder: (String, String) -> Unit,
+    onUpdateFolder: (Folder) -> Unit,
+    onMoveFolder: (Int, Int) -> Unit = { _, _ -> }
 ) {
     var showAddDialog by remember { mutableStateOf(false) }
     var folderToEdit by remember { mutableStateOf<Folder?>(null) }
@@ -42,6 +45,9 @@ fun FoldersScreen(
         when (sortType) {
             SortType.ALPHABETICAL -> folders.sortedBy { it.name.lowercase() }
             SortType.COLOR -> folders.sortedBy { it.colorHex }
+            SortType.DATE_MODIFIED -> folders.sortedByDescending { it.lastModified }
+            SortType.DATE_CREATED -> folders.sortedByDescending { it.createdAt }
+            SortType.MANUAL -> folders.sortedBy { it.position }
             else -> folders
         }
     }
@@ -120,6 +126,8 @@ fun FoldersScreen(
                             Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sırala")
                         }
                         DropdownMenu(expanded = showSortMenu, onDismissRequest = { showSortMenu = false }) {
+                            DropdownMenuItem(text = { Text("Düzenlenme Zamanı") }, onClick = { sortType = SortType.DATE_MODIFIED; showSortMenu = false })
+                            DropdownMenuItem(text = { Text("Oluşturulma Zamanı") }, onClick = { sortType = SortType.DATE_CREATED; showSortMenu = false })
                             DropdownMenuItem(text = { Text("Alfabetik") }, onClick = { sortType = SortType.ALPHABETICAL; showSortMenu = false })
                             DropdownMenuItem(text = { Text("Renge Göre") }, onClick = { sortType = SortType.COLOR; showSortMenu = false })
                             DropdownMenuItem(text = { Text("Manuel (Sürükle)") }, onClick = { sortType = SortType.MANUAL; showSortMenu = false })
@@ -141,11 +149,19 @@ fun FoldersScreen(
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            items(sortedFolders, key = { it.id }) { folder ->
+            itemsIndexed(sortedFolders, key = { _, folder -> folder.id }) { index, folder ->
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onFolderClick(folder) },
+                        .clickable { onFolderClick(folder) }
+                        .then(if (sortType == SortType.MANUAL) {
+                            Modifier.pointerInput(index) {
+                                detectDragGesturesAfterLongPress(
+                                    onDrag = { _, _ -> },
+                                    onDragEnd = { }
+                                )
+                            }
+                        } else Modifier),
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surfaceVariant
                     ),

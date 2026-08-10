@@ -98,6 +98,10 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.biometric)
     implementation(libs.coil.compose)
+    
+    // GDrive/Dropbox
+    implementation("com.google.android.gms:play-services-auth:21.3.0")
+    implementation("com.dropbox.core:dropbox-core-sdk:7.0.0")
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)

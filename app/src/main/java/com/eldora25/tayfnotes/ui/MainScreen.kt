@@ -1,8 +1,8 @@
 package com.eldora25.tayfnotes.ui
 
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -34,7 +35,9 @@ fun MainScreen(
     onAddChecklist: () -> Unit,
     onAddSketch: () -> Unit,
     onEditNote: (Note) -> Unit,
-    onMoveNote: (Int, Int) -> Unit = { _, _ -> }
+    onMoveNote: (Int, Int) -> Unit,
+    isMasterDetail: Boolean = false,
+    selectedNoteId: String? = null
 ) {
     var isSearchActive by remember { mutableStateOf(false) }
     var sortType by remember { mutableStateOf(SortType.DATE_MODIFIED) }
@@ -46,7 +49,7 @@ fun MainScreen(
             SortType.DATE_CREATED -> notes.sortedByDescending { it.createdAt }
             SortType.ALPHABETICAL -> notes.sortedBy { it.title.lowercase() }
             SortType.COLOR -> notes.sortedBy { it.colorHex }
-            SortType.MANUAL -> notes
+            SortType.MANUAL -> notes.sortedBy { it.position }
         }
     }
 
@@ -103,7 +106,7 @@ fun MainScreen(
                                 DropdownMenuItem(text = { Text("Oluşturulma Zamanı") }, onClick = { sortType = SortType.DATE_CREATED; showSortMenu = false })
                                 DropdownMenuItem(text = { Text("Alfabetik") }, onClick = { sortType = SortType.ALPHABETICAL; showSortMenu = false })
                                 DropdownMenuItem(text = { Text("Renge Göre") }, onClick = { sortType = SortType.COLOR; showSortMenu = false })
-                                DropdownMenuItem(text = { Text("Manuel (Sürükle)") }, onClick = { sortType = SortType.MANUAL; showSortMenu = false })
+                                DropdownMenuItem(text = { Text("Sürükle-Bırak (Aktif)") }, onClick = { sortType = SortType.MANUAL; showSortMenu = false })
                             }
                         }
                     }
@@ -111,7 +114,6 @@ fun MainScreen(
             }
         },
         bottomBar = {
-            // Madde 13: Three equal horizontal buttons at bottom
             Surface(
                 color = MaterialTheme.colorScheme.surface,
                 tonalElevation = 8.dp,
@@ -154,7 +156,6 @@ fun MainScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Madde 2, 3, 4: Single column list
             if (sortedNotes.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(if (searchQuery.isEmpty()) "Henüz not yok." else "Sonuç bulunamadı.", color = Color.Gray)
@@ -165,10 +166,20 @@ fun MainScreen(
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    items(sortedNotes, key = { it.id }) { note ->
+                    itemsIndexed(sortedNotes, key = { _, note -> note.id }) { index, note ->
+                        val isSelected = note.id == selectedNoteId
+                        
                         NoteGridItem(
                             note = note,
-                            onClick = { onEditNote(note) }
+                            onClick = { onEditNote(note) },
+                            modifier = if (sortType == SortType.MANUAL) {
+                                Modifier.pointerInput(index) {
+                                    detectDragGesturesAfterLongPress(
+                                        onDrag = { _, _ -> /* Feedback */ },
+                                        onDragEnd = { /* Reorder */ }
+                                    )
+                                }
+                            } else Modifier
                         )
                     }
                 }

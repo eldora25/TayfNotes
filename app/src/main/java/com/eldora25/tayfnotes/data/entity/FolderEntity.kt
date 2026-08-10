@@ -9,20 +9,28 @@ data class FolderEntity(
     @PrimaryKey
     val id: String,
     val name: String,
-    val colorHex: String
+    val colorHex: String,
+    val createdAt: Long = System.currentTimeMillis(),
+    val lastModified: Long = System.currentTimeMillis(),
+    val position: Int = 0
 ) {
-    fun toDomain(noteCount: Int = 0): Folder = Folder(
+    fun toDomain(): Folder = Folder(
         id = id,
         name = name,
         colorHex = colorHex,
-        noteCount = noteCount
+        createdAt = createdAt,
+        lastModified = lastModified,
+        position = position
     )
 
     companion object {
         fun fromDomain(folder: Folder): FolderEntity = FolderEntity(
             id = folder.id,
             name = folder.name,
-            colorHex = folder.colorHex
+            colorHex = folder.colorHex,
+            createdAt = folder.createdAt,
+            lastModified = folder.lastModified,
+            position = folder.position
         )
     }
 }

@@ -126,8 +126,7 @@ class MainActivity : FragmentActivity() {
         val isBiometricEnabled by noteViewModel.isBiometricEnabled.collectAsState()
         val activeCloudProvider by noteViewModel.activeCloudProvider.collectAsState()
         
-        val configuration = LocalConfiguration.current
-        // Madde 2: Split 0.4 / 0.6 always active
+        // Madde 2: Split is ALWAYS active
         val isMasterDetail = true 
         var selectedNoteInMasterDetail by remember { mutableStateOf<Note?>(null) }
 
@@ -178,7 +177,6 @@ class MainActivity : FragmentActivity() {
                     }
                 ) { innerPadding ->
                     Row(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
-                        // Madde 2: Left 0.4 column
                         Box(modifier = Modifier.weight(if (currentScreen is Screen.Main) 0.4f else 1f)) {
                             when (currentScreen) {
                                 is Screen.Main -> MainScreen(
@@ -190,7 +188,10 @@ class MainActivity : FragmentActivity() {
                                     onAddSketch = { currentScreen = Screen.EditNote(initialSketch = true) },
                                     onEditNote = { note -> 
                                         selectedNoteInMasterDetail = note
-                                    }
+                                    },
+                                    onMoveNote = { from, to -> noteViewModel.updateNotePosition(from, to) },
+                                    isMasterDetail = isMasterDetail,
+                                    selectedNoteId = selectedNoteInMasterDetail?.id
                                 )
                                 is Screen.Folders -> FoldersScreen(
                                     folders = folders,
@@ -199,7 +200,8 @@ class MainActivity : FragmentActivity() {
                                         currentScreen = Screen.Main
                                     },
                                     onAddFolder = { name, color -> noteViewModel.addFolder(name, color) },
-                                    onUpdateFolder = { folder -> noteViewModel.updateFolder(folder) }
+                                    onUpdateFolder = { folder -> noteViewModel.updateFolder(folder) },
+                                    onMoveFolder = { from, to -> noteViewModel.updateFolderPosition(from, to) }
                                 )
                                 is Screen.Calendar -> CalendarScreen(
                                     notes = notes,
@@ -248,7 +250,6 @@ class MainActivity : FragmentActivity() {
                             }
                         }
                         
-                        // Madde 2: Right 0.6 Detail Pane (only for MainScreen)
                         if (currentScreen is Screen.Main) {
                             VerticalDivider(modifier = Modifier.fillMaxHeight(), thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
                             Box(modifier = Modifier.weight(0.6f)) {

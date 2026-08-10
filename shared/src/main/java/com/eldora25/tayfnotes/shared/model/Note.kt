@@ -16,11 +16,12 @@ data class Note(
     val folderId: String? = null,
     val imageUris: List<String> = emptyList(),
     val audioPath: String? = null,
-    val sketchData: String? = null, // New: Serialized vector drawing data
+    val sketchData: String? = null,
     val createdAt: Long = System.currentTimeMillis(),
     val lastModified: Long = System.currentTimeMillis(),
     val reminderTimestamp: Long? = null,
-    val isLocked: Boolean = false
+    val isLocked: Boolean = false,
+    val position: Int = 0 // Madde 2: For manual reordering
 )
 
 enum class NoteType {
@@ -32,7 +33,10 @@ data class Folder(
     val id: String,
     val name: String,
     val colorHex: String = "#757575",
-    val noteCount: Int = 0
+    val noteCount: Int = 0,
+    val createdAt: Long = System.currentTimeMillis(), // Madde 5
+    val lastModified: Long = System.currentTimeMillis(), // Madde 5
+    val position: Int = 0 // Madde 3
 )
 
 /**

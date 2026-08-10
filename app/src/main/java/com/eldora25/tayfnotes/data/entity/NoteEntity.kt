@@ -21,7 +21,8 @@ data class NoteEntity(
     val createdAt: Long,
     val lastModified: Long,
     val reminderTimestamp: Long?,
-    val isLocked: Boolean
+    val isLocked: Boolean,
+    val position: Int = 0
 ) {
     fun toDomain(): Note = Note(
         id = id,
@@ -37,7 +38,8 @@ data class NoteEntity(
         createdAt = createdAt,
         lastModified = lastModified,
         reminderTimestamp = reminderTimestamp,
-        isLocked = isLocked
+        isLocked = isLocked,
+        position = position
     )
 
     companion object {
@@ -55,7 +57,8 @@ data class NoteEntity(
             createdAt = note.createdAt,
             lastModified = note.lastModified,
             reminderTimestamp = note.reminderTimestamp,
-            isLocked = note.isLocked
+            isLocked = note.isLocked,
+            position = note.position
         )
     }
 }

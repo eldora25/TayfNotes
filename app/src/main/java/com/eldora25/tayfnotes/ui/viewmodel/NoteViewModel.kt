@@ -49,7 +49,6 @@ class NoteViewModel(
     private val dataStore = application.dataStore
     private val syncManager = SyncManager()
     
-    // Unique App Instance ID for real sync
     private val appInstanceId = Settings.Secure.getString(application.contentResolver, Settings.Secure.ANDROID_ID)
 
     private val THEME_KEY = stringPreferencesKey("app_theme")
@@ -95,7 +94,7 @@ class NoteViewModel(
     val allFolders: StateFlow<List<Folder>> = combine(folderRepository.allFolders, noteRepository.allNotes, archiveIds, trashIds) { folders, notes, archives, trash ->
         folders.map { folder ->
             folder.copy(noteCount = notes.count { it.folderId == folder.id && !trash.contains(it.id) && !archives.contains(it.id) })
-        }
+        }.sortedBy { it.position }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val notes: StateFlow<List<Note>> = combine(_selectedFolderId, _searchQuery, archiveIds, trashIds) { folderId, query, archives, trash ->
@@ -108,16 +107,16 @@ class NoteViewModel(
                 val matchesFolder = if (filter.folderId != null) note.folderId == filter.folderId else true
                 val matchesSearch = if (filter.query.isNotEmpty()) note.title.contains(filter.query, ignoreCase = true) || note.content.contains(filter.query, ignoreCase = true) else true
                 !isArchived && !isTrashed && matchesFolder && matchesSearch
-            }
+            }.sortedBy { it.position }
         }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val archivedNotes: StateFlow<List<Note>> = combine(noteRepository.allNotes, archiveIds) { all, archives ->
-        all.filter { archives.contains(it.id) }
+        all.filter { archives.contains(it.id) }.sortedByDescending { it.lastModified }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val trashedNotes: StateFlow<List<Note>> = combine(noteRepository.allNotes, trashIds) { all, trash ->
-        all.filter { trash.contains(it.id) }
+        all.filter { trash.contains(it.id) }.sortedByDescending { it.lastModified }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun onSearchQueryChanged(query: String) { _searchQuery.value = query }
@@ -147,6 +146,34 @@ class NoteViewModel(
         }
     }
 
+    fun updateNotePosition(fromIndex: Int, toIndex: Int) {
+        // Madde 2 Logic
+        viewModelScope.launch {
+            val currentList = notes.value.toMutableList()
+            if (fromIndex < currentList.size && toIndex < currentList.size) {
+                val movedNote = currentList.removeAt(fromIndex)
+                currentList.add(toIndex, movedNote)
+                currentList.forEachIndexed { index, note ->
+                    noteRepository.insert(note.copy(position = index))
+                }
+            }
+        }
+    }
+
+    fun updateFolderPosition(fromIndex: Int, toIndex: Int) {
+        // Madde 3 Logic
+        viewModelScope.launch {
+            val currentList = allFolders.value.toMutableList()
+            if (fromIndex < currentList.size && toIndex < currentList.size) {
+                val movedFolder = currentList.removeAt(fromIndex)
+                currentList.add(toIndex, movedFolder)
+                currentList.forEachIndexed { index, folder ->
+                    folderRepository.insert(folder.copy(position = index))
+                }
+            }
+        }
+    }
+
     fun trashNote(noteId: String) {
         viewModelScope.launch {
             dataStore.edit { pref ->
@@ -171,7 +198,7 @@ class NoteViewModel(
         viewModelScope.launch { folderRepository.insert(Folder(id = System.currentTimeMillis().toString(), name = name, colorHex = colorHex)) }
     }
     
-    fun updateFolder(folder: Folder) { viewModelScope.launch { folderRepository.insert(folder) } }
+    fun updateFolder(folder: Folder) { viewModelScope.launch { folderRepository.insert(folder.copy(lastModified = System.currentTimeMillis())) } }
 
     fun syncData() {
         viewModelScope.launch {

@@ -32,7 +32,8 @@ import kotlinx.serialization.json.Json
 @Composable
 fun NoteGridItem(
     note: Note,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val backgroundColor = try {
         Color(android.graphics.Color.parseColor(note.colorHex))
@@ -43,7 +44,7 @@ fun NoteGridItem(
     val contentColor = if (backgroundColor.luminance() > 0.45f) Color.Black else Color.White
 
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(4.dp)
             .clickable { onClick() },
