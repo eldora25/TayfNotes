@@ -116,6 +116,52 @@ fun DrawingCanvas(
                                 onDataChanged(Json.encodeToString(objects))
                             }
                         )
+                    } else if (currentTool == ToolType.OBJECT_ERASER) {
+                        detectTapGestures { offset ->
+                            val hit = objects.findLast { obj -> getObjectBounds(obj).contains(offset) }
+                            if (hit != null) {
+                                objects = objects.filter { it.id != hit.id }
+                                selectedObjectId = null
+                                onDataChanged(Json.encodeToString(objects))
+                            }
+                        }
+                    } else if (currentTool == ToolType.PAINT_BUCKET) {
+                        detectTapGestures { offset ->
+                            val hits = objects.filter { obj -> 
+                                val bounds = getObjectBounds(obj)
+                                bounds.contains(offset)
+                            }
+                            if (hits.size >= 2) {
+                                // Find intersection of the first two for simplicity
+                                val path1 = getObjectPath(hits[hits.size - 1])
+                                val path2 = getObjectPath(hits[hits.size - 2])
+                                val intersection = Path().apply {
+                                    op(path1, path2, PathOperation.Intersect)
+                                }
+                                if (!intersection.isEmpty) {
+                                    val newObj = DrawObject(
+                                        id = java.util.UUID.randomUUID().toString(),
+                                        points = emptyList(),
+                                        colorHex = String.format("#%06X", (0xFFFFFF and currentColor.toArgb())),
+                                        strokeWidth = 2f,
+                                        toolType = ToolType.SHAPE,
+                                        shapeType = ShapeType.INTERSECTION,
+                                        isFilled = true,
+                                        fillColorHex = String.format("#%06X", (0xFFFFFF and currentColor.toArgb())),
+                                        zIndex = objects.size,
+                                        pathData = hits[hits.size - 1].id + "|" + hits[hits.size - 2].id
+                                    )
+                                    objects = objects + newObj
+                                    onDataChanged(Json.encodeToString(objects))
+                                }
+                            } else if (hits.size == 1) {
+                                objects = objects.map { obj ->
+                                    if (obj.id == hits[0].id) obj.copy(isFilled = true, fillColorHex = String.format("#%06X", (0xFFFFFF and currentColor.toArgb())))
+                                    else obj
+                                }
+                                onDataChanged(Json.encodeToString(objects))
+                            }
+                        }
                     } else {
                         detectDragGestures(
                             onDragStart = { offset ->
@@ -154,7 +200,7 @@ fun DrawingCanvas(
                 }
         ) {
             objects.forEach { obj ->
-                drawDrawObject(obj, isSelected = obj.id == selectedObjectId)
+                drawDrawObject(obj, objects, isSelected = obj.id == selectedObjectId)
             }
             
             if (currentPathPoints.isNotEmpty()) {
@@ -168,7 +214,7 @@ fun DrawingCanvas(
                     isFilled = isFillEnabled,
                     fillColorHex = if (isFillEnabled) String.format("#%06X", (0xFFFFFF and currentFillColor.toArgb())) else null
                 )
-                drawDrawObject(preview, isSelected = false)
+                drawDrawObject(preview, objects, isSelected = false)
             }
         }
 
@@ -194,7 +240,9 @@ fun DrawingCanvas(
                     ToolIcon(Icons.Default.Create, "Kalem", currentTool == ToolType.PEN) { currentTool = ToolType.PEN }
                     ToolIcon(Icons.Default.Brush, "Fırça", currentTool == ToolType.MARKER) { currentTool = ToolType.MARKER }
                     ToolIcon(Icons.Default.Category, "Şekil", currentTool == ToolType.SHAPE) { showShapePicker = true }
-                    ToolIcon(Icons.Default.AutoFixNormal, "Silgi", currentTool == ToolType.ERASER) { currentTool = ToolType.ERASER }
+                    ToolIcon(Icons.Default.FormatPaint, "Kova", currentTool == ToolType.PAINT_BUCKET) { currentTool = ToolType.PAINT_BUCKET }
+                    ToolIcon(Icons.Default.AutoFixNormal, "Obje Silgi", currentTool == ToolType.OBJECT_ERASER) { currentTool = ToolType.OBJECT_ERASER }
+                    ToolIcon(Icons.Default.CleaningServices, "Piksel Silgi", currentTool == ToolType.PIXEL_ERASER) { currentTool = ToolType.PIXEL_ERASER }
                 }
                 Spacer(modifier = Modifier.height(12.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -346,14 +394,28 @@ private fun getObjectBounds(obj: DrawObject): Rect {
     return Rect(minX, minY, maxX, maxY)
 }
 
-private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawDrawObject(obj: DrawObject, isSelected: Boolean) {
-    val color = if (obj.toolType == ToolType.ERASER) Color.White else Color(android.graphics.Color.parseColor(obj.colorHex)).run {
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawDrawObject(obj: DrawObject, allObjects: List<DrawObject>, isSelected: Boolean) {
+    val color = if (obj.toolType == ToolType.PIXEL_ERASER) Color.White else Color(android.graphics.Color.parseColor(obj.colorHex)).run {
         if (obj.toolType == ToolType.MARKER) this.copy(alpha = 0.45f) else this
     }
     val fillColor = if (obj.isFilled && obj.fillColorHex != null) Color(android.graphics.Color.parseColor(obj.fillColorHex)) else Color.Transparent
     val blendMode = if (obj.toolType == ToolType.MARKER) BlendMode.Multiply else BlendMode.SrcOver
+    val pathData = obj.pathData
 
-    if (obj.toolType == ToolType.SHAPE && obj.points.size >= 2) {
+    if (obj.shapeType == ShapeType.INTERSECTION && pathData != null) {
+        val ids = pathData.split("|")
+        if (ids.size >= 2) {
+            val src1 = allObjects.find { it.id == ids[0] }
+            val src2 = allObjects.find { it.id == ids[1] }
+            if (src1 != null && src2 != null) {
+                val p1 = getObjectPath(src1)
+                val p2 = getObjectPath(src2)
+                val intersection = Path().apply { op(p1, p2, PathOperation.Intersect) }
+                drawPath(intersection, fillColor)
+                drawPath(intersection, color, style = Stroke(width = obj.strokeWidth))
+            }
+        }
+    } else if (obj.toolType == ToolType.SHAPE && obj.points.size >= 2) {
         val start = Offset(obj.points[0].x, obj.points[0].y)
         val end = Offset(obj.points[1].x, obj.points[1].y)
         val left = minOf(start.x, end.x)
@@ -481,6 +543,56 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawDrawObject(obj:
         drawCircle(Color.White, radius = 12f, center = bounds.bottomRight, style = Stroke(width = 3f))
         drawCircle(Color.Blue, radius = 10f, center = bounds.bottomRight)
     }
+}
+
+private fun getObjectPath(obj: DrawObject): Path {
+    val path = Path()
+    if (obj.toolType == ToolType.SHAPE && obj.points.size >= 2) {
+        val start = Offset(obj.points[0].x, obj.points[0].y)
+        val end = Offset(obj.points[1].x, obj.points[1].y)
+        val left = minOf(start.x, end.x)
+        val top = minOf(start.y, end.y)
+        val width = Math.abs(start.x - end.x)
+        val height = Math.abs(start.y - end.y)
+        
+        when (obj.shapeType) {
+            ShapeType.SQUARE -> {
+                val side = minOf(width, height)
+                path.addRect(Rect(Offset(left, top), Size(side, side)))
+            }
+            ShapeType.RECTANGLE -> path.addRect(Rect(Offset(left, top), Size(width, height)))
+            ShapeType.CIRCLE -> {
+                val radius = minOf(width, height) / 2
+                path.addOval(Rect(Offset(left + width/2 - radius, top + height/2 - radius), Size(radius * 2, radius * 2)))
+            }
+            ShapeType.ELLIPSE -> path.addOval(Rect(Offset(left, top), Size(width, height)))
+            ShapeType.EQUILATERAL_TRIANGLE -> {
+                path.moveTo(left + width/2, top)
+                path.lineTo(left, top + height)
+                path.lineTo(left + width, top + height)
+                path.close()
+            }
+            ShapeType.RIGHT_TRIANGLE -> {
+                path.moveTo(left, top)
+                path.lineTo(left, top + height)
+                path.lineTo(left + width, top + height)
+                path.close()
+            }
+            ShapeType.DIAMOND -> {
+                path.moveTo(left + width/2, top)
+                path.lineTo(left + width, top + height/2)
+                path.lineTo(left + width/2, top + height)
+                path.lineTo(left, top + height/2)
+                path.close()
+            }
+            // Add other shapes as needed for intersection
+            else -> path.addRect(Rect(Offset(left, top), Size(width, height)))
+        }
+    } else if (obj.points.isNotEmpty()) {
+        path.moveTo(obj.points[0].x, obj.points[0].y)
+        obj.points.forEach { path.lineTo(it.x, it.y) }
+    }
+    return path
 }
 
 private fun Color.toArgb(): Int {

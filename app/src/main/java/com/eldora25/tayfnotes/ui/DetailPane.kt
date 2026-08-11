@@ -15,10 +15,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathOperation
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
@@ -126,21 +128,35 @@ fun DetailPane(
                 border = androidx.compose.foundation.BorderStroke(1.5.dp, Color.LightGray.copy(0.5f))
             ) {
                 Canvas(modifier = Modifier.fillMaxSize().padding(8.dp)) {
-                    drawObjects.forEach { drawDrawObject(it) }
+                    drawObjects.forEach { drawDrawObject(it, drawObjects) }
                 }
             }
         }
     }
 }
 
-private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawDrawObject(obj: DrawObject) {
-    val color = if (obj.toolType == ToolType.ERASER) Color.White else Color(android.graphics.Color.parseColor(obj.colorHex)).run {
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawDrawObject(obj: DrawObject, allObjects: List<DrawObject>) {
+    val color = if (obj.toolType == ToolType.PIXEL_ERASER) Color.White else Color(android.graphics.Color.parseColor(obj.colorHex)).run {
         if (obj.toolType == ToolType.MARKER) this.copy(alpha = 0.45f) else this
     }
     val fillColor = if (obj.isFilled && obj.fillColorHex != null) Color(android.graphics.Color.parseColor(obj.fillColorHex)) else Color.Transparent
     val blendMode = if (obj.toolType == ToolType.MARKER) BlendMode.Multiply else BlendMode.SrcOver
+    val pathData = obj.pathData
 
-    if (obj.toolType == ToolType.SHAPE && obj.points.size >= 2) {
+    if (obj.shapeType == ShapeType.INTERSECTION && pathData != null) {
+        val ids = pathData.split("|")
+        if (ids.size >= 2) {
+            val src1 = allObjects.find { it.id == ids[0] }
+            val src2 = allObjects.find { it.id == ids[1] }
+            if (src1 != null && src2 != null) {
+                val p1 = getObjectPath(src1)
+                val p2 = getObjectPath(src2)
+                val intersection = Path().apply { op(p1, p2, PathOperation.Intersect) }
+                drawPath(intersection, fillColor)
+                drawPath(intersection, color, style = Stroke(width = obj.strokeWidth))
+            }
+        }
+    } else if (obj.toolType == ToolType.SHAPE && obj.points.size >= 2) {
         val start = Offset(obj.points[0].x, obj.points[0].y)
         val end = Offset(obj.points[1].x, obj.points[1].y)
         val left = minOf(start.x, end.x)
@@ -256,6 +272,55 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawDrawObject(obj:
             drawPath(path = path, color = color, style = Stroke(width = obj.strokeWidth, cap = StrokeCap.Round), blendMode = blendMode)
         }
     }
+}
+
+private fun getObjectPath(obj: DrawObject): Path {
+    val path = Path()
+    if (obj.toolType == ToolType.SHAPE && obj.points.size >= 2) {
+        val start = Offset(obj.points[0].x, obj.points[0].y)
+        val end = Offset(obj.points[1].x, obj.points[1].y)
+        val left = minOf(start.x, end.x)
+        val top = minOf(start.y, end.y)
+        val width = Math.abs(start.x - end.x)
+        val height = Math.abs(start.y - end.y)
+        
+        when (obj.shapeType) {
+            ShapeType.SQUARE -> {
+                val side = minOf(width, height)
+                path.addRect(Rect(Offset(left, top), Size(side, side)))
+            }
+            ShapeType.RECTANGLE -> path.addRect(Rect(Offset(left, top), Size(width, height)))
+            ShapeType.CIRCLE -> {
+                val radius = minOf(width, height) / 2
+                path.addOval(Rect(Offset(left + width/2 - radius, top + height/2 - radius), Size(radius * 2, radius * 2)))
+            }
+            ShapeType.ELLIPSE -> path.addOval(Rect(Offset(left, top), Size(width, height)))
+            ShapeType.EQUILATERAL_TRIANGLE -> {
+                path.moveTo(left + width/2, top)
+                path.lineTo(left, top + height)
+                path.lineTo(left + width, top + height)
+                path.close()
+            }
+            ShapeType.RIGHT_TRIANGLE -> {
+                path.moveTo(left, top)
+                path.lineTo(left, top + height)
+                path.lineTo(left + width, top + height)
+                path.close()
+            }
+            ShapeType.DIAMOND -> {
+                path.moveTo(left + width/2, top)
+                path.lineTo(left + width, top + height/2)
+                path.lineTo(left + width/2, top + height)
+                path.lineTo(left, top + height/2)
+                path.close()
+            }
+            else -> path.addRect(Rect(Offset(left, top), Size(width, height)))
+        }
+    } else if (obj.points.isNotEmpty()) {
+        path.moveTo(obj.points[0].x, obj.points[0].y)
+        obj.points.forEach { path.lineTo(it.x, it.y) }
+    }
+    return path
 }
 
 private fun drawPolygon(left: Float, top: Float, width: Float, height: Float, sides: Int): Path {

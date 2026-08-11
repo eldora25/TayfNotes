@@ -12,13 +12,15 @@ data class DrawObject(
     val shapeType: ShapeType? = null,
     val isFilled: Boolean = false,
     val fillColorHex: String? = null,
-    val zIndex: Int = 0
+    val zIndex: Int = 0,
+    val pathData: String? = null
 )
 
-enum class ToolType { PEN, MARKER, ERASER, SHAPE, SELECT }
+enum class ToolType { PEN, MARKER, PIXEL_ERASER, OBJECT_ERASER, SHAPE, SELECT, PAINT_BUCKET }
 enum class ShapeType {
     SQUARE, RECTANGLE, CIRCLE, ELLIPSE, EQUILATERAL_TRIANGLE, RIGHT_TRIANGLE,
-    TRAPEZOID, PARALLELOGRAM, DIAMOND, PENTAGON, HEXAGON, STAR, ARC, LINE, DOUBLE_ARROW
+    TRAPEZOID, PARALLELOGRAM, DIAMOND, PENTAGON, HEXAGON, STAR, ARC, LINE, DOUBLE_ARROW,
+    INTERSECTION
 }
 
 @Serializable
