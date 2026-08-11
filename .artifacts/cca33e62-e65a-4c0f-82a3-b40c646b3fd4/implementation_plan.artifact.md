@@ -1,54 +1,47 @@
-# TayfNotes: Teknik Mükemmellik, Neon Zırh ve Gerçek Senkronizasyon Planı (v29)
+# TayfNotes: Premium Arayüz, Gelişmiş Etkileşim ve Teknik Mükemmellik Planı (v31)
 
-Bu plan, TayfNotes uygulamasını piyasadaki en üst düzey (Microsoft To Do, Procreate, Google Keep) standartlara taşımayı, görsel kontrast sorunlarını Neon Zırh ile gidermeyi ve bulut senkronizasyonunu gerçek hale getirmeyi hedefler.
+Bu plan, TayfNotes'u en üst düzey premium standartlara taşımayı, "Neon Zırh" ile görsel kusursuzluğu sağlamayı ve gerçek dünya senkronizasyon altyapısını kurmayı hedefler.
 
 ## User Review Required
 
 > [!IMPORTANT]
-> **Gerçek Senkronizasyon:** Google Drive ve Dropbox için gerçek kimlik doğrulama akışları ve kullanıcı kimlik yönetimi kurulacaktır.
-> **Master-Detail:** Dikey modda dahi 0.4f/0.6f oranında sol liste ve sağ boş/detay panel ayrımı aktif edilecektir.
-> **Sürükle-Bırak:** Not ve klasör sıralaması artık manuel olarak (Drag-and-Drop) yapılabilecektir.
+> **Master-Detail:** Üst ve Alt barlar tam ekran genişliğinde kalırken, orta içerik alanı dikey ve yatayda 0.4 (Liste) / 0.6 (Detay) olarak bölünecektir.
+> **Sürükle-Bırak:** Manuel sıralama modu seçildiğinde notlar ve klasörler basılı tutularak yer değiştirilebilecektir.
+> **Gerçek Senkronizasyon:** Google/Dropbox hesap bağlama ekranları ve gerçek veri transferi protokolleri kurulacaktır.
 
 ## Proposed Changes
 
-### 1. Görsel Zırh ve Neon İkonlar (Madde 2, 7)
-- [MODIFY] `ui/theme/Theme.kt`: İkon ve menüleri siyah kapsül içinde, sarı ikonlu ve Neon ışıltılı (Glow) hale getiren `EditorNeonIcon` bileşeni.
-- [MODIFY] `ui/ThemeSelectionScreen.kt`: Seçim yapıldığında anında güncellenen görsel önizleme alanı.
+### 1. Neon Zırh ve Premium Kontrast (Madde 1, 2, 7)
+- [MODIFY] `ui/theme/Theme.kt`: `EditorNeonIcon` bileşenini siyah dolgulu, sarı ikonlu ve dış neon ışıltılı olacak şekilde yenileme.
+- [MODIFY] `ui/ThemeSelectionScreen.kt`: Seçim anında tüm arayüzü güncelleyen "Live Preview" yapısı.
+- [MODIFY] `ui/components/NoteGridItem.kt`: "Accent Bar" ve %10 yansımalı premium kart tasarımı.
 
-### 2. Akıllı Navigasyon ve Master-Detail (Madde 3)
-- [MODIFY] `MainActivity.kt`: Dikey modda daima Master-Detail yapısını koruma (Sol: 0.4, Sağ: 0.6).
-- [MODIFY] `ui/MainScreen.kt`: Not başlıklarının dar alana dinamik adaptasyonu.
+### 2. Akıllı Ekran Yerleşimi (Madde 1, 3)
+- [MODIFY] `MainActivity.kt`: `Scaffold` yapısını barlar tam genişlikte kalacak, sadece `content` alanı 0.4/0.6 bölünecek şekilde refaktör etme.
+- [MODIFY] `ui/MainScreen.kt`: Not başlıklarının dar alanda `Ellipsis` ile dinamik sığdırılması.
 
 ### 3. Sürükle-Bırak ve Gelişmiş Klasörleme (Madde 4, 5, 6)
-- [MODIFY] `ui/MainScreen.kt` & `ui/FoldersScreen.kt`:
-    - `LazyColumn` üzerinde manuel sürükle-bırak desteği.
-    - Klasörlere "Düzenlenme" ve "Oluşturulma" zamanı alanlarının eklenmesi.
-    - Klasör oluştururken renk seçimi desteği.
+- [MODIFY] `ui/viewmodel/NoteViewModel.kt`: Pozisyon verilerini (`Int`) saklayacak ve güncelleyecek mantık.
+- [MODIFY] `ui/MainScreen.kt` & `ui/FoldersScreen.kt`: Uzun basım (Long Press) ile tetiklenen manuel yer değiştirme etkileşimi.
 
-### 4. Gelişmiş Sketch ve Tasarım (Madde 10, 11, 12, 14)
+### 4. Sketch Pro ve Gelişmiş Canvas (Madde 9, 10, 12)
 - [MODIFY] `ui/components/DrawingCanvas.kt`:
-    - Tekil kayıt: Sadece "Tamam" denildiğinde tek döküman olarak saklama.
-    - Gerçek Renk: Kalem/Fırça seçiliyken renk değiştirme anlık ve kalıcı.
-    - Şekil Pro: Kenar (Wall) ve İç (Fill) renklerinin bağımsız ayarlanması ve kaydedilmesi.
+    - **Wall & Fill:** Şekillerin kenar ve iç renklerinin bağımsız yönetimi.
+    - **Kalıcı Renk:** Kalem/Fırça geçişlerinde renk hafızasının korunması.
+    - **Tekil Kayıt:** Sadece "Bitti" tıklandığında Room'a nihai dökümanın gönderilmesi.
 
-### 5. Veri ve Gerçek Bulut (Madde 8, 9)
-- [MODIFY] `ui/viewmodel/NoteViewModel.kt`:
-    - Gerçek Google/Dropbox hesap bağlama ve benzersiz cihaz kimliği ile çift taraflı eşitleme.
-    - Çöp kutusu ve Arşiv fonksiyonlarının stabilizasyonu.
-
-### 6. Kritik Hata Çözümleri (Madde 1, 11, 13)
-- [FIX] **Kritik:** Notun `.txt` olarak dışa aktarılmasının (Share) geri eklenmesi.
-- [FIX] Ses kaydı esnasındaki "Error" veren izin ve sessiz kayıt sorununun çözülmesi.
-- [FIX] Resimlerin ve Sketch'lerin detay panelinde görünmemesi sorunu.
+### 5. Gerçek Bulut ve Ses Çözümü (Madde 8, 11)
+- [MODIFY] `util/AudioRecorder.kt`: Ses dosyasının yazılmama ve çalınmama sorununu gideren `MediaRecorder` konfigürasyon fixi.
+- [MODIFY] `shared/src/.../SyncManager.kt`: Gerçek OAuth2 akışlarını tetikleyen kimlik doğrulama katmanı.
 
 ## Verification Plan
 
 ### Automated Verification
-- `./gradlew :app:assembleDebug` ile build kontrolü.
-- APK `TayfNotes_v01.29.apk` üretilecek.
+- `./gradlew :app:assembleDebug` ile APK `v01.31` üretimi.
+- Unit testler ile position update mantığının kontrolü.
 
 ### Manual Verification
-- Dikey modda sağ panelin boş kalıp not seçilince dolduğu görülecek.
-- Sketch ekranında bir daire çizilip iç dolgusunun değiştiği test edilecek.
-- Dropbox/Drive ile gerçek veri alışverişi denenecek.
-- Notun .txt olarak paylaşılabildiği doğrulanacak.
+- Editör ikonlarının her renkte sarı/neon olarak parladığı görülecek.
+- Notu sola kaydırınca (Swipe) silme aksiyonu test edilecek.
+- Tablet dikey modda sağ panelin boş kalıp notla dolduğu doğrulanacak.
+- Ses kaydı yapılıp detay panelinden dinlenecek.

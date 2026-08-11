@@ -66,12 +66,12 @@ private fun getDarkColorScheme(theme: TayfTheme) = darkColorScheme(
         TayfTheme.CRIMSON -> CrimsonPrimary
     },
     secondary = MidnightLight,
-    background = MidnightBlue,
-    surface = MidnightBlue,
+    background = Color(0xFF0A0A0A), // Deepest black (Madde 4)
+    surface = Color(0xFF161616), // Darker surface
     onPrimary = Color.Black,
     onBackground = Color.White,
     onSurface = Color.White,
-    onSurfaceVariant = Color.LightGray,
+    onSurfaceVariant = Color(0xFFB0B0B0),
     outline = Color.White.copy(alpha = 0.5f)
 )
 
@@ -92,9 +92,9 @@ private fun getLightColorScheme(theme: TayfTheme) = lightColorScheme(
     background = Color.White,
     surface = Color.White,
     onPrimary = Color.White,
-    onBackground = MidnightBlue,
-    onSurface = MidnightBlue,
-    onSurfaceVariant = Color.DarkGray,
+    onBackground = Color(0xFF0A0A0A),
+    onSurface = Color(0xFF0A0A0A),
+    onSurfaceVariant = Color(0xFF404040),
     outline = Color.Black.copy(alpha = 0.5f)
 )
 

@@ -48,7 +48,6 @@ fun FoldersScreen(
             SortType.DATE_MODIFIED -> folders.sortedByDescending { it.lastModified }
             SortType.DATE_CREATED -> folders.sortedByDescending { it.createdAt }
             SortType.MANUAL -> folders.sortedBy { it.position }
-            else -> folders
         }
     }
 
@@ -59,7 +58,7 @@ fun FoldersScreen(
                 folderToEdit = null
                 folderNameInput = ""
             },
-            title = { Text(if (showAddDialog) "Yeni Klasör" else "Klasörü Düzenle") },
+            title = { Text(if (showAddDialog) "Yeni Klasör" else "Klasörü Düzenle", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) },
             text = {
                 Column {
                     TextField(
@@ -67,7 +66,8 @@ fun FoldersScreen(
                         onValueChange = { folderNameInput = it },
                         placeholder = { Text("Klasör Adı") },
                         singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text("Klasör Rengi", style = MaterialTheme.typography.labelSmall)
@@ -137,7 +137,7 @@ fun FoldersScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showAddDialog = true }) {
+            FloatingActionButton(onClick = { showAddDialog = true }, shape = CircleShape, containerColor = MaterialTheme.colorScheme.primary) {
                 Icon(Icons.Default.Add, contentDescription = "Klasör Ekle")
             }
         }
@@ -150,50 +150,59 @@ fun FoldersScreen(
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             itemsIndexed(sortedFolders, key = { _, folder -> folder.id }) { index, folder ->
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onFolderClick(folder) }
-                        .then(if (sortType == SortType.MANUAL) {
-                            Modifier.pointerInput(index) {
-                                detectDragGesturesAfterLongPress(
-                                    onDrag = { _, _ -> },
-                                    onDragEnd = { }
-                                )
-                            }
-                        } else Modifier),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    ),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Row(
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (sortType == SortType.MANUAL) {
+                        Icon(
+                            Icons.Default.DragHandle, 
+                            contentDescription = "Taşı",
+                            modifier = Modifier
+                                .padding(end = 8.dp)
+                                .pointerInput(index) {
+                                    detectDragGesturesAfterLongPress(
+                                        onDrag = { _, _ -> },
+                                        onDragEnd = { }
+                                    )
+                                }
+                        )
+                    }
+                    Card(
                         modifier = Modifier
-                            .padding(16.dp)
-                            .fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
+                            .weight(1f)
+                            .clickable { onFolderClick(folder) },
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        ),
+                        shape = RoundedCornerShape(16.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-                            Icon(
-                                Icons.Default.Folder, 
-                                contentDescription = null,
-                                tint = try { Color(android.graphics.Color.parseColor(folder.colorHex)) } catch(_: Exception) { Color.Gray },
-                                modifier = Modifier.size(32.dp)
-                            )
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Text(folder.name, style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
-                        }
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            IconButton(onClick = { 
-                                folderToEdit = folder
-                                folderNameInput = folder.name
-                                selectedColorHex = folder.colorHex
-                            }) {
-                                Icon(Icons.Default.Edit, contentDescription = "Düzenle", modifier = Modifier.size(20.dp))
+                        Row(
+                            modifier = Modifier
+                                .padding(16.dp)
+                                .fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                                Icon(
+                                    Icons.Default.Folder, 
+                                    contentDescription = null,
+                                    tint = try { Color(android.graphics.Color.parseColor(folder.colorHex)) } catch(_: Exception) { Color.Gray },
+                                    modifier = Modifier.size(32.dp)
+                                )
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Text(folder.name, style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
                             }
-                            Badge(containerColor = MaterialTheme.colorScheme.primary) {
-                                Text("${folder.noteCount}", color = MaterialTheme.colorScheme.onPrimary)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                IconButton(onClick = { 
+                                    folderToEdit = folder
+                                    folderNameInput = folder.name
+                                    selectedColorHex = folder.colorHex
+                                }) {
+                                    Icon(Icons.Default.Edit, contentDescription = "Düzenle", modifier = Modifier.size(20.dp))
+                                }
+                                Badge(containerColor = MaterialTheme.colorScheme.primary) {
+                                    Text("${folder.noteCount}", color = MaterialTheme.colorScheme.onPrimary)
+                                }
                             }
                         }
                     }

@@ -85,11 +85,13 @@ class NoteViewModel(
         .map { pref -> pref[CLOUD_PROVIDER_KEY] }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
-    private val archiveIds: Flow<Set<String>> = dataStore.data
+    private val archiveIds: StateFlow<Set<String>> = dataStore.data
         .map { pref -> pref[ARCHIVE_IDS_KEY]?.split(",")?.filter { it.isNotEmpty() }?.toSet() ?: emptySet() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
     
-    private val trashIds: Flow<Set<String>> = dataStore.data
+    private val trashIds: StateFlow<Set<String>> = dataStore.data
         .map { pref -> pref[TRASH_IDS_KEY]?.split(",")?.filter { it.isNotEmpty() }?.toSet() ?: emptySet() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
 
     val allFolders: StateFlow<List<Folder>> = combine(folderRepository.allFolders, noteRepository.allNotes, archiveIds, trashIds) { folders, notes, archives, trash ->
         folders.map { folder ->
@@ -147,10 +149,9 @@ class NoteViewModel(
     }
 
     fun updateNotePosition(fromIndex: Int, toIndex: Int) {
-        // Madde 2 Logic
         viewModelScope.launch {
             val currentList = notes.value.toMutableList()
-            if (fromIndex < currentList.size && toIndex < currentList.size) {
+            if (fromIndex in currentList.indices && toIndex in currentList.indices) {
                 val movedNote = currentList.removeAt(fromIndex)
                 currentList.add(toIndex, movedNote)
                 currentList.forEachIndexed { index, note ->
@@ -161,10 +162,9 @@ class NoteViewModel(
     }
 
     fun updateFolderPosition(fromIndex: Int, toIndex: Int) {
-        // Madde 3 Logic
         viewModelScope.launch {
             val currentList = allFolders.value.toMutableList()
-            if (fromIndex < currentList.size && toIndex < currentList.size) {
+            if (fromIndex in currentList.indices && toIndex in currentList.indices) {
                 val movedFolder = currentList.removeAt(fromIndex)
                 currentList.add(toIndex, movedFolder)
                 currentList.forEachIndexed { index, folder ->
@@ -186,7 +186,7 @@ class NoteViewModel(
 
     fun emptyTrash() {
         viewModelScope.launch {
-            val currentTrash = trashIds.first()
+            val currentTrash = trashIds.value
             currentTrash.forEach { id ->
                 noteRepository.allNotes.first().find { it.id == id }?.let { noteRepository.delete(it) }
             }
@@ -209,7 +209,7 @@ class NoteViewModel(
                 else -> null
             }
             syncManager.setProvider(provider)
-            syncManager.syncNotes(notes.value)
+            syncManager.syncNotes(notes.value, appInstanceId)
             _isSyncing.value = false
         }
     }

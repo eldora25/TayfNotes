@@ -54,7 +54,7 @@ fun DrawingCanvas(
     var paths by remember { 
         mutableStateOf(
             if (initialData != null && initialData.isNotEmpty()) {
-                try { Json.decodeFromString<List<DrawPath>>(initialData) } catch(_: Exception) { emptyList() }
+                try { Json.decodeFromString<List<DrawPath>>(initialData) } catch(e: Exception) { emptyList() }
             } else emptyList()
         )
     }
@@ -71,7 +71,7 @@ fun DrawingCanvas(
     var showShapePicker by remember { mutableStateOf(false) }
 
     Column(modifier = modifier.fillMaxSize().background(Color.White)) {
-        // Toolbar - Madde 2: Black capsule with Yellow/Neon accents
+        // Toolbar - Fixed to be more distinct (Madde 2)
         Surface(
             modifier = Modifier.fillMaxWidth().padding(8.dp),
             shape = RoundedCornerShape(12.dp),
@@ -99,7 +99,7 @@ fun DrawingCanvas(
                     
                     Box(modifier = Modifier.clickable { showColorPicker = true }) {
                         EditorNeonIcon(modifier = Modifier.size(36.dp)) {
-                            Box(modifier = Modifier.size(20.dp).background(currentColor, CircleShape).border(1.dp, Color.White, CircleShape))
+                            Box(modifier = Modifier.size(20.dp).background(if (currentColor == Color.White && currentTool != ToolType.ERASER) Color.LightGray else currentColor, CircleShape).border(1.dp, Color.White, CircleShape))
                         }
                     }
 
@@ -247,6 +247,13 @@ fun DrawingCanvas(
             confirmButton = {}
         )
     }
+}
+
+private fun Color.toArgb(): Int {
+    return (alpha * 255.0f + 0.5f).toInt() shl 24 or
+           (red * 255.0f + 0.5f).toInt() shl 16 or
+           (green * 255.0f + 0.5f).toInt() shl 8 or
+           (blue * 255.0f + 0.5f).toInt()
 }
 
 private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawDataPath(drawPath: DrawPath) {

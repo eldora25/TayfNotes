@@ -126,8 +126,6 @@ class MainActivity : FragmentActivity() {
         val isBiometricEnabled by noteViewModel.isBiometricEnabled.collectAsState()
         val activeCloudProvider by noteViewModel.activeCloudProvider.collectAsState()
         
-        // Madde 2: Split is ALWAYS active
-        val isMasterDetail = true 
         var selectedNoteInMasterDetail by remember { mutableStateOf<Note?>(null) }
 
         val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
@@ -167,6 +165,7 @@ class MainActivity : FragmentActivity() {
                     onBack = { currentScreen = Screen.More }
                 )
             } else {
+                // Madde 1, 3: Full Width Top/Bottom bars, Split only for Middle Content
                 Scaffold(
                     bottomBar = {
                         BottomNavigationBar(
@@ -177,7 +176,8 @@ class MainActivity : FragmentActivity() {
                     }
                 ) { innerPadding ->
                     Row(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
-                        Box(modifier = Modifier.weight(if (currentScreen is Screen.Main) 0.4f else 1f)) {
+                        // Left 0.4 column for LIST
+                        Box(modifier = Modifier.weight(0.4f)) {
                             when (currentScreen) {
                                 is Screen.Main -> MainScreen(
                                     notes = notes,
@@ -190,7 +190,6 @@ class MainActivity : FragmentActivity() {
                                         selectedNoteInMasterDetail = note
                                     },
                                     onMoveNote = { from, to -> noteViewModel.updateNotePosition(from, to) },
-                                    isMasterDetail = isMasterDetail,
                                     selectedNoteId = selectedNoteInMasterDetail?.id
                                 )
                                 is Screen.Folders -> FoldersScreen(
@@ -205,20 +204,20 @@ class MainActivity : FragmentActivity() {
                                 )
                                 is Screen.Calendar -> CalendarScreen(
                                     notes = notes,
-                                    onEditNote = { note -> currentScreen = Screen.EditNote(note) }
+                                    onEditNote = { note -> selectedNoteInMasterDetail = note }
                                 )
                                 is Screen.More -> MoreScreen(onScreenChange = { currentScreen = it })
                                 is Screen.Archive -> NoteListScreen(
                                     title = "Arşiv",
                                     notes = archivedNotes,
                                     onBack = { currentScreen = Screen.More },
-                                    onEditNote = { note -> currentScreen = Screen.EditNote(note) }
+                                    onEditNote = { note -> selectedNoteInMasterDetail = note }
                                 )
                                 is Screen.Trash -> NoteListScreen(
                                     title = "Çöp Kutusu",
                                     notes = trashedNotes,
                                     onBack = { currentScreen = Screen.More },
-                                    onEditNote = { note -> currentScreen = Screen.EditNote(note) },
+                                    onEditNote = { note -> selectedNoteInMasterDetail = note },
                                     onEmptyTrash = { noteViewModel.emptyTrash() }
                                 )
                                 is Screen.Settings -> SettingsScreen(
@@ -250,21 +249,20 @@ class MainActivity : FragmentActivity() {
                             }
                         }
                         
-                        if (currentScreen is Screen.Main) {
-                            VerticalDivider(modifier = Modifier.fillMaxHeight(), thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
-                            Box(modifier = Modifier.weight(0.6f)) {
-                                DetailPane(
-                                    note = selectedNoteInMasterDetail,
-                                    modifier = Modifier.fillMaxSize()
-                                )
-                                if (selectedNoteInMasterDetail != null) {
-                                    IconButton(
-                                        onClick = { currentScreen = Screen.EditNote(selectedNoteInMasterDetail) },
-                                        modifier = Modifier.align(androidx.compose.ui.Alignment.TopEnd).padding(16.dp)
-                                    ) {
-                                        EditorNeonIcon {
-                                            Icon(Icons.Default.Edit, contentDescription = "Düzenle")
-                                        }
+                        // Right 0.6 Detail Pane
+                        VerticalDivider(modifier = Modifier.fillMaxHeight(), thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                        Box(modifier = Modifier.weight(0.6f)) {
+                            DetailPane(
+                                note = selectedNoteInMasterDetail,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                            if (selectedNoteInMasterDetail != null) {
+                                IconButton(
+                                    onClick = { currentScreen = Screen.EditNote(selectedNoteInMasterDetail) },
+                                    modifier = Modifier.align(androidx.compose.ui.Alignment.TopEnd).padding(16.dp)
+                                ) {
+                                    EditorNeonIcon {
+                                        Icon(Icons.Default.Edit, contentDescription = "Düzenle")
                                     }
                                 }
                             }

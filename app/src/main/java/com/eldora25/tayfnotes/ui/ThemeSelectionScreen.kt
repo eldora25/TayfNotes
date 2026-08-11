@@ -16,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.eldora25.tayfnotes.ui.theme.*
@@ -29,10 +30,11 @@ fun ThemeSelectionScreen(
     onDarkModeChanged: (Boolean?) -> Unit,
     onBack: () -> Unit
 ) {
+    // Madde 7: Live preview is handled by the parent (MainActivity) observing currentTheme state
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Tema Seçimi") },
+                title = { Text("Görünüm ve Tema", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Geri")
@@ -48,7 +50,7 @@ fun ThemeSelectionScreen(
                 .padding(16.dp)
         ) {
             Text("Arayüz Modu", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -58,10 +60,10 @@ fun ThemeSelectionScreen(
                 ModeButton("Karanlık", isDarkMode == true, Modifier.weight(1f)) { onDarkModeChanged(true) }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(32.dp))
 
-            Text("Renk Paleti Önizleme", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(16.dp))
+            Text("Renk Paleti", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(12.dp))
             
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
@@ -85,14 +87,14 @@ fun ThemeSelectionScreen(
 fun ModeButton(label: String, isSelected: Boolean, modifier: Modifier, onClick: () -> Unit) {
     Button(
         onClick = onClick,
-        modifier = modifier,
+        modifier = modifier.height(48.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
             contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
         ),
         shape = RoundedCornerShape(12.dp)
     ) {
-        Text(label, maxLines = 1)
+        Text(label, style = MaterialTheme.typography.labelMedium)
     }
 }
 
@@ -119,18 +121,20 @@ fun ThemePreviewCard(theme: TayfTheme, isSelected: Boolean, onClick: () -> Unit)
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
-        Column(modifier = Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Box(
                 modifier = Modifier
-                    .size(48.dp)
+                    .size(56.dp)
                     .clip(CircleShape)
                     .background(themeColor)
+                    .border(2.dp, Color.White.copy(alpha = 0.3f), CircleShape)
             )
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(12.dp))
             Text(
                 text = theme.name.lowercase().replaceFirstChar { it.uppercase() }, 
                 style = MaterialTheme.typography.labelLarge,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Medium,
+                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
             )
         }
     }

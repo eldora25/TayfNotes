@@ -1,5 +1,6 @@
 package com.eldora25.tayfnotes.ui
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -36,7 +37,6 @@ fun MainScreen(
     onAddSketch: () -> Unit,
     onEditNote: (Note) -> Unit,
     onMoveNote: (Int, Int) -> Unit,
-    isMasterDetail: Boolean = false,
     selectedNoteId: String? = null
 ) {
     var isSearchActive by remember { mutableStateOf(false) }
@@ -106,7 +106,7 @@ fun MainScreen(
                                 DropdownMenuItem(text = { Text("Oluşturulma Zamanı") }, onClick = { sortType = SortType.DATE_CREATED; showSortMenu = false })
                                 DropdownMenuItem(text = { Text("Alfabetik") }, onClick = { sortType = SortType.ALPHABETICAL; showSortMenu = false })
                                 DropdownMenuItem(text = { Text("Renge Göre") }, onClick = { sortType = SortType.COLOR; showSortMenu = false })
-                                DropdownMenuItem(text = { Text("Sürükle-Bırak (Aktif)") }, onClick = { sortType = SortType.MANUAL; showSortMenu = false })
+                                DropdownMenuItem(text = { Text("Manuel (Sürükle)") }, onClick = { sortType = SortType.MANUAL; showSortMenu = false })
                             }
                         }
                     }
@@ -169,18 +169,29 @@ fun MainScreen(
                     itemsIndexed(sortedNotes, key = { _, note -> note.id }) { index, note ->
                         val isSelected = note.id == selectedNoteId
                         
-                        NoteGridItem(
-                            note = note,
-                            onClick = { onEditNote(note) },
-                            modifier = if (sortType == SortType.MANUAL) {
-                                Modifier.pointerInput(index) {
-                                    detectDragGesturesAfterLongPress(
-                                        onDrag = { _, _ -> /* Feedback */ },
-                                        onDragEnd = { /* Reorder */ }
-                                    )
-                                }
-                            } else Modifier
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (sortType == SortType.MANUAL) {
+                                Icon(
+                                    Icons.Default.DragHandle, 
+                                    contentDescription = "Taşı",
+                                    modifier = Modifier
+                                        .padding(end = 8.dp)
+                                        .pointerInput(index) {
+                                            detectDragGesturesAfterLongPress(
+                                                onDrag = { _, _ -> /* Visual reorder */ },
+                                                onDragEnd = { /* Apply final index logic via onMoveNote */ }
+                                            )
+                                        }
+                                )
+                            }
+                            NoteGridItem(
+                                note = note,
+                                onClick = { onEditNote(note) },
+                                modifier = Modifier.weight(1f).then(
+                                    if (isSelected) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(16.dp)) else Modifier
+                                )
+                            )
+                        }
                     }
                 }
             }

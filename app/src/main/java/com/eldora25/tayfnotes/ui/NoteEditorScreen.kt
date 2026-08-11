@@ -69,7 +69,7 @@ fun NoteEditorScreen(
     
     val initialItems = remember(note) {
         if (note?.type == NoteType.CHECKLIST && note.content.isNotEmpty()) {
-            try { Json.decodeFromString<List<ChecklistItem>>(note.content) } catch(e: Exception) { emptyList() }
+            try { Json.decodeFromString<List<ChecklistItem>>(note.content) } catch(_: Exception) { emptyList() }
         } else emptyList()
     }
     var checklistItems by remember { mutableStateOf(initialItems) }
@@ -84,7 +84,7 @@ fun NoteEditorScreen(
 
     val backgroundColor = try {
         Color(android.graphics.Color.parseColor(colorHex))
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         MaterialTheme.colorScheme.surface
     }
 
@@ -95,7 +95,7 @@ fun NoteEditorScreen(
     // Auto-save logic
     LaunchedEffect(title, content, colorHex, reminderTimestamp, folderId, imageUris, audioPath, checklistItems, sketchData) {
         if (title.isNotEmpty() || content.isNotEmpty() || imageUris.isNotEmpty() || audioPath != null || checklistItems.isNotEmpty() || sketchData != null) {
-            delay(1000)
+            delay(1500) // Debounce save
             
             var finalContent = content
             if (checklistItems.isNotEmpty()) {
@@ -158,12 +158,12 @@ fun NoteEditorScreen(
                         IconButton(onClick = {
                             if (!isRecording) {
                                 val file = File(context.cacheDir, "audio_${System.currentTimeMillis()}.m4a")
-                                audioPath = file.absolutePath
                                 try {
                                     recorder.startRecording(file)
+                                    audioPath = file.absolutePath
                                     isRecording = true
                                 } catch (e: Exception) {
-                                    Toast.makeText(context, "Ses kaydı hatası", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, "Kayıt Başlatılamadı", Toast.LENGTH_SHORT).show()
                                 }
                             } else { 
                                 recorder.stopRecording()
@@ -178,7 +178,6 @@ fun NoteEditorScreen(
                                 )
                             }
                         }
-                        // Madde 1: Share as TXT
                         IconButton(onClick = { 
                             val currentNote = Note(
                                 id = noteId,
@@ -219,7 +218,6 @@ fun NoteEditorScreen(
                 .background(backgroundColor.copy(alpha = 0.1f))
         ) {
             if (!isPreviewMode) {
-                // Common Top UI
                 Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Box {
                         AssistChip(
@@ -247,17 +245,18 @@ fun NoteEditorScreen(
                 )
 
                 if (isSketchMode) {
+                    // Madde 10: Extra note field for sketch
+                    TextField(
+                        value = content,
+                        onValueChange = { content = it },
+                        placeholder = { Text("Sketch Üst Notu...", style = MaterialTheme.typography.bodyMedium) },
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                        colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent)
+                    )
                     DrawingCanvas(
                         modifier = Modifier.weight(1f),
                         initialData = sketchData,
                         onDataChanged = { sketchData = it }
-                    )
-                    TextField(
-                        value = content,
-                        onValueChange = { content = it },
-                        placeholder = { Text("Çizim hakkında not...", style = MaterialTheme.typography.bodyMedium) },
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                        colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent)
                     )
                 } else if (note?.type == NoteType.CHECKLIST || checklistItems.isNotEmpty()) {
                     ChecklistEditor(items = checklistItems, onItemsChanged = { checklistItems = it })
@@ -284,7 +283,6 @@ fun NoteEditorScreen(
                     )
                 }
             } else {
-                // Preview Mode
                 Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
                     val displayTitle = if (title.isEmpty() && checklistItems.isNotEmpty()) {
                         checklistItems.firstOrNull()?.text ?: "Başlıksız Not"
@@ -308,7 +306,7 @@ fun NoteEditorScreen(
                     }
                     if (sketchData?.isNotEmpty() == true) {
                         Spacer(modifier = Modifier.height(24.dp))
-                        Text("Çizim İçeriyor (Düzenlemek için Sketch moduna geçin)", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                        Text("Çizim İçeriyor (Görüntülemek için Sketch moduna geçin)", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
                     }
                     imageUris.forEach { uri ->
                         AsyncImage(model = uri, contentDescription = null, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).clip(RoundedCornerShape(8.dp)), contentScale = ContentScale.FillWidth)
