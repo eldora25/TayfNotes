@@ -133,14 +133,14 @@ fun SettingsScreen(
                                     }
                                 )
 
-                                OneDriveAuthLauncher(
+                                /* OneDriveAuthLauncher(
                                     onAuthSuccess = { token ->
                                         onConnectOneDrive(token)
                                     },
                                     onAuthError = { error ->
                                         // Hata yönetimi
                                     }
-                                )
+                                ) */
                             }
                         } else {
                             OutlinedButton(

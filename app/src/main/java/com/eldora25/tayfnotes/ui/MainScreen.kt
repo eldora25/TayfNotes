@@ -238,7 +238,11 @@ fun MainScreen(
                     )
                     Box(modifier = Modifier.weight(1.5f).fillMaxHeight()) {
                         if (selectedNote != null) {
-                            DetailPane(note = selectedNote)
+                            DetailPane(
+                                note = selectedNote,
+                                onEdit = { onEditNote(selectedNote) },
+                                onDelete = { onDeleteNote(selectedNote) }
+                            )
                         } else {
                             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                 Text("Görüntülemek için soldan bir not seçin", color = Color.Gray, style = MaterialTheme.typography.bodyLarge)

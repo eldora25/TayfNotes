@@ -57,6 +57,7 @@
             </intent-filter>
         </activity>
 
+        <!-- MSAL Yönlendirme Aktivitesi (Geçici Olarak Devre Dışı)
         <activity
             android:name="com.microsoft.identity.client.BrowserTabActivity"
             android:exported="true">
@@ -70,6 +71,7 @@
                     android:path="/BURAYA_BASE64_HASH_GELECEK" />
             </intent-filter>
         </activity>
+        -->
 
         <provider
             android:name="androidx.core.content.FileProvider"
