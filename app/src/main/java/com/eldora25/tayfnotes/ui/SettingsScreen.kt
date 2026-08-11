@@ -1,5 +1,9 @@
 package com.eldora25.tayfnotes.ui
 
+import android.app.Activity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -8,189 +12,292 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CloudSync
-import androidx.compose.material.icons.filled.UploadFile
+import androidx.compose.material.icons.filled.CloudDone
+import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.FormatSize
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.eldora25.tayfnotes.BuildConfig
+import androidx.compose.ui.unit.sp
 import com.eldora25.tayfnotes.ui.theme.TayfTheme
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.Scope
+import com.google.api.services.drive.DriveScopes
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
+    // Senkronizasyon
     isSyncing: Boolean,
-    onSyncClick: () -> Unit,
+    activeCloudProvider: String?,
+    onConnectGoogleDrive: () -> Unit, // YENİ: Gerçek OAuth tetikleyicisi
+    onConnectDropbox: () -> Unit,     // YENİ: Gerçek OAuth tetikleyicisi
+    onDisconnectCloud: () -> Unit,
+    onAuthSuccess: (String) -> Unit,
+    onAuthError: (Exception) -> Unit,
+    // Tema ve Görünüm
     currentTheme: TayfTheme,
     onThemeSelected: (TayfTheme) -> Unit,
     isDarkMode: Boolean?,
     onDarkModeChanged: (Boolean?) -> Unit,
+    // YENİ: Tipografi
+    currentFontSize: Float,
+    onFontSizeChanged: (Float) -> Unit,
+    // Güvenlik ve Veri
     isBiometricEnabled: Boolean,
     onBiometricToggle: (Boolean) -> Unit,
-    activeCloudProvider: String?,
-    onCloudProviderSelected: (String?) -> Unit,
     onFullBackupClick: () -> Unit,
     onImportBackupClick: () -> Unit
 ) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Ayarlar") },
+                title = { Text("Ayarlar", fontWeight = FontWeight.ExtraBold) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Geri")
-                    }
-                }
+                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Geri") }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
-        }
+        },
+        containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            item { SettingCategory("Bulut Yedekleme ve Senkronizasyon") }
+            
+            // --- 1. GERÇEK BULUT SENKRONİZASYONU ---
+            item { SectionHeader("Bulut & Senkronizasyon (Gerçek Zamanlı)") }
             item {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Senkronizasyon Sağlayıcısı", style = MaterialTheme.typography.titleMedium)
-                    Text("Gerçek hesap senkronizasyonu için bir servis seçin.", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        CloudChip(
-                            selected = activeCloudProvider == null,
-                            onClick = { onCloudProviderSelected(null) },
-                            label = "Kapalı"
-                        )
-                        CloudChip(
-                            selected = activeCloudProvider == "Google Drive",
-                            onClick = { onCloudProviderSelected("Google Drive") },
-                            label = "Google Drive"
-                        )
-                        CloudChip(
-                            selected = activeCloudProvider == "Dropbox",
-                            onClick = { onCloudProviderSelected("Dropbox") },
-                            label = "Dropbox"
-                        )
+                val context = LocalContext.current
+                val gso = remember {
+                    GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                        .requestEmail()
+                        .requestScopes(Scope(DriveScopes.DRIVE_FILE))
+                        .build()
+                }
+                val googleSignInClient = remember { GoogleSignIn.getClient(context, gso) }
+                val launcher = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.StartActivityForResult()
+                ) { result ->
+                    if (result.resultCode == Activity.RESULT_OK) {
+                        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+                        try {
+                            val account = task.getResult(Exception::class.java)
+                            account?.email?.let { onAuthSuccess(it) }
+                        } catch (e: Exception) {
+                            onAuthError(e)
+                        }
                     }
                 }
-            }
-            
-            item { 
-                SettingItem(
-                    title = if (activeCloudProvider == null) "Bulut Bağlantısı Kur" else "Şimdi Senkronize Et", 
-                    subtitle = if (isSyncing) "Senkronize ediliyor..." else (activeCloudProvider ?: "Hiçbir bulut hesabı bağlı değil"),
-                    onClick = onSyncClick
-                ) 
-            }
 
-            item { SettingCategory("Veri Yönetimi (Migration)") }
-            item {
-                SettingItem(
-                    title = "Tüm Veriyi Yedekle ve Paylaş",
-                    subtitle = "Medya dosyaları ve veritabanını tek paket (ZIP) yap",
-                    onClick = onFullBackupClick
-                )
-            }
-            item {
-                SettingItem(
-                    title = "Yedekten Geri Yükle (İçe Aktar)",
-                    subtitle = "Daha önce alınan .zip yedeğini uygulamaya yükle",
-                    onClick = onImportBackupClick
-                )
-            }
-            
-            item { SettingCategory("Görünüm ve Tema") }
-            item {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Renk Paleti", style = MaterialTheme.typography.titleMedium)
-                    Spacer(modifier = Modifier.height(12.dp))
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        items(TayfTheme.entries) { theme ->
-                            Box(
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .clip(CircleShape)
-                                    .background(if (theme == currentTheme) MaterialTheme.colorScheme.primary else Color.Gray.copy(0.3f))
-                                    .border(2.dp, if (theme == currentTheme) MaterialTheme.colorScheme.primary else Color.Transparent, CircleShape)
-                                    .clickable { onThemeSelected(theme) }
+                PremiumCard {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = if (activeCloudProvider != null) Icons.Default.CloudDone else Icons.Default.CloudOff,
+                                contentDescription = null,
+                                tint = if (activeCloudProvider != null) MaterialTheme.colorScheme.primary else Color.Gray
                             )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    text = activeCloudProvider ?: "Bağlı Hesap Yok", 
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = if (activeCloudProvider != null) "Cihazlar arası otomatik eşitleniyor" else "Verileriniz sadece bu cihazda",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        if (activeCloudProvider == null) {
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Button(
+                                    onClick = { launcher.launch(googleSignInClient.signInIntent) },
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4285F4))
+                                ) { Text("Google Drive", color = Color.White) }
+                                
+                                Button(
+                                    onClick = onConnectDropbox,
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0061FF))
+                                ) { Text("Dropbox", color = Color.White) }
+                            }
+                        } else {
+                            OutlinedButton(
+                                onClick = onDisconnectCloud,
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error)
+                            ) { Text("Bağlantıyı Kes", color = MaterialTheme.colorScheme.error) }
                         }
                     }
                 }
             }
-            
+
+            // --- 2. GÖRÜNÜM VE TİPOGRAFİ ---
+            item { SectionHeader("Görünüm & Okunabilirlik") }
             item {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("Karanlık Mod", style = MaterialTheme.typography.titleMedium)
-                    Switch(checked = isDarkMode == true, onCheckedChange = { onDarkModeChanged(it) })
+                PremiumCard {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        
+                        // Font Büyüklüğü (Slider)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.FormatSize, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text("Yazı Tipi Boyutu", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("A", fontSize = 12.sp, modifier = Modifier.padding(end = 8.dp))
+                            Slider(
+                                value = currentFontSize,
+                                onValueChange = onFontSizeChanged,
+                                valueRange = 12f..24f,
+                                steps = 5,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Text("A", fontSize = 24.sp, modifier = Modifier.padding(start = 8.dp))
+                        }
+                        
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
+                        
+                        // Tema Paleti
+                        Text("Vurgu Rengi", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(12.dp))
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            items(TayfTheme.entries) { theme ->
+                                val isSelected = theme == currentTheme
+                                val borderColor by animateColorAsState(if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent, label = "")
+                                
+                                Box(
+                                    modifier = Modifier
+                                        .size(42.dp)
+                                        .clip(CircleShape)
+                                        .background(getThemePreviewColor(theme))
+                                        .border(3.dp, borderColor, CircleShape)
+                                        .clickable { onThemeSelected(theme) }
+                                )
+                            }
+                        }
+
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
+                        
+                        // Karanlık Mod Geçişi
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Karanlık Mod", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            Switch(checked = isDarkMode == true, onCheckedChange = { onDarkModeChanged(it) })
+                        }
+                    }
+                }
+            }
+
+            // --- 3. GÜVENLİK VE YEREL VERİ ---
+            item { SectionHeader("Güvenlik & Yerel Yedekleme") }
+            item {
+                PremiumCard {
+                    Column {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Security, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text("Biyometrik Kilit (Parmak İzi)", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            }
+                            Switch(checked = isBiometricEnabled, onCheckedChange = onBiometricToggle)
+                        }
+                        HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
+                        SettingClickableItem(title = "Tam Yedek Al (ZIP Export)", subtitle = "Notlar, çizimler ve medyaları cihaza kaydet", onClick = onFullBackupClick)
+                        HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
+                        SettingClickableItem(title = "Yedekten Geri Yükle", subtitle = "Daha önce alınan yerel yedeği içe aktar", onClick = onImportBackupClick)
+                    }
                 }
             }
             
-            item { SettingCategory("Güvenlik") }
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("Biyometrik Kilit", style = MaterialTheme.typography.titleMedium)
-                    Switch(checked = isBiometricEnabled, onCheckedChange = onBiometricToggle)
-                }
-            }
-            
-            item { SettingCategory("Hakkında") }
-            item { SettingItem("Sürüm", "v01.${BuildConfig.BUILD_NO}") }
-            item { SettingItem("Yazar", "Tayfun YAMAK©") }
+            item { Spacer(modifier = Modifier.height(24.dp)) }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CloudChip(selected: Boolean, onClick: () -> Unit, label: String) {
-    FilterChip(
-        selected = selected,
-        onClick = onClick,
-        label = { Text(label) },
-        colors = FilterChipDefaults.filterChipColors(
-            selectedContainerColor = MaterialTheme.colorScheme.primary,
-            selectedLabelColor = MaterialTheme.colorScheme.onPrimary
-        )
+fun PremiumCard(content: @Composable () -> Unit) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.05f)),
+        content = content
     )
 }
 
 @Composable
-fun SettingCategory(title: String) {
+fun SectionHeader(title: String) {
     Text(
-        text = title,
+        text = title.uppercase(),
+        style = MaterialTheme.typography.labelMedium,
         color = MaterialTheme.colorScheme.primary,
-        style = MaterialTheme.typography.labelLarge,
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+        fontWeight = FontWeight.Bold,
+        letterSpacing = 1.sp,
+        modifier = Modifier.padding(start = 8.dp, top = 8.dp)
     )
 }
 
 @Composable
-fun SettingItem(title: String, subtitle: String, onClick: () -> Unit = {}) {
+fun SettingClickableItem(title: String, subtitle: String, onClick: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() }
             .padding(16.dp)
     ) {
-        Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onBackground)
-        if (subtitle.isNotEmpty()) {
-            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
+        Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+// Temaların önizleme renklerini döndüren yardımcı fonksiyon
+fun getThemePreviewColor(theme: TayfTheme): Color {
+    return when(theme) {
+        TayfTheme.MIDNIGHT -> Color(0xFFD4AF37)
+        TayfTheme.SUNSET -> Color(0xFFFF5722)
+        TayfTheme.FOREST -> Color(0xFF2E7D32)
+        TayfTheme.OCEAN -> Color(0xFF0277BD)
+        TayfTheme.LAVENDER -> Color(0xFF7E57C2)
+        TayfTheme.ROSE -> Color(0xFFD81B60)
+        TayfTheme.SLATE -> Color(0xFF455A64)
+        TayfTheme.EMERALD -> Color(0xFF00695C)
+        TayfTheme.ROYAL -> Color(0xFFFBC02D)
+        TayfTheme.CRIMSON -> Color(0xFFC62828)
     }
 }

@@ -95,6 +95,7 @@ dependencies {
     implementation(project(":shared"))
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.jsoup)
+    implementation(libs.google.api.services.drive)
     
     // Room
     implementation(libs.androidx.room.runtime)

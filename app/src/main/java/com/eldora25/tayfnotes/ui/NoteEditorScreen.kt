@@ -27,6 +27,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.eldora25.tayfnotes.shared.model.ChecklistItem
 import com.eldora25.tayfnotes.shared.model.Folder
@@ -51,6 +52,7 @@ fun NoteEditorScreen(
     note: Note? = null,
     folders: List<Folder> = emptyList(),
     initialSketch: Boolean = false,
+    fontSize: Float = 16f,
     onBack: () -> Unit,
     onSave: (Note) -> Unit,
     onDelete: (Note) -> Unit
@@ -238,10 +240,10 @@ fun NoteEditorScreen(
                 TextField(
                     value = title,
                     onValueChange = { title = it },
-                    placeholder = { Text("Başlık", style = MaterialTheme.typography.headlineSmall) },
+                    placeholder = { Text("Başlık", style = MaterialTheme.typography.headlineSmall.copy(fontSize = (fontSize + 4).sp, fontWeight = FontWeight.Bold)) },
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                     colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent),
-                    textStyle = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold)
+                    textStyle = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold, fontSize = (fontSize + 4).sp)
                 )
 
                 if (isSketchMode) {
@@ -276,10 +278,13 @@ fun NoteEditorScreen(
                     TextField(
                         value = content,
                         onValueChange = { content = it },
-                        placeholder = { Text("Notunuzu yazın...", style = MaterialTheme.typography.bodyLarge) },
+                        placeholder = { Text("Notunuzu yazın...", style = MaterialTheme.typography.bodyLarge.copy(fontSize = fontSize.sp)) },
                         modifier = Modifier.fillMaxSize().weight(1f).padding(16.dp),
                         colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent),
-                        textStyle = MaterialTheme.typography.bodyLarge
+                        textStyle = MaterialTheme.typography.bodyLarge.copy(
+                            fontSize = fontSize.sp,
+                            lineHeight = (fontSize * 1.5).sp
+                        )
                     )
                 }
             } else {
@@ -298,11 +303,11 @@ fun NoteEditorScreen(
                         checklistItems.forEach { item ->
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Checkbox(checked = item.isChecked, onCheckedChange = null, enabled = false)
-                                Text(item.text, style = if (item.isChecked) MaterialTheme.typography.bodyLarge.copy(textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough) else MaterialTheme.typography.bodyLarge)
+                                Text(item.text, style = if (item.isChecked) MaterialTheme.typography.bodyLarge.copy(textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough, fontSize = fontSize.sp) else MaterialTheme.typography.bodyLarge.copy(fontSize = fontSize.sp))
                             }
                         }
                     } else {
-                        Text(content, style = MaterialTheme.typography.bodyLarge)
+                        Text(content, style = MaterialTheme.typography.bodyLarge.copy(fontSize = fontSize.sp))
                     }
                     if (sketchData?.isNotEmpty() == true) {
                         Spacer(modifier = Modifier.height(24.dp))

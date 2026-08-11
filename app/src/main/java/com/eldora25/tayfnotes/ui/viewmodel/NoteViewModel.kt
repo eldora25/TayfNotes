@@ -5,6 +5,7 @@ import android.content.Context
 import android.provider.Settings
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.lifecycle.AndroidViewModel
@@ -57,6 +58,7 @@ class NoteViewModel(
     private val CLOUD_PROVIDER_KEY = stringPreferencesKey("cloud_provider")
     private val ARCHIVE_IDS_KEY = stringPreferencesKey("archive_ids")
     private val TRASH_IDS_KEY = stringPreferencesKey("trash_ids")
+    private val FONT_SIZE_KEY = floatPreferencesKey("font_size")
 
     private val _isSyncing = MutableStateFlow(false)
     val isSyncing: StateFlow<Boolean> = _isSyncing.asStateFlow()
@@ -80,6 +82,10 @@ class NoteViewModel(
     val isBiometricEnabled: StateFlow<Boolean> = dataStore.data
         .map { pref -> pref[BIOMETRIC_KEY] ?: false }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    val currentFontSize: StateFlow<Float> = dataStore.data
+        .map { pref -> pref[FONT_SIZE_KEY] ?: 16f }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 16f)
 
     val activeCloudProvider: StateFlow<String?> = dataStore.data
         .map { pref -> pref[CLOUD_PROVIDER_KEY] }
@@ -134,6 +140,10 @@ class NoteViewModel(
 
     fun setBiometricEnabled(enabled: Boolean) {
         viewModelScope.launch { dataStore.edit { it[BIOMETRIC_KEY] = enabled } }
+    }
+
+    fun setFontSize(size: Float) {
+        viewModelScope.launch { dataStore.edit { it[FONT_SIZE_KEY] = size } }
     }
 
     fun setCloudProvider(providerName: String?) {

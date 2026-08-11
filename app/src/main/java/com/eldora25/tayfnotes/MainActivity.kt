@@ -132,6 +132,7 @@ class MainActivity : FragmentActivity() {
         val isDarkModePref by noteViewModel.isDarkMode.collectAsState()
         val isBiometricEnabled by noteViewModel.isBiometricEnabled.collectAsState()
         val activeCloudProvider by noteViewModel.activeCloudProvider.collectAsState()
+        val currentFontSize by noteViewModel.currentFontSize.collectAsState()
         
         var selectedNoteInMasterDetail by remember { mutableStateOf<Note?>(null) }
         var sortType by remember { mutableStateOf(SortType.DATE_MODIFIED) }
@@ -160,6 +161,7 @@ class MainActivity : FragmentActivity() {
                     note = screen.note,
                     folders = folders,
                     initialSketch = screen.initialSketch,
+                    fontSize = currentFontSize,
                     onBack = { currentScreen = Screen.Main },
                     onSave = { noteViewModel.saveNote(it) },
                     onDelete = { noteViewModel.trashNote(it.id); currentScreen = Screen.Main }
@@ -244,7 +246,31 @@ class MainActivity : FragmentActivity() {
                             is Screen.More -> MoreScreen { currentScreen = it }
                             is Screen.Archive -> NoteListScreen("Arşiv", archivedNotes, { currentScreen = Screen.More }, { currentScreen = Screen.EditNote(it) })
                             is Screen.Trash -> NoteListScreen("Çöp", trashedNotes, { currentScreen = Screen.More }, { currentScreen = Screen.EditNote(it) }, { noteViewModel.emptyTrash() })
-                            is Screen.Settings -> SettingsScreen({ currentScreen = Screen.More }, isSyncing, { noteViewModel.syncData() }, currentTheme, { noteViewModel.setTheme(it) }, isDarkModePref, { noteViewModel.setDarkMode(it) }, isBiometricEnabled, { noteViewModel.setBiometricEnabled(it) }, activeCloudProvider, { noteViewModel.setCloudProvider(it) }, { noteViewModel.exportFullBackup { BackupPackageHelper.shareBackup(this@MainActivity, it) } }, { importLauncher.launch("application/zip") })
+                            is Screen.Settings -> SettingsScreen(
+                                onBack = { currentScreen = Screen.More },
+                                isSyncing = isSyncing,
+                                activeCloudProvider = activeCloudProvider,
+                                onConnectGoogleDrive = { noteViewModel.setCloudProvider("Google Drive") }, // Placeholder for real OAuth
+                                onConnectDropbox = { noteViewModel.setCloudProvider("Dropbox") }, // Placeholder for real OAuth
+                                onDisconnectCloud = { noteViewModel.setCloudProvider(null) },
+                                currentTheme = currentTheme,
+                                onThemeSelected = { noteViewModel.setTheme(it) },
+                                isDarkMode = isDarkModePref,
+                                onDarkModeChanged = { noteViewModel.setDarkMode(it) },
+                                currentFontSize = currentFontSize,
+                                onFontSizeChanged = { noteViewModel.setFontSize(it) },
+                                onAuthSuccess = { email ->
+                                    noteViewModel.setCloudProvider("Google Drive")
+                                    Toast.makeText(this@MainActivity, "Bağlandı: $email", Toast.LENGTH_SHORT).show()
+                                },
+                                onAuthError = { e ->
+                                    Toast.makeText(this@MainActivity, "Hata: ${e.message}", Toast.LENGTH_SHORT).show()
+                                },
+                                isBiometricEnabled = isBiometricEnabled,
+                                onBiometricToggle = { noteViewModel.setBiometricEnabled(it) },
+                                onFullBackupClick = { noteViewModel.exportFullBackup { BackupPackageHelper.shareBackup(this@MainActivity, it) } },
+                                onImportBackupClick = { importLauncher.launch("application/zip") }
+                            )
                             else -> {}
                         }
                     }

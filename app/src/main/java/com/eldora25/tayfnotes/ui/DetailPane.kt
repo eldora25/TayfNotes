@@ -28,6 +28,7 @@ import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.eldora25.tayfnotes.shared.model.ChecklistItem
 import com.eldora25.tayfnotes.shared.model.Note
@@ -48,7 +49,8 @@ import java.util.*
 @Composable
 fun DetailPane(
     note: Note?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    fontSize: Float = 16f
 ) {
     if (note == null) {
         Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -111,7 +113,7 @@ fun DetailPane(
                     Checkbox(checked = item.isChecked, onCheckedChange = null, enabled = false)
                     Text(
                         text = item.text,
-                        style = if (item.isChecked) MaterialTheme.typography.bodyLarge.copy(textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough) else MaterialTheme.typography.bodyLarge,
+                        style = if (item.isChecked) MaterialTheme.typography.bodyLarge.copy(textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough, fontSize = fontSize.sp) else MaterialTheme.typography.bodyLarge.copy(fontSize = fontSize.sp),
                         color = if (item.isChecked) Color.Gray else MaterialTheme.colorScheme.onBackground
                     )
                 }
@@ -119,7 +121,10 @@ fun DetailPane(
         } else {
             Text(
                 text = note.content,
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    fontSize = fontSize.sp,
+                    lineHeight = (fontSize * 1.5).sp
+                ),
                 color = MaterialTheme.colorScheme.onBackground
             )
         }
