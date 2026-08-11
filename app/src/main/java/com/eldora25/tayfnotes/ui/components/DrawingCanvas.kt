@@ -94,7 +94,7 @@ fun DrawingCanvas(
                                         when (dragHandle) {
                                             4 -> obj.copy(offsetX = obj.offsetX + dragAmount.x, offsetY = obj.offsetY + dragAmount.y)
                                             0 -> {
-                                                // Simplified resize for now, can be improved to use scale
+                                                // Simplified resize for now
                                                 val newPoints = obj.points.toMutableList()
                                                 if (newPoints.isNotEmpty()) newPoints[0] = Point(newPoints[0].x + change.position.x - (newPoints[0].x), newPoints[0].y + change.position.y - (newPoints[0].y))
                                                 obj.copy(points = newPoints)
@@ -133,7 +133,6 @@ fun DrawingCanvas(
                                 bounds.contains(offset)
                             }
                             if (hits.size >= 2) {
-                                // Find intersection of the first two for simplicity
                                 val path1 = getObjectPath(hits[hits.size - 1])
                                 val path2 = getObjectPath(hits[hits.size - 2])
                                 val intersection = Path().apply {
@@ -200,10 +199,12 @@ fun DrawingCanvas(
                     }
                 }
         ) {
+            // Optimization: Static Objects
             objects.forEach { obj ->
                 drawDrawObject(obj, objects, isSelected = obj.id == selectedObjectId)
             }
             
+            // Optimization: Active Sketch (Preview)
             if (currentPathPoints.isNotEmpty()) {
                 val preview = DrawObject(
                     id = "preview",
