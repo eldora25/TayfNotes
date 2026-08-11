@@ -35,7 +35,13 @@ import com.eldora25.tayfnotes.shared.model.NoteType
 import com.eldora25.tayfnotes.shared.model.drawing.*
 import com.eldora25.tayfnotes.ui.components.canvas.calculateAdvancedShapePath
 import com.eldora25.tayfnotes.ui.components.canvas.calculateIntersectionPath
+import com.eldora25.tayfnotes.ui.components.canvas.drawAdvancedShape
+import com.eldora25.tayfnotes.ui.components.canvas.createSmoothPath
+import com.eldora25.tayfnotes.util.SketchExportHelper
 import kotlinx.serialization.json.Json
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Share
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -119,11 +125,30 @@ fun DetailPane(
         }
         
         if (note.sketchData?.isNotEmpty() == true) {
+            val context = LocalContext.current
             val drawObjects = remember(note.sketchData) {
                 try { Json.decodeFromString<List<DrawObject>>(note.sketchData!!) } catch(_: Exception) { emptyList() }
             }
             Spacer(modifier = Modifier.height(32.dp))
-            Text("Sketch Çizimi", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Sketch Çizimi", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+                TextButton(
+                    onClick = {
+                        val exportBg = if (note.colorHex.isNotEmpty()) Color(android.graphics.Color.parseColor(note.colorHex)) else Color.White
+                        SketchExportHelper.exportAndShareSketch(context, drawObjects, exportBg)
+                    }
+                ) {
+                    Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("PNG Olarak Paylaş", style = MaterialTheme.typography.labelMedium)
+                }
+            }
+            
             Spacer(modifier = Modifier.height(8.dp))
             Surface(
                 modifier = Modifier.fillMaxWidth().height(450.dp),
@@ -159,118 +184,4 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawDrawObject(obj:
             drawAdvancedShape(obj, color, fillColor, allObjects)
         }
     }
-}
-
-private fun createSmoothPath(points: List<Point>): Path {
-    val path = Path()
-    if (points.isEmpty()) return path
-
-    path.moveTo(points.first().x, points.first().y)
-    var currentX = points.first().x
-    var currentY = points.first().y
-
-    for (i in 1 until points.size) {
-        val nextPoint = points[i]
-        val midPointX = (currentX + nextPoint.x) / 2
-        val midPointY = (currentY + nextPoint.y) / 2
-        
-        if (i == 1) {
-            path.lineTo(midPointX, midPointY)
-        } else {
-            path.quadraticTo(currentX, currentY, midPointX, midPointY)
-        }
-        currentX = nextPoint.x
-        currentY = nextPoint.y
-    }
-    path.lineTo(currentX, currentY)
-    return path
-}
-
-private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawAdvancedShape(
-    obj: DrawShape,
-    color: Color,
-    fillColor: Color,
-    allObjects: List<DrawObject>
-) {
-    val pathData = obj.pathData
-    when (obj.shapeType) {
-        ShapeType.INTERSECTION -> {
-            if (pathData != null) {
-                val ids = pathData.split("|")
-                if (ids.size >= 2) {
-                    val src1 = allObjects.find { it.id == ids[0] }
-                    val src2 = allObjects.find { it.id == ids[1] }
-                    if (src1 != null && src2 != null) {
-                        val p1 = getObjectPath(src1)
-                        val p2 = getObjectPath(src2)
-                        val intersection = calculateIntersectionPath(p1, p2)
-                        if (obj.isFilled) drawPath(intersection, fillColor)
-                        drawPath(intersection, color, style = Stroke(width = obj.strokeWidth))
-                    }
-                }
-            }
-        }
-        else -> {
-            val shapePath = calculateAdvancedShapePath(
-                startX = if (obj.points.size >= 2) obj.points[0].x else 0f,
-                startY = if (obj.points.size >= 2) obj.points[0].y else 0f,
-                endX = if (obj.points.size >= 2) obj.points[1].x else 0f,
-                endY = if (obj.points.size >= 2) obj.points[1].y else 0f,
-                shapeType = obj.shapeType
-            )
-            if (obj.isFilled && obj.fillColorHex != null) {
-                drawPath(shapePath, fillColor)
-            }
-            drawPath(shapePath, color, style = Stroke(width = obj.strokeWidth))
-        }
-    }
-}
-
-private fun getObjectPath(obj: DrawObject): Path {
-    val path = Path()
-    if (obj is DrawShape && obj.points.size >= 2) {
-        val start = obj.points[0]
-        val end = obj.points[1]
-        val left = minOf(start.x, end.x)
-        val top = minOf(start.y, end.y)
-        val width = Math.abs(start.x - end.x)
-        val height = Math.abs(start.y - end.y)
-        
-        when (obj.shapeType) {
-            ShapeType.SQUARE -> {
-                val side = minOf(width, height)
-                path.addRect(Rect(Offset(left, top), Size(side, side)))
-            }
-            ShapeType.RECTANGLE -> path.addRect(Rect(Offset(left, top), Size(width, height)))
-            ShapeType.CIRCLE -> {
-                val radius = minOf(width, height) / 2
-                path.addOval(Rect(Offset(left + width/2 - radius, top + height/2 - radius), Size(radius * 2, radius * 2)))
-            }
-            ShapeType.ELLIPSE -> path.addOval(Rect(Offset(left, top), Size(width, height)))
-            ShapeType.EQUILATERAL_TRIANGLE -> {
-                path.moveTo(left + width/2, top)
-                path.lineTo(left, top + height)
-                path.lineTo(left + width, top + height)
-                path.close()
-            }
-            ShapeType.RIGHT_TRIANGLE -> {
-                path.moveTo(left, top)
-                path.lineTo(left, top + height)
-                path.lineTo(left + width, top + height)
-                path.close()
-            }
-            ShapeType.DIAMOND -> {
-                path.moveTo(left + width/2, top)
-                path.lineTo(left + width, top + height/2)
-                path.lineTo(left + width/2, top + height)
-                path.lineTo(left, top + height/2)
-                path.close()
-            }
-            else -> path.addRect(Rect(Offset(left, top), Size(width, height)))
-        }
-    } else if (obj is DrawPath && obj.points.isNotEmpty()) {
-        path.moveTo(obj.points[0].x, obj.points[0].y)
-        obj.points.forEach { path.lineTo(it.x, it.y) }
-    }
-    return path
 }
