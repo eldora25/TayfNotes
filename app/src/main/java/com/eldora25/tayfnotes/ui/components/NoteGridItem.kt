@@ -29,7 +29,8 @@ import kotlinx.serialization.json.Json
 fun NoteGridItem(
     note: Note,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    elevation: androidx.compose.ui.unit.Dp = 0.dp
 ) {
     val noteColor = try {
         Color(android.graphics.Color.parseColor(note.colorHex))
@@ -48,7 +49,7 @@ fun NoteGridItem(
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = backgroundColor),
         border = androidx.compose.foundation.BorderStroke(1.dp, noteColor.copy(alpha = 0.2f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = elevation)
     ) {
         Row(modifier = Modifier.height(IntrinsicSize.Min)) {
             Box(

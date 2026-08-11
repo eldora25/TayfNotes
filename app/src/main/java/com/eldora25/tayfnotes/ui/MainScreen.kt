@@ -1,7 +1,7 @@
 package com.eldora25.tayfnotes.ui
 
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -19,6 +19,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -27,9 +28,11 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import com.eldora25.tayfnotes.BuildConfig
 import com.eldora25.tayfnotes.shared.model.Note
 import com.eldora25.tayfnotes.ui.components.NoteGridItem
+import com.eldora25.tayfnotes.ui.components.rememberReorderState
 
 enum class SortType { DATE_MODIFIED, DATE_CREATED, ALPHABETICAL, COLOR, MANUAL }
 
@@ -53,6 +56,7 @@ fun MainScreen(
     var showSortMenu by remember { mutableStateOf(false) }
     
     val listState = rememberLazyListState()
+    val reorderState = rememberReorderState(listState)
     val isFabExpanded by remember {
         derivedStateOf { listState.firstVisibleItemIndex == 0 }
     }
@@ -110,6 +114,13 @@ fun MainScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     itemsIndexed(sortedNotes, key = { _, note -> note.id }) { index, note ->
+                        val isManualSort = sortType == SortType.MANUAL
+                        val isDragging = reorderState.draggedItemIndex == index && isManualSort
+                        
+                        val elevation by animateDpAsState(if (isDragging) 12.dp else 0.dp, label = "elevation")
+                        val scaleFactor by animateFloatAsState(if (isDragging) 1.02f else 1f, label = "scale")
+                        val alphaFactor by animateFloatAsState(if (isDragging) 0.9f else 1f, label = "alpha")
+
                         val dismissState = rememberSwipeToDismissBoxState(
                             confirmValueChange = { dismissValue ->
                                 if (dismissValue == SwipeToDismissBoxValue.EndToStart) {
@@ -121,53 +132,89 @@ fun MainScreen(
                             }
                         )
 
-                        SwipeToDismissBox(
-                            state = dismissState,
-                            enableDismissFromStartToEnd = false,
-                            backgroundContent = {
-                                val color by animateColorAsState(
-                                    targetValue = if (dismissState.targetValue == SwipeToDismissBoxValue.EndToStart) 
-                                        MaterialTheme.colorScheme.error 
-                                    else 
-                                        Color.Transparent,
-                                    animationSpec = tween(300), label = "swipeColor"
-                                )
-                                val iconScale by animateDpAsState(
-                                    targetValue = if (dismissState.targetValue == SwipeToDismissBoxValue.EndToStart) 28.dp else 20.dp, label = "iconScale"
-                                )
-
-                                Box(
-                                    Modifier
-                                        .fillMaxSize()
-                                        .padding(vertical = 4.dp)
-                                        .clip(RoundedCornerShape(20.dp))
-                                        .background(color)
-                                        .padding(end = 24.dp),
-                                    contentAlignment = Alignment.CenterEnd
-                                ) {
-                                    Icon(
-                                        Icons.Default.Delete,
-                                        contentDescription = "Sil",
-                                        tint = Color.White,
-                                        modifier = Modifier.size(iconScale)
-                                    )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .graphicsLayer {
+                                    translationY = if (isManualSort) reorderState.calculateCurrentOffset(index) else 0f
+                                    scaleX = scaleFactor
+                                    scaleY = scaleFactor
                                 }
-                            }
-                        ) {
-                            NoteGridItem(
-                                note = note,
-                                onClick = { onEditNote(note) },
-                                modifier = if (sortType == SortType.MANUAL) {
-                                    Modifier.pointerInput(index) {
+                                .zIndex(if (isDragging) 1f else 0f)
+                                .alpha(alphaFactor)
+                                .pointerInput(isManualSort) {
+                                    if (isManualSort) {
                                         detectDragGesturesAfterLongPress(
-                                            onDrag = { _, _ -> },
-                                            onDragEnd = { }
+                                            onDragStart = { reorderState.draggedItemIndex = index },
+                                            onDrag = { change, dragAmount ->
+                                                change.consume()
+                                                reorderState.draggedItemOffset += dragAmount.y
+                                                
+                                                val itemHeight = 300f 
+                                                if (reorderState.draggedItemOffset > itemHeight && index < sortedNotes.lastIndex) {
+                                                    onMoveNote(index, index + 1)
+                                                    reorderState.draggedItemIndex = index + 1
+                                                    reorderState.draggedItemOffset -= itemHeight
+                                                } else if (reorderState.draggedItemOffset < -itemHeight && index > 0) {
+                                                    onMoveNote(index, index - 1)
+                                                    reorderState.draggedItemIndex = index - 1
+                                                    reorderState.draggedItemOffset += itemHeight
+                                                }
+                                            },
+                                            onDragEnd = {
+                                                reorderState.draggedItemIndex = null
+                                                reorderState.draggedItemOffset = 0f
+                                            },
+                                            onDragCancel = {
+                                                reorderState.draggedItemIndex = null
+                                                reorderState.draggedItemOffset = 0f
+                                            }
                                         )
                                     }
-                                } else if (note.id == selectedNoteId) {
-                                    Modifier.background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(20.dp))
-                                } else Modifier
-                            )
+                                }
+                        ) {
+                            SwipeToDismissBox(
+                                state = dismissState,
+                                enableDismissFromStartToEnd = false,
+                                backgroundContent = {
+                                    val color by androidx.compose.animation.animateColorAsState(
+                                        targetValue = if (dismissState.targetValue == SwipeToDismissBoxValue.EndToStart) 
+                                            MaterialTheme.colorScheme.error 
+                                        else 
+                                            Color.Transparent,
+                                        animationSpec = tween(300), label = "swipeColor"
+                                    )
+                                    val iconScale by animateDpAsState(
+                                        targetValue = if (dismissState.targetValue == SwipeToDismissBoxValue.EndToStart) 28.dp else 20.dp, label = "iconScale"
+                                    )
+
+                                    Box(
+                                        Modifier
+                                            .fillMaxSize()
+                                            .padding(vertical = 4.dp)
+                                            .clip(RoundedCornerShape(20.dp))
+                                            .background(color)
+                                            .padding(end = 24.dp),
+                                        contentAlignment = Alignment.CenterEnd
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Delete,
+                                            contentDescription = "Sil",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(iconScale)
+                                        )
+                                    }
+                                }
+                            ) {
+                                NoteGridItem(
+                                    note = note,
+                                    onClick = { onEditNote(note) },
+                                    elevation = elevation,
+                                    modifier = if (note.id == selectedNoteId) {
+                                        Modifier.background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(20.dp))
+                                    } else Modifier
+                                )
+                            }
                         }
                     }
                 }

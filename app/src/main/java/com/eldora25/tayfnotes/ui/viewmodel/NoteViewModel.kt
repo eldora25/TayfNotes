@@ -12,6 +12,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.asFlow
 import androidx.work.*
 import com.eldora25.tayfnotes.data.repository.FolderRepository
 import com.eldora25.tayfnotes.data.repository.NoteRepository
@@ -25,6 +26,7 @@ import com.eldora25.tayfnotes.shared.sync.SyncWorker
 import com.eldora25.tayfnotes.ui.theme.TayfTheme
 import com.eldora25.tayfnotes.util.AlarmHelper
 import com.eldora25.tayfnotes.util.BackupPackageHelper
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.*
@@ -185,11 +187,29 @@ class NoteViewModel(
                 )
                 .build()
 
-            WorkManager.getInstance(context).enqueueUniqueWork(
+            val workManager = WorkManager.getInstance(context)
+            workManager.enqueueUniqueWork(
                 "DropboxSyncWork",
                 ExistingWorkPolicy.REPLACE,
                 syncRequest
             )
+
+            // Listen for sync result to update local DB
+            workManager.getWorkInfoByIdLiveData(syncRequest.id).asFlow().collectLatest { workInfo ->
+                if (workInfo != null && workInfo.state == WorkInfo.State.SUCCEEDED) {
+                    val mergedJson = workInfo.outputData.getString("MERGED_NOTES_JSON")
+                    if (mergedJson != null) {
+                        try {
+                            val mergedNotes = Json.decodeFromString<List<Note>>(mergedJson)
+                            mergedNotes.forEach { note ->
+                                noteRepository.insert(note) 
+                            }
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -207,9 +227,11 @@ class NoteViewModel(
             if (fromIndex in currentList.indices && toIndex in currentList.indices) {
                 val movedNote = currentList.removeAt(fromIndex)
                 currentList.add(toIndex, movedNote)
-                currentList.forEachIndexed { index, note ->
-                    noteRepository.insert(note.copy(position = index))
+                
+                val updatedList = currentList.mapIndexed { index, note ->
+                    note.copy(position = index)
                 }
+                noteRepository.updateNotes(updatedList)
             }
         }
     }

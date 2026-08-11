@@ -27,6 +27,12 @@ class NoteRepository(private val noteDao: NoteDao) {
         noteDao.insertNote(NoteEntity.fromDomain(note))
     }
 
+    suspend fun updateNotes(notes: List<Note>) {
+        notes.forEach { note ->
+            noteDao.insertNote(NoteEntity.fromDomain(note))
+        }
+    }
+
     suspend fun delete(note: Note) {
         noteDao.deleteNote(NoteEntity.fromDomain(note))
     }

@@ -207,7 +207,7 @@ class MainActivity : FragmentActivity() {
                     onAddChecklist = { currentScreen = Screen.EditNote(note = Note(id = System.currentTimeMillis().toString(), title = "", content = "", type = com.eldora25.tayfnotes.shared.model.NoteType.CHECKLIST)) },
                     onAddSketch = { currentScreen = Screen.EditNote(initialSketch = true) },
                     onEditNote = { currentScreen = Screen.EditNote(it) },
-                    onMoveNote = { f, t -> /* noteViewModel.moveNote(f, t) */ },
+                    onMoveNote = { f, t -> noteViewModel.updateNotePosition(f, t) },
                     onDeleteNote = { noteViewModel.trashNote(it.id) },
                     selectedNoteId = selectedNoteInMasterDetail?.id,
                     bottomBar = {
