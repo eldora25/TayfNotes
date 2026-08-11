@@ -45,12 +45,11 @@ fun SettingsScreen(
     // Senkronizasyon
     isSyncing: Boolean,
     activeCloudProvider: String?,
-    onConnectGoogleDrive: () -> Unit, // YENİ: Gerçek OAuth tetikleyicisi
     onConnectDropbox: (String) -> Unit,     // YENİ: Gerçek OAuth tetikleyicisi
     onConnectOneDrive: (String) -> Unit,    // YENİ
     onDisconnectCloud: () -> Unit,
     onAuthSuccess: (String) -> Unit,
-    onAuthError: (Exception) -> Unit,
+    onAuthError: (String) -> Unit,
     // Tema ve Görünüm
     currentTheme: TayfTheme,
     onThemeSelected: (TayfTheme) -> Unit,
@@ -120,7 +119,7 @@ fun SettingsScreen(
                                         onAuthSuccess(email)
                                     },
                                     onAuthError = { error ->
-                                        // Hata yönetimi
+                                        onAuthError(error)
                                     }
                                 )
                                 

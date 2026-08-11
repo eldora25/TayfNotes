@@ -158,6 +158,17 @@ class NoteViewModel(
         viewModelScope.launch { dataStore.edit { if (providerName == null) it.remove(CLOUD_PROVIDER_KEY) else it[CLOUD_PROVIDER_KEY] = providerName } }
     }
 
+    fun importMergedNotes(mergedJson: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val mergedNotes = Json.decodeFromString<List<Note>>(mergedJson)
+                noteRepository.updateNotes(mergedNotes)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
     fun setDropboxToken(token: String) {
         viewModelScope.launch {
             dataStore.edit { it[DROPBOX_TOKEN_KEY] = token }

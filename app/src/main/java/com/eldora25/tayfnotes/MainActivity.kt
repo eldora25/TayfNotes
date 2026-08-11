@@ -251,7 +251,6 @@ class MainActivity : FragmentActivity() {
                                 onBack = { currentScreen = Screen.More },
                                 isSyncing = isSyncing,
                                 activeCloudProvider = activeCloudProvider,
-                                onConnectGoogleDrive = { noteViewModel.setCloudProvider("Google Drive") }, // Placeholder for real OAuth
                                 onConnectDropbox = { token ->
                                     noteViewModel.setDropboxToken(token)
                                     noteViewModel.startDropboxSync(this@MainActivity, token)
@@ -273,8 +272,8 @@ class MainActivity : FragmentActivity() {
                                     noteViewModel.startGoogleDriveSync(this@MainActivity, email)
                                     Toast.makeText(this@MainActivity, "Bağlandı: $email", Toast.LENGTH_SHORT).show()
                                 },
-                                onAuthError = { e ->
-                                    Toast.makeText(this@MainActivity, "Hata: ${e.message}", Toast.LENGTH_SHORT).show()
+                                onAuthError = { errorMsg ->
+                                    Toast.makeText(this@MainActivity, "Hata: $errorMsg", Toast.LENGTH_SHORT).show()
                                 },
                                 isBiometricEnabled = isBiometricEnabled,
                                 onBiometricToggle = { noteViewModel.setBiometricEnabled(it) },
