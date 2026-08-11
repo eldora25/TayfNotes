@@ -256,6 +256,10 @@ class MainActivity : FragmentActivity() {
                                     noteViewModel.startDropboxSync(this@MainActivity, token)
                                     Toast.makeText(this@MainActivity, "Dropbox Bağlandı ve Senkronizasyon Başladı", Toast.LENGTH_SHORT).show()
                                 },
+                                onConnectOneDrive = { token ->
+                                    noteViewModel.setOneDriveToken(token)
+                                    Toast.makeText(this@MainActivity, "OneDrive Bağlandı", Toast.LENGTH_SHORT).show()
+                                },
                                 onDisconnectCloud = { noteViewModel.setCloudProvider(null) },
                                 currentTheme = currentTheme,
                                 onThemeSelected = { noteViewModel.setTheme(it) },

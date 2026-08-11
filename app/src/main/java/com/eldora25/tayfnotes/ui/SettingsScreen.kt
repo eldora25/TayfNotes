@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.eldora25.tayfnotes.ui.theme.TayfTheme
 import com.eldora25.tayfnotes.ui.components.DropboxAuthLauncher
+import com.eldora25.tayfnotes.ui.components.OneDriveAuthLauncher
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.Scope
@@ -45,6 +46,7 @@ fun SettingsScreen(
     activeCloudProvider: String?,
     onConnectGoogleDrive: () -> Unit, // YENİ: Gerçek OAuth tetikleyicisi
     onConnectDropbox: (String) -> Unit,     // YENİ: Gerçek OAuth tetikleyicisi
+    onConnectOneDrive: (String) -> Unit,    // YENİ
     onDisconnectCloud: () -> Unit,
     onAuthSuccess: (String) -> Unit,
     onAuthError: (Exception) -> Unit,
@@ -147,6 +149,15 @@ fun SettingsScreen(
                                         onConnectDropbox(token) 
                                     },
                                     onAuthError = {
+                                        // Hata yönetimi
+                                    }
+                                )
+
+                                OneDriveAuthLauncher(
+                                    onAuthSuccess = { token ->
+                                        onConnectOneDrive(token)
+                                    },
+                                    onAuthError = { error ->
                                         // Hata yönetimi
                                     }
                                 )

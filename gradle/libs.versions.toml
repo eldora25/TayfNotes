@@ -21,6 +21,7 @@ google-api-services-drive = "v3-rev20230822-2.0.0"
 google-api-client-android = "1.33.0"
 google-auth-library = "1.16.0"
 dropbox-core = "5.4.6"
+msal = "5.0.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -54,6 +55,7 @@ google-api-services-drive = { group = "com.google.apis", name = "google-api-serv
 google-api-client-android = { group = "com.google.api-client", name = "google-api-client-android", version.ref = "google-api-client-android" }
 google-auth-library = { group = "com.google.auth", name = "google-auth-library-oauth2-http", version.ref = "google-auth-library" }
 dropbox-core = { group = "com.dropbox.core", name = "dropbox-core-sdk", version.ref = "dropbox-core" }
+msal = { group = "com.microsoft.identity.client", name = "msal", version.ref = "msal" }
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }

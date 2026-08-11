@@ -1,0 +1,16 @@
+{
+  "client_id": "BURAYA_AZURE_PORTALDAN_KOPYALADIGIN_CLIENT_ID_GELECEK",
+  "authorization_user_agent": "DEFAULT",
+  "redirect_uri": "msauth://com.eldora25.tayfnotes/BURAYA_BASE64_HASH_GELECEK",
+  "account_mode": "SINGLE",
+  "broker_redirect_uri_registered": true,
+  "authorities": [
+    {
+      "type": "AAD",
+      "audience": {
+        "type": "AzureADandPersonalMicrosoftAccount",
+        "tenant_id": "common"
+      }
+    }
+  ]
+}

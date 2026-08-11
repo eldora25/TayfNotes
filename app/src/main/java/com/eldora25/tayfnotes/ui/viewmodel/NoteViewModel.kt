@@ -66,6 +66,7 @@ class NoteViewModel(
     private val TRASH_IDS_KEY = stringPreferencesKey("trash_ids")
     private val FONT_SIZE_KEY = floatPreferencesKey("font_size")
     private val DROPBOX_TOKEN_KEY = stringPreferencesKey("dropbox_token")
+    private val ONEDRIVE_TOKEN_KEY = stringPreferencesKey("onedrive_token")
 
     private val _isSyncing = MutableStateFlow(false)
     val isSyncing: StateFlow<Boolean> = _isSyncing.asStateFlow()
@@ -161,6 +162,13 @@ class NoteViewModel(
         viewModelScope.launch {
             dataStore.edit { it[DROPBOX_TOKEN_KEY] = token }
             setCloudProvider("Dropbox")
+        }
+    }
+
+    fun setOneDriveToken(token: String) {
+        viewModelScope.launch {
+            dataStore.edit { it[ONEDRIVE_TOKEN_KEY] = token }
+            setCloudProvider("OneDrive")
         }
     }
 

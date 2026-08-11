@@ -110,6 +110,9 @@ dependencies {
     // GDrive/Dropbox
     implementation(libs.google.api.services.drive)
     implementation(libs.dropbox.core)
+    implementation(libs.msal) {
+        exclude(group = "io.opentelemetry")
+    }
     implementation("com.google.android.gms:play-services-auth:21.3.0")
     implementation("androidx.work:work-runtime-ktx:2.9.0")
     implementation("com.google.api-client:google-api-client-android:1.33.0")
