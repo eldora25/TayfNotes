@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Redo
+import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,6 +24,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.eldora25.tayfnotes.shared.model.drawing.*
 import com.eldora25.tayfnotes.ui.components.canvas.AdvancedCanvasBoard
+import com.eldora25.tayfnotes.ui.components.canvas.CanvasSettingsPopup
 import com.eldora25.tayfnotes.ui.components.canvas.FloatingToolBar
 import com.eldora25.tayfnotes.ui.components.canvas.ShapeSelectionBottomSheet
 import com.eldora25.tayfnotes.ui.theme.EditorNeonIcon
@@ -42,6 +45,35 @@ fun DrawingCanvas(
             } else emptyList()
         )
     }
+
+    // Undo/Redo Stacks
+    var undoStack by remember { mutableStateOf<List<List<DrawObject>>>(emptyList()) }
+    var redoStack by remember { mutableStateOf<List<List<DrawObject>>>(emptyList()) }
+
+    fun saveStateForUndo(currentState: List<DrawObject>) {
+        undoStack = undoStack + listOf(currentState)
+        redoStack = emptyList()
+    }
+
+    fun performUndo() {
+        if (undoStack.isNotEmpty()) {
+            val previousState = undoStack.last()
+            redoStack = redoStack + listOf(objects)
+            objects = previousState
+            undoStack = undoStack.dropLast(1)
+            onDataChanged(Json.encodeToString(objects))
+        }
+    }
+
+    fun performRedo() {
+        if (redoStack.isNotEmpty()) {
+            val nextState = redoStack.last()
+            undoStack = undoStack + listOf(objects)
+            objects = nextState
+            redoStack = redoStack.dropLast(1)
+            onDataChanged(Json.encodeToString(objects))
+        }
+    }
     
     // Tools State
     var currentColor by remember { mutableStateOf(Color.Black) }
@@ -52,7 +84,7 @@ fun DrawingCanvas(
     var isFillEnabled by remember { mutableStateOf(false) }
     
     // UI State
-    var showColorPicker by remember { mutableStateOf(false) }
+    var showSettings by remember { mutableStateOf(false) }
     var showShapePicker by remember { mutableStateOf(false) }
 
     Box(modifier = modifier.fillMaxSize().background(Color.White)) {
@@ -66,27 +98,57 @@ fun DrawingCanvas(
             currentFillColor = currentFillColor,
             objects = objects,
             onObjectAdded = { newObj ->
+                saveStateForUndo(objects)
                 objects = objects + newObj
                 onDataChanged(Json.encodeToString(objects))
             },
             onObjectUpdated = { updatedObj ->
+                saveStateForUndo(objects)
                 objects = objects.map { if (it.id == updatedObj.id) updatedObj else it }
                 onDataChanged(Json.encodeToString(objects))
             },
             onObjectDeleted = { deletedObj ->
+                saveStateForUndo(objects)
                 objects = objects.filter { it.id != deletedObj.id }
                 onDataChanged(Json.encodeToString(objects))
             }
         )
 
-        FloatingToolBar(
-            currentTool = currentTool,
-            onToolSelected = { 
-                if (it == ToolType.SHAPE) showShapePicker = true
-                else currentTool = it 
-            },
-            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 32.dp)
-        )
+        Column(
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            if (showSettings) {
+                CanvasSettingsPopup(
+                    activeColor = currentColor,
+                    onColorSelected = { currentColor = it },
+                    activeStrokeWidth = currentStrokeWidth,
+                    onStrokeWidthChanged = { currentStrokeWidth = it }
+                )
+            }
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = { performUndo() }, enabled = undoStack.isNotEmpty()) {
+                    Icon(Icons.AutoMirrored.Filled.Undo, "Geri", tint = if (undoStack.isNotEmpty()) MaterialTheme.colorScheme.primary else Color.Gray)
+                }
+
+                FloatingToolBar(
+                    currentTool = currentTool,
+                    onToolSelected = { 
+                        if (it == ToolType.SHAPE) showShapePicker = true
+                        else if (it == currentTool) showSettings = !showSettings
+                        else {
+                            currentTool = it
+                            showSettings = false
+                        }
+                    }
+                )
+
+                IconButton(onClick = { performRedo() }, enabled = redoStack.isNotEmpty()) {
+                    Icon(Icons.AutoMirrored.Filled.Redo, "İleri", tint = if (redoStack.isNotEmpty()) MaterialTheme.colorScheme.primary else Color.Gray)
+                }
+            }
+        }
         
         ShapeSelectionBottomSheet(
             isVisible = showShapePicker,
@@ -95,67 +157,6 @@ fun DrawingCanvas(
                 currentShape = it
                 currentTool = ToolType.SHAPE
             }
-        )
-
-        // Color and Stroke Row (above toolbar)
-        Surface(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 110.dp)
-                .width(280.dp),
-            shape = RoundedCornerShape(24.dp),
-            color = Color.Black.copy(alpha = 0.85f),
-            tonalElevation = 12.dp,
-            border = androidx.compose.foundation.BorderStroke(1.5.dp, Color(0xFFFFD700).copy(alpha = 0.5f))
-        ) {
-            Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(modifier = Modifier.clickable { showColorPicker = true }.padding(4.dp)) {
-                    EditorNeonIcon(modifier = Modifier.size(32.dp)) {
-                        Box(modifier = Modifier.size(20.dp).background(currentColor, CircleShape).border(1.dp, Color.White, CircleShape))
-                    }
-                }
-                Slider(
-                    value = currentStrokeWidth,
-                    onValueChange = { currentStrokeWidth = it },
-                    valueRange = 1f..100f,
-                    modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
-                    colors = SliderDefaults.colors(thumbColor = Color(0xFFFFD700), activeTrackColor = Color(0xFFFFD700))
-                )
-            }
-        }
-    }
-
-    // Dialogs (Color, Shape)
-    if (showColorPicker) {
-        AlertDialog(
-            onDismissRequest = { showColorPicker = false },
-            title = { Text("Renk ve Dolgu") },
-            text = {
-                Column {
-                    val colors = listOf(Color.Black, Color.DarkGray, Color.Red, Color.Blue, Color.Green, Color.Yellow, Color.Magenta, Color.Cyan, Color.White)
-                    Text("Ana Renk", style = MaterialTheme.typography.labelSmall)
-                    @OptIn(ExperimentalLayoutApi::class)
-                    FlowRow(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                        colors.forEach { color ->
-                            Box(modifier = Modifier.padding(4.dp).size(32.dp).background(color, CircleShape).border(if (currentColor == color) 2.dp else 0.dp, Color.Gray, CircleShape).clickable { currentColor = color })
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(checked = isFillEnabled, onCheckedChange = { isFillEnabled = it })
-                        Text("Dolgu Rengi Aktif")
-                    }
-                    if (isFillEnabled) {
-                        @OptIn(ExperimentalLayoutApi::class)
-                        FlowRow(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                            colors.forEach { color ->
-                                Box(modifier = Modifier.padding(4.dp).size(32.dp).background(color, CircleShape).border(if (currentFillColor == color) 2.dp else 0.dp, Color.Gray, CircleShape).clickable { currentFillColor = color })
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = { TextButton(onClick = { showColorPicker = false }) { Text("Tamam") } }
         )
     }
 }
