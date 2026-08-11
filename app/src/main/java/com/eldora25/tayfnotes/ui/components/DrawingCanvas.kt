@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import com.eldora25.tayfnotes.shared.model.drawing.*
 import com.eldora25.tayfnotes.ui.components.canvas.AdvancedCanvasBoard
 import com.eldora25.tayfnotes.ui.components.canvas.FloatingToolBar
+import com.eldora25.tayfnotes.ui.components.canvas.ShapeSelectionBottomSheet
 import com.eldora25.tayfnotes.ui.theme.EditorNeonIcon
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -86,6 +87,15 @@ fun DrawingCanvas(
             },
             modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 32.dp)
         )
+        
+        ShapeSelectionBottomSheet(
+            isVisible = showShapePicker,
+            onDismissRequest = { showShapePicker = false },
+            onShapeSelected = { 
+                currentShape = it
+                currentTool = ToolType.SHAPE
+            }
+        )
 
         // Color and Stroke Row (above toolbar)
         Surface(
@@ -146,60 +156,6 @@ fun DrawingCanvas(
                 }
             },
             confirmButton = { TextButton(onClick = { showColorPicker = false }) { Text("Tamam") } }
-        )
-    }
-
-    if (showShapePicker) {
-        AlertDialog(
-            onDismissRequest = { showShapePicker = false },
-            title = { Text("Şekil Seçin", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) },
-            text = {
-                val shapes = listOf(
-                    ShapeType.SQUARE to Icons.Default.Square,
-                    ShapeType.RECTANGLE to Icons.Default.Rectangle,
-                    ShapeType.CIRCLE to Icons.Default.Circle,
-                    ShapeType.ELLIPSE to Icons.Default.FilterTiltShift,
-                    ShapeType.EQUILATERAL_TRIANGLE to Icons.Default.ChangeHistory,
-                    ShapeType.RIGHT_TRIANGLE to Icons.Default.Details,
-                    ShapeType.TRAPEZOID to Icons.Default.Category,
-                    ShapeType.PARALLELOGRAM to Icons.Default.Layers,
-                    ShapeType.DIAMOND to Icons.Default.Diamond,
-                    ShapeType.PENTAGON to Icons.Default.Pentagon,
-                    ShapeType.HEXAGON to Icons.Default.Hexagon,
-                    ShapeType.STAR to Icons.Default.Star,
-                    ShapeType.ARC to Icons.Default.Architecture,
-                    ShapeType.LINE to Icons.Default.HorizontalRule,
-                    ShapeType.DOUBLE_ARROW to Icons.Default.SwapHoriz
-                )
-                
-                androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
-                    columns = androidx.compose.foundation.lazy.grid.GridCells.Fixed(3),
-                    modifier = Modifier.height(300.dp).fillMaxWidth(),
-                    contentPadding = PaddingValues(8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(shapes.size) { index ->
-                        val (shape, icon) = shapes[index]
-                        Surface(
-                            onClick = {
-                                currentTool = ToolType.SHAPE
-                                currentShape = shape
-                                showShapePicker = false
-                            },
-                            shape = RoundedCornerShape(12.dp),
-                            color = if (currentShape == shape) Color(0xFFFFD700).copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant,
-                            border = if (currentShape == shape) androidx.compose.foundation.BorderStroke(1.5.dp, Color(0xFFFFD700)) else null,
-                            modifier = Modifier.aspectRatio(1f)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(icon, contentDescription = shape.name, modifier = Modifier.size(28.dp), tint = if (currentShape == shape) Color(0xFFFFD700) else MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = { TextButton(onClick = { showShapePicker = false }) { Text("Kapat") } }
         )
     }
 }
