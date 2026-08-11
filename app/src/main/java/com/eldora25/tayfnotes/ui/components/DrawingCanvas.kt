@@ -103,9 +103,16 @@ fun DrawingCanvas(
                 onDataChanged(Json.encodeToString(objects))
             },
             onObjectUpdated = { updatedObj ->
-                saveStateForUndo(objects)
-                objects = objects.map { if (it.id == updatedObj.id) updatedObj else it }
-                onDataChanged(Json.encodeToString(objects))
+                // Don't save state for every small update (like drag)
+                // objects = objects.map { if (it.id == updatedObj.id) updatedObj else it }
+                
+                val index = objects.indexOfFirst { it.id == updatedObj.id }
+                if (index != -1) {
+                    val newList = objects.toMutableList()
+                    newList[index] = updatedObj
+                    objects = newList
+                    onDataChanged(Json.encodeToString(objects))
+                }
             },
             onObjectDeleted = { deletedObj ->
                 saveStateForUndo(objects)

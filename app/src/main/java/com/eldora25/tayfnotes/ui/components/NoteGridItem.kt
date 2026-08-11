@@ -38,8 +38,7 @@ fun NoteGridItem(
         MaterialTheme.colorScheme.primary
     }
 
-    val baseSurface = MaterialTheme.colorScheme.surfaceVariant
-    val backgroundColor = noteColor.copy(alpha = 0.08f).run { baseSurface.copy(alpha = 0.9f) }
+    val backgroundColor = noteColor.copy(alpha = 0.15f)
     val contentColor = MaterialTheme.colorScheme.onSurface
 
     Card(

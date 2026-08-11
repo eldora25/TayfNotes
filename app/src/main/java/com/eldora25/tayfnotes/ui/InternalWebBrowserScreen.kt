@@ -90,6 +90,11 @@ fun InternalWebBrowserScreen(
                                 super.onPageFinished(view, url)
                                 currentUrl = url ?: ""
                                 currentTitle = view?.title ?: ""
+                                
+                                // Inject CSS for better selection visibility
+                                val css = "::selection { background: #FFEB3B !important; color: black !important; }"
+                                val js = "var style = document.createElement('style'); style.innerHTML = '$css'; document.head.appendChild(style);"
+                                view?.evaluateJavascript(js, null)
                             }
                         }
 

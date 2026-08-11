@@ -48,6 +48,7 @@ fun MainScreen(
     onEditNote: (Note) -> Unit,
     onMoveNote: (Int, Int) -> Unit,
     onDeleteNote: (Note) -> Unit = {},
+    onNoteClick: (Note) -> Unit = {},
     selectedNoteId: String? = null,
     bottomBar: @Composable () -> Unit = {}
 ) {
@@ -96,124 +97,147 @@ fun MainScreen(
             )
         }
     ) { paddingValues ->
-        Box(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
                 .background(MaterialTheme.colorScheme.background)
         ) {
-            if (sortedNotes.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(if (searchQuery.isEmpty()) "Henüz not yok." else "Sonuç bulunamadı.", color = Color.Gray)
-                }
-            } else {
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 100.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    itemsIndexed(sortedNotes, key = { _, note -> note.id }) { index, note ->
-                        val isManualSort = sortType == SortType.MANUAL
-                        val isDragging = reorderState.draggedItemIndex == index && isManualSort
-                        
-                        val elevation by animateDpAsState(if (isDragging) 12.dp else 0.dp, label = "elevation")
-                        val scaleFactor by animateFloatAsState(if (isDragging) 1.02f else 1f, label = "scale")
-                        val alphaFactor by animateFloatAsState(if (isDragging) 0.9f else 1f, label = "alpha")
+            val isWideScreen = this@BoxWithConstraints.maxWidth > 600.dp
+            val selectedNote = remember(selectedNoteId, notes) {
+                notes.find { it.id == selectedNoteId }
+            }
 
-                        val dismissState = rememberSwipeToDismissBoxState(
-                            confirmValueChange = { dismissValue ->
-                                if (dismissValue == SwipeToDismissBoxValue.EndToStart) {
-                                    onDeleteNote(note)
-                                    true
-                                } else {
-                                    false
+            Row(modifier = Modifier.fillMaxSize()) {
+                // LEFT SIDE: LIST
+                Box(modifier = Modifier.weight(1f)) {
+                    if (sortedNotes.isEmpty()) {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text(if (searchQuery.isEmpty()) "Henüz not yok." else "Sonuç bulunamadı.", color = Color.Gray)
+                        }
+                    } else {
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 100.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            itemsIndexed(sortedNotes, key = { _, note -> note.id }) { index, note ->
+                                val isManualSort = sortType == SortType.MANUAL
+                                val isDragging = reorderState.draggedItemIndex == index && isManualSort
+                                
+                                val elevation by animateDpAsState(if (isDragging) 12.dp else 0.dp, label = "elevation")
+                                val scaleFactor by animateFloatAsState(if (isDragging) 1.02f else 1f, label = "scale")
+                                val alphaFactor by animateFloatAsState(if (isDragging) 0.9f else 1f, label = "alpha")
+
+                                val dismissState = rememberSwipeToDismissBoxState(
+                                    confirmValueChange = { dismissValue ->
+                                        if (dismissValue == SwipeToDismissBoxValue.EndToStart) {
+                                            onDeleteNote(note)
+                                            true
+                                        } else {
+                                            false
+                                        }
+                                    }
+                                )
+
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .graphicsLayer {
+                                            translationY = if (isManualSort) reorderState.calculateCurrentOffset(index) else 0f
+                                            scaleX = scaleFactor
+                                            scaleY = scaleFactor
+                                        }
+                                        .zIndex(if (isDragging) 1f else 0f)
+                                        .alpha(alphaFactor)
+                                        .pointerInput(isManualSort) {
+                                            if (isManualSort) {
+                                                detectDragGesturesAfterLongPress(
+                                                    onDragStart = { reorderState.draggedItemIndex = index },
+                                                    onDrag = { change, dragAmount ->
+                                                        change.consume()
+                                                        reorderState.draggedItemOffset += dragAmount.y
+                                                        
+                                                        val itemHeight = 300f 
+                                                        if (reorderState.draggedItemOffset > itemHeight && index < sortedNotes.lastIndex) {
+                                                            onMoveNote(index, index + 1)
+                                                            reorderState.draggedItemIndex = index + 1
+                                                            reorderState.draggedItemOffset -= itemHeight
+                                                        } else if (reorderState.draggedItemOffset < -itemHeight && index > 0) {
+                                                            onMoveNote(index, index - 1)
+                                                            reorderState.draggedItemIndex = index - 1
+                                                            reorderState.draggedItemOffset += itemHeight
+                                                        }
+                                                    },
+                                                    onDragEnd = {
+                                                        reorderState.draggedItemIndex = null
+                                                        reorderState.draggedItemOffset = 0f
+                                                    },
+                                                    onDragCancel = {
+                                                        reorderState.draggedItemIndex = null
+                                                        reorderState.draggedItemOffset = 0f
+                                                    }
+                                                )
+                                            }
+                                        }
+                                ) {
+                                    SwipeToDismissBox(
+                                        state = dismissState,
+                                        enableDismissFromStartToEnd = false,
+                                        backgroundContent = {
+                                            val color by androidx.compose.animation.animateColorAsState(
+                                                targetValue = if (dismissState.targetValue == SwipeToDismissBoxValue.EndToStart) 
+                                                    MaterialTheme.colorScheme.error 
+                                                else 
+                                                    Color.Transparent,
+                                                animationSpec = tween(300), label = "swipeColor"
+                                            )
+                                            val iconScale by animateDpAsState(
+                                                targetValue = if (dismissState.targetValue == SwipeToDismissBoxValue.EndToStart) 28.dp else 20.dp, label = "iconScale"
+                                            )
+
+                                            Box(
+                                                Modifier
+                                                    .fillMaxSize()
+                                                    .padding(vertical = 4.dp)
+                                                    .clip(RoundedCornerShape(20.dp))
+                                                    .background(color)
+                                                    .padding(end = 24.dp),
+                                                contentAlignment = Alignment.CenterEnd
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.Delete,
+                                                    contentDescription = "Sil",
+                                                    tint = Color.White,
+                                                    modifier = Modifier.size(iconScale)
+                                                )
+                                            }
+                                        }
+                                    ) {
+                                        NoteGridItem(
+                                            note = note,
+                                            onClick = { if (isWideScreen) onNoteClick(note) else onEditNote(note) },
+                                            elevation = elevation,
+                                            modifier = if (note.id == selectedNoteId) {
+                                                Modifier.background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(20.dp))
+                                            } else Modifier
+                                        )
+                                    }
                                 }
                             }
-                        )
+                        }
+                    }
+                }
 
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .graphicsLayer {
-                                    translationY = if (isManualSort) reorderState.calculateCurrentOffset(index) else 0f
-                                    scaleX = scaleFactor
-                                    scaleY = scaleFactor
-                                }
-                                .zIndex(if (isDragging) 1f else 0f)
-                                .alpha(alphaFactor)
-                                .pointerInput(isManualSort) {
-                                    if (isManualSort) {
-                                        detectDragGesturesAfterLongPress(
-                                            onDragStart = { reorderState.draggedItemIndex = index },
-                                            onDrag = { change, dragAmount ->
-                                                change.consume()
-                                                reorderState.draggedItemOffset += dragAmount.y
-                                                
-                                                val itemHeight = 300f 
-                                                if (reorderState.draggedItemOffset > itemHeight && index < sortedNotes.lastIndex) {
-                                                    onMoveNote(index, index + 1)
-                                                    reorderState.draggedItemIndex = index + 1
-                                                    reorderState.draggedItemOffset -= itemHeight
-                                                } else if (reorderState.draggedItemOffset < -itemHeight && index > 0) {
-                                                    onMoveNote(index, index - 1)
-                                                    reorderState.draggedItemIndex = index - 1
-                                                    reorderState.draggedItemOffset += itemHeight
-                                                }
-                                            },
-                                            onDragEnd = {
-                                                reorderState.draggedItemIndex = null
-                                                reorderState.draggedItemOffset = 0f
-                                            },
-                                            onDragCancel = {
-                                                reorderState.draggedItemIndex = null
-                                                reorderState.draggedItemOffset = 0f
-                                            }
-                                        )
-                                    }
-                                }
-                        ) {
-                            SwipeToDismissBox(
-                                state = dismissState,
-                                enableDismissFromStartToEnd = false,
-                                backgroundContent = {
-                                    val color by androidx.compose.animation.animateColorAsState(
-                                        targetValue = if (dismissState.targetValue == SwipeToDismissBoxValue.EndToStart) 
-                                            MaterialTheme.colorScheme.error 
-                                        else 
-                                            Color.Transparent,
-                                        animationSpec = tween(300), label = "swipeColor"
-                                    )
-                                    val iconScale by animateDpAsState(
-                                        targetValue = if (dismissState.targetValue == SwipeToDismissBoxValue.EndToStart) 28.dp else 20.dp, label = "iconScale"
-                                    )
-
-                                    Box(
-                                        Modifier
-                                            .fillMaxSize()
-                                            .padding(vertical = 4.dp)
-                                            .clip(RoundedCornerShape(20.dp))
-                                            .background(color)
-                                            .padding(end = 24.dp),
-                                        contentAlignment = Alignment.CenterEnd
-                                    ) {
-                                        Icon(
-                                            Icons.Default.Delete,
-                                            contentDescription = "Sil",
-                                            tint = Color.White,
-                                            modifier = Modifier.size(iconScale)
-                                        )
-                                    }
-                                }
-                            ) {
-                                NoteGridItem(
-                                    note = note,
-                                    onClick = { onEditNote(note) },
-                                    elevation = elevation,
-                                    modifier = if (note.id == selectedNoteId) {
-                                        Modifier.background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(20.dp))
-                                    } else Modifier
-                                )
+                // RIGHT SIDE: PREVIEW
+                if (isWideScreen) {
+                    Box(modifier = Modifier.weight(1.5f).fillMaxHeight()) {
+                        if (selectedNote != null) {
+                            DetailPane(note = selectedNote)
+                        } else {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Text("Görüntülemek için bir not seçin", color = Color.Gray)
                             }
                         }
                     }
@@ -224,13 +248,11 @@ fun MainScreen(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .padding(start = 16.dp, bottom = 24.dp)
-                    .graphicsLayer { clip = true }
-                    .blur(12.dp)
             ) {
                 Surface(
                     shape = RoundedCornerShape(32.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.75f),
-                    tonalElevation = 12.dp,
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f),
+                    tonalElevation = 8.dp,
                     border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
                     modifier = Modifier.wrapContentWidth()
                 ) {

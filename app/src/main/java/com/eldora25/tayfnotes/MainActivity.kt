@@ -209,6 +209,7 @@ class MainActivity : FragmentActivity() {
                     onEditNote = { currentScreen = Screen.EditNote(it) },
                     onMoveNote = { f, t -> noteViewModel.updateNotePosition(f, t) },
                     onDeleteNote = { noteViewModel.trashNote(it.id) },
+                    onNoteClick = { selectedNoteInMasterDetail = it },
                     selectedNoteId = selectedNoteInMasterDetail?.id,
                     bottomBar = {
                         BottomNavigationBar(currentScreen, { currentScreen = it }, { noteViewModel.onFolderSelected(null) })

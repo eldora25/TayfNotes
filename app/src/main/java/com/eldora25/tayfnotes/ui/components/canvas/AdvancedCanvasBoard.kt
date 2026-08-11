@@ -39,6 +39,8 @@ fun AdvancedCanvasBoard(
     var currentPathPoints by remember { mutableStateOf<List<Offset>>(emptyList()) }
     var tempShape by remember { mutableStateOf<DrawShape?>(null) }
     var selectedObjectIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    
+    val latestObjects by rememberUpdatedState(objects)
 
     Box(modifier = modifier.fillMaxSize()) {
         Canvas(
@@ -47,11 +49,11 @@ fun AdvancedCanvasBoard(
                 .background(Color.Transparent)
                 
                 // 1. SELECTOR TIKLAMA: Çoklu Obje Seçimi
-                .pointerInput(currentTool, objects) {
+                .pointerInput(currentTool, latestObjects) {
                     if (currentTool == ToolType.SELECTOR) {
                         detectTapGestures(
                             onTap = { tapOffset ->
-                                val clickedObj = objects.reversed().find { obj ->
+                                val clickedObj = latestObjects.reversed().find { obj ->
                                     getObjectBounds(obj).contains(tapOffset)
                                 }
                                 
@@ -74,7 +76,7 @@ fun AdvancedCanvasBoard(
                     if (currentTool == ToolType.SELECTOR && selectedObjectIds.isNotEmpty()) {
                         detectTransformGestures { _, pan, zoom, _ ->
                             selectedObjectIds.forEach { selId ->
-                                val selectedObj = objects.find { it.id == selId }
+                                val selectedObj = latestObjects.find { it.id == selId }
                                 if (selectedObj != null) {
                                     val updatedObj = when (selectedObj) {
                                         is DrawPath -> selectedObj.copy(
