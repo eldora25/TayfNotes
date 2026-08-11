@@ -30,4 +30,7 @@ dependencies {
     implementation(libs.ktor.serialization.kotlinx.json)
     implementation("androidx.work:work-runtime-ktx:2.9.0")
     implementation(libs.dropbox.core)
+    implementation(libs.google.api.client.android)
+    implementation(libs.google.api.services.drive)
+    implementation(libs.google.auth.library)
 }

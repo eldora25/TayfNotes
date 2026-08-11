@@ -23,6 +23,7 @@ import com.eldora25.tayfnotes.shared.sync.DropboxProvider
 import com.eldora25.tayfnotes.shared.sync.GoogleDriveProvider
 import com.eldora25.tayfnotes.shared.sync.SyncManager
 import com.eldora25.tayfnotes.shared.sync.SyncWorker
+import com.eldora25.tayfnotes.shared.sync.GoogleDriveSyncWorker
 import com.eldora25.tayfnotes.ui.theme.TayfTheme
 import com.eldora25.tayfnotes.util.AlarmHelper
 import com.eldora25.tayfnotes.util.BackupPackageHelper
@@ -195,6 +196,55 @@ class NoteViewModel(
             )
 
             // Listen for sync result to update local DB
+            workManager.getWorkInfoByIdLiveData(syncRequest.id).asFlow().collectLatest { workInfo ->
+                if (workInfo != null && workInfo.state == WorkInfo.State.SUCCEEDED) {
+                    val mergedJson = workInfo.outputData.getString("MERGED_NOTES_JSON")
+                    if (mergedJson != null) {
+                        try {
+                            val mergedNotes = Json.decodeFromString<List<Note>>(mergedJson)
+                            mergedNotes.forEach { note ->
+                                noteRepository.insert(note) 
+                            }
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fun startGoogleDriveSync(context: Context, accountEmail: String) {
+        viewModelScope.launch {
+            val currentNotes = notes.value
+            val notesJson = Json.encodeToString(currentNotes)
+
+            val inputData = Data.Builder()
+                .putString("GOOGLE_ACCOUNT_EMAIL", accountEmail)
+                .putString("NOTES_JSON", notesJson)
+                .build()
+
+            val constraints = Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .build()
+
+            val syncRequest = OneTimeWorkRequestBuilder<GoogleDriveSyncWorker>()
+                .setConstraints(constraints)
+                .setInputData(inputData)
+                .setBackoffCriteria(
+                    BackoffPolicy.EXPONENTIAL, 
+                    WorkRequest.MIN_BACKOFF_MILLIS, 
+                    TimeUnit.MILLISECONDS
+                )
+                .build()
+
+            val workManager = WorkManager.getInstance(context)
+            workManager.enqueueUniqueWork(
+                "GoogleDriveSyncWork",
+                ExistingWorkPolicy.REPLACE,
+                syncRequest
+            )
+
             workManager.getWorkInfoByIdLiveData(syncRequest.id).asFlow().collectLatest { workInfo ->
                 if (workInfo != null && workInfo.state == WorkInfo.State.SUCCEEDED) {
                     val mergedJson = workInfo.outputData.getString("MERGED_NOTES_JSON")

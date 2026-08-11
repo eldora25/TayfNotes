@@ -265,6 +265,7 @@ class MainActivity : FragmentActivity() {
                                 onFontSizeChanged = { noteViewModel.setFontSize(it) },
                                 onAuthSuccess = { email ->
                                     noteViewModel.setCloudProvider("Google Drive")
+                                    noteViewModel.startGoogleDriveSync(this@MainActivity, email)
                                     Toast.makeText(this@MainActivity, "Bağlandı: $email", Toast.LENGTH_SHORT).show()
                                 },
                                 onAuthError = { e ->
