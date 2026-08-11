@@ -50,7 +50,8 @@ sealed class Screen {
     object Settings : Screen()
     object ThemeSelection : Screen()
     data class EditNote(val note: Note? = null, val initialSketch: Boolean = false) : Screen()
-    data class WebClipper(val url: String) : Screen()
+    data class WebClipper(val url: String, val title: String? = null, val content: String? = null) : Screen()
+    object InternalBrowser : Screen()
 }
 
 class MainActivity : FragmentActivity() {
@@ -169,11 +170,22 @@ class MainActivity : FragmentActivity() {
                 WebClipperScreen(
                     url = screen.url,
                     folders = folders,
+                    predefinedTitle = screen.title,
+                    predefinedContent = screen.content,
                     onSave = { 
                         noteViewModel.saveNote(it)
                         currentScreen = Screen.Main 
                     },
                     onCancel = { currentScreen = Screen.Main }
+                )
+            } else if (currentScreen is Screen.InternalBrowser) {
+                BackHandler { currentScreen = Screen.More }
+                InternalWebBrowserScreen(
+                    onBack = { currentScreen = Screen.More },
+                    onClipContent = { title, url, text ->
+                        // Dahili tarayıcıdan kırpılan veriyi WebClipperScreen'e pasla
+                        currentScreen = Screen.WebClipper(url, title, text)
+                    }
                 )
             } else if (currentScreen is Screen.ThemeSelection) {
                 BackHandler { currentScreen = Screen.More }
