@@ -33,12 +33,15 @@ fun AdvancedCanvasBoard(
     onObjectDeleted: (DrawObject) -> Unit
 ) {
     var currentPathPoints by remember { mutableStateOf<List<Offset>>(emptyList()) }
+    var tempShape by remember { mutableStateOf<DrawShape?>(null) }
     var selectedObjectId by remember { mutableStateOf<String?>(null) }
 
     Canvas(
         modifier = modifier
             .fillMaxSize()
             .background(Color.Transparent)
+            
+            // 1. SELECTOR TIKLAMA: Obje Seçimi
             .pointerInput(currentTool, objects) {
                 if (currentTool == ToolType.SELECTOR) {
                     detectTapGestures(
@@ -51,6 +54,8 @@ fun AdvancedCanvasBoard(
                     )
                 }
             }
+            
+            // 2. SELECTOR SÜRÜKLEME: Taşıma ve Boyutlandırma
             .pointerInput(currentTool, selectedObjectId) {
                 if (currentTool == ToolType.SELECTOR && selectedObjectId != null) {
                     detectTransformGestures { _, pan, zoom, _ ->
@@ -73,7 +78,57 @@ fun AdvancedCanvasBoard(
                     }
                 }
             }
-            .pointerInput(currentTool, currentColor, currentStrokeWidth, currentShape, isFillEnabled, currentFillColor) {
+            
+            // 3. OBJE SİLGİSİ
+            .pointerInput(currentTool, objects) {
+                if (currentTool == ToolType.OBJECT_ERASER) {
+                    detectDragGestures(
+                        onDragStart = { offset ->
+                            val hit = objects.findLast { obj -> getObjectBounds(obj).contains(offset) }
+                            if (hit != null) onObjectDeleted(hit)
+                        },
+                        onDrag = { change, _ ->
+                            val hit = objects.findLast { obj -> getObjectBounds(obj).contains(change.position) }
+                            if (hit != null) onObjectDeleted(hit)
+                        }
+                    )
+                }
+            }
+            
+            // 4. ŞEKİL ÇİZİMİ (REAL-TIME PREVIEW)
+            .pointerInput(currentTool, currentShape, currentColor, currentStrokeWidth, isFillEnabled, currentFillColor) {
+                if (currentTool == ToolType.SHAPE) {
+                    detectDragGestures(
+                        onDragStart = { offset ->
+                            selectedObjectId = null
+                            val hexColor = String.format("#%06X", 0xFFFFFF and currentColor.toArgb())
+                            tempShape = DrawShape(
+                                id = java.util.UUID.randomUUID().toString(),
+                                colorHex = hexColor,
+                                strokeWidth = currentStrokeWidth,
+                                toolType = ToolType.SHAPE,
+                                points = listOf(Point(offset.x, offset.y), Point(offset.x, offset.y)),
+                                shapeType = currentShape,
+                                isFilled = isFillEnabled,
+                                fillColorHex = if (isFillEnabled) String.format("#%06X", (0xFFFFFF and currentFillColor.toArgb())) else null
+                            )
+                        },
+                        onDrag = { change, _ ->
+                            tempShape = tempShape?.let { shape ->
+                                shape.copy(points = listOf(shape.points[0], Point(change.position.x, change.position.y)))
+                            }
+                        },
+                        onDragEnd = {
+                            tempShape?.let { onObjectAdded(it) }
+                            tempShape = null
+                        },
+                        onDragCancel = { tempShape = null }
+                    )
+                }
+            }
+            
+            // 5. SERBEST ÇİZİM
+            .pointerInput(currentTool, currentColor, currentStrokeWidth) {
                 if (currentTool == ToolType.PEN || currentTool == ToolType.HIGHLIGHTER || currentTool == ToolType.PENCIL || currentTool == ToolType.MARKER) {
                     detectDragGestures(
                         onDragStart = { offset ->
@@ -100,49 +155,12 @@ fun AdvancedCanvasBoard(
                         },
                         onDragCancel = { currentPathPoints = emptyList() }
                     )
-                } else if (currentTool == ToolType.SHAPE) {
-                    detectDragGestures(
-                        onDragStart = { offset ->
-                            selectedObjectId = null
-                            currentPathPoints = listOf(offset, offset)
-                        },
-                        onDrag = { change, _ ->
-                            if (currentPathPoints.size >= 2) {
-                                currentPathPoints = listOf(currentPathPoints[0], change.position)
-                            }
-                        },
-                        onDragEnd = {
-                            if (currentPathPoints.size >= 2) {
-                                val hexColor = String.format("#%06X", (0xFFFFFF and currentColor.toArgb()))
-                                val newShape = DrawShape(
-                                    id = java.util.UUID.randomUUID().toString(),
-                                    colorHex = hexColor,
-                                    strokeWidth = currentStrokeWidth,
-                                    alpha = 1f,
-                                    toolType = ToolType.SHAPE,
-                                    points = currentPathPoints.map { Point(it.x, it.y) },
-                                    shapeType = currentShape,
-                                    isFilled = isFillEnabled,
-                                    fillColorHex = if (isFillEnabled) String.format("#%06X", (0xFFFFFF and currentFillColor.toArgb())) else null
-                                )
-                                onObjectAdded(newShape)
-                                currentPathPoints = emptyList()
-                            }
-                        },
-                        onDragCancel = { currentPathPoints = emptyList() }
-                    )
-                } else if (currentTool == ToolType.OBJECT_ERASER) {
-                    detectDragGestures(
-                        onDragStart = { offset ->
-                            val hit = objects.findLast { obj -> getObjectBounds(obj).contains(offset) }
-                            if (hit != null) onObjectDeleted(hit)
-                        },
-                        onDrag = { change, _ ->
-                            val hit = objects.findLast { obj -> getObjectBounds(obj).contains(change.position) }
-                            if (hit != null) onObjectDeleted(hit)
-                        }
-                    )
-                } else if (currentTool == ToolType.PAINT_BUCKET) {
+                }
+            }
+            
+            // 6. AKILLI KOVA (PAINT BUCKET)
+            .pointerInput(currentTool, objects, currentColor) {
+                if (currentTool == ToolType.PAINT_BUCKET) {
                     detectTapGestures { offset ->
                         val hits = objects.filter { obj -> getObjectBounds(obj).contains(offset) }
                         if (hits.size >= 2) {
@@ -173,6 +191,8 @@ fun AdvancedCanvasBoard(
                 }
             }
     ) {
+        // --- RENDER DÖNGÜSÜ ---
+        
         objects.forEach { drawObj ->
             val objColor = try {
                 Color(android.graphics.Color.parseColor(drawObj.colorHex)).copy(alpha = drawObj.alpha)
@@ -204,12 +224,7 @@ fun AdvancedCanvasBoard(
             if (drawObj.id == selectedObjectId) {
                 val box = getObjectBounds(drawObj)
                 val padding = 16f 
-                val selectionRect = Rect(
-                    left = box.left - padding,
-                    top = box.top - padding,
-                    right = box.right + padding,
-                    bottom = box.bottom + padding
-                )
+                val selectionRect = Rect(box.left - padding, box.top - padding, box.right + padding, box.bottom + padding)
 
                 drawRect(
                     color = Color(0xFF2196F3),
@@ -229,42 +244,62 @@ fun AdvancedCanvasBoard(
             }
         }
 
+        // Active Brush Preview
         if (currentPathPoints.isNotEmpty()) {
             val activeColor = currentColor.copy(alpha = if (currentTool == ToolType.HIGHLIGHTER || currentTool == ToolType.MARKER) 0.45f else if (currentTool == ToolType.PENCIL) 0.6f else 1f)
             val blendMode = if (currentTool == ToolType.HIGHLIGHTER || currentTool == ToolType.MARKER) BlendMode.Multiply else BlendMode.SrcOver
 
-            if (currentTool == ToolType.SHAPE) {
-                val shapePath = calculateAdvancedShapePath(
-                    startX = currentPathPoints[0].x,
-                    startY = currentPathPoints[0].y,
-                    endX = currentPathPoints[1].x,
-                    endY = currentPathPoints[1].y,
-                    shapeType = currentShape
-                )
-                drawPath(path = shapePath, color = activeColor, style = Stroke(width = currentStrokeWidth))
-            } else {
-                drawPath(
-                    path = createSmoothPath(currentPathPoints.map { Point(it.x, it.y) }),
-                    color = activeColor,
-                    style = Stroke(width = currentStrokeWidth, cap = StrokeCap.Round, join = StrokeJoin.Round),
-                    blendMode = blendMode
-                )
+            drawPath(
+                path = createSmoothPath(currentPathPoints.map { Point(it.x, it.y) }),
+                color = activeColor,
+                style = Stroke(width = currentStrokeWidth, cap = StrokeCap.Round, join = StrokeJoin.Round),
+                blendMode = blendMode
+            )
+        }
+        
+        // Active Shape Preview
+        tempShape?.let { shape ->
+            val objColor = try {
+                Color(android.graphics.Color.parseColor(shape.colorHex)).copy(alpha = shape.alpha)
+            } catch (e: Exception) {
+                Color.Black.copy(alpha = shape.alpha)
             }
+            val fillColor = if (shape.isFilled && shape.fillColorHex != null) {
+                try { Color(android.graphics.Color.parseColor(shape.fillColorHex)).copy(alpha = shape.alpha) } catch(e: Exception) { Color.Transparent }
+            } else Color.Transparent
+
+            val shapePath = calculateAdvancedShapePath(
+                startX = shape.points[0].x,
+                startY = shape.points[0].y,
+                endX = shape.points[1].x,
+                endY = shape.points[1].y,
+                shapeType = shape.shapeType
+            )
+            if (shape.isFilled) drawPath(shapePath, fillColor)
+            drawPath(path = shapePath, color = objColor, style = Stroke(width = shape.strokeWidth))
         }
     }
 }
 
 private fun getObjectBounds(obj: DrawObject): Rect {
-    if (obj.points.isEmpty()) return Rect.Zero
+    if (obj.points.isEmpty() && obj is DrawShape && obj.shapeType != ShapeType.INTERSECTION) return Rect.Zero
+    
     var minX = Float.MAX_VALUE
     var minY = Float.MAX_VALUE
     var maxX = Float.MIN_VALUE
     var maxY = Float.MIN_VALUE
-    obj.points.forEach {
-        minX = minOf(minX, it.x)
-        minY = minOf(minY, it.y)
-        maxX = maxOf(maxX, it.x)
-        maxY = maxOf(maxY, it.y)
+    
+    if (obj.points.isNotEmpty()) {
+        obj.points.forEach {
+            minX = minOf(minX, it.x)
+            minY = minOf(minY, it.y)
+            maxX = maxOf(maxX, it.x)
+            maxY = maxOf(maxY, it.y)
+        }
+    } else if (obj is DrawShape && obj.shapeType == ShapeType.INTERSECTION) {
+        // Approximate for intersection or actual bounds from path
+        // For simplicity, using a small rect or logic to get from path if possible
+        return Rect.Zero // Placeholder
     }
     
     val width = (maxX - minX) * obj.scale
