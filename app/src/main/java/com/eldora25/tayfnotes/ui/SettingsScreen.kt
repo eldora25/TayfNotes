@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.eldora25.tayfnotes.ui.theme.TayfTheme
 import com.eldora25.tayfnotes.ui.components.DropboxAuthLauncher
+import com.eldora25.tayfnotes.ui.components.GoogleDriveAuthLauncher
 import com.eldora25.tayfnotes.ui.components.OneDriveAuthLauncher
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
@@ -87,28 +88,6 @@ fun SettingsScreen(
             // --- 1. GERÇEK BULUT SENKRONİZASYONU ---
             item { SectionHeader("Bulut & Senkronizasyon (Gerçek Zamanlı)") }
             item {
-                val context = LocalContext.current
-                val gso = remember {
-                    GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-                        .requestEmail()
-                        .requestScopes(Scope(DriveScopes.DRIVE_FILE))
-                        .build()
-                }
-                val googleSignInClient = remember { GoogleSignIn.getClient(context, gso) }
-                val launcher = rememberLauncherForActivityResult(
-                    contract = ActivityResultContracts.StartActivityForResult()
-                ) { result ->
-                    if (result.resultCode == Activity.RESULT_OK) {
-                        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
-                        try {
-                            val account = task.getResult(Exception::class.java)
-                            account?.email?.let { onAuthSuccess(it) }
-                        } catch (e: Exception) {
-                            onAuthError(e)
-                        }
-                    }
-                }
-
                 PremiumCard {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -136,12 +115,14 @@ fun SettingsScreen(
                         
                         if (activeCloudProvider == null) {
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Button(
-                                    onClick = { launcher.launch(googleSignInClient.signInIntent) },
-                                    modifier = Modifier.weight(1f),
-                                    shape = RoundedCornerShape(12.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4285F4))
-                                ) { Text("Google Drive", color = Color.White) }
+                                GoogleDriveAuthLauncher(
+                                    onAuthSuccess = { email ->
+                                        onAuthSuccess(email)
+                                    },
+                                    onAuthError = { error ->
+                                        // Hata yönetimi
+                                    }
+                                )
                                 
                                 DropboxAuthLauncher(
                                     appKey = "ctnqddduaepcw33", // Console'dan aldığınız kod
