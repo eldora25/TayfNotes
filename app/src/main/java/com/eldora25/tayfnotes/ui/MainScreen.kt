@@ -1,34 +1,54 @@
 package com.eldora25.tayfnotes.ui
 
-import androidx.compose.foundation.border
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DragHandle
+import androidx.compose.material.icons.automirrored.filled.Sort
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.eldora25.tayfnotes.BuildConfig
 import com.eldora25.tayfnotes.shared.model.Note
 import com.eldora25.tayfnotes.ui.components.NoteGridItem
 
 enum class SortType { DATE_MODIFIED, DATE_CREATED, ALPHABETICAL, COLOR, MANUAL }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
     notes: List<Note>,
     searchQuery: String,
+    onSearchQueryChanged: (String) -> Unit,
+    onAddNote: () -> Unit,
+    onAddChecklist: () -> Unit,
+    onAddSketch: () -> Unit,
     onEditNote: (Note) -> Unit,
+    onMoveNote: (Int, Int) -> Unit,
+    onDeleteNote: (Note) -> Unit = {},
     selectedNoteId: String? = null,
-    sortType: SortType = SortType.DATE_MODIFIED
+    bottomBar: @Composable () -> Unit = {} // Added for integration
 ) {
+    var isSearchActive by remember { mutableStateOf(false) }
+    var sortType by remember { mutableStateOf(SortType.DATE_MODIFIED) }
+    var showSortMenu by remember { mutableStateOf(false) }
+
     val sortedNotes = remember(notes, sortType) {
         when (sortType) {
             SortType.DATE_MODIFIED -> notes.sortedByDescending { it.lastModified }
@@ -39,32 +59,120 @@ fun MainScreen(
         }
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        if (sortedNotes.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(if (searchQuery.isEmpty()) "Henüz not yok." else "Sonuç bulunamadı.", color = Color.Gray)
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                itemsIndexed(sortedNotes, key = { _, note -> note.id }) { _, note ->
-                    val isSelected = note.id == selectedNoteId
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (sortType == SortType.MANUAL) {
-                            Icon(
-                                Icons.Default.DragHandle, 
-                                contentDescription = "Taşı",
-                                modifier = Modifier.padding(end = 8.dp)
+    Scaffold(
+        topBar = {
+            PremiumTopBar(
+                isSearchActive = isSearchActive,
+                searchQuery = searchQuery,
+                onSearchQueryChanged = onSearchQueryChanged,
+                onSearchToggle = { isSearchActive = it },
+                showSortMenu = showSortMenu,
+                onSortMenuToggle = { showSortMenu = it },
+                onSortSelected = { sortType = it }
+            )
+        },
+        bottomBar = bottomBar // Set bottom bar
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .background(MaterialTheme.colorScheme.background)
+        ) {
+            if (sortedNotes.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(if (searchQuery.isEmpty()) "Henüz not yok." else "Sonuç bulunamadı.", color = Color.Gray)
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 100.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    itemsIndexed(sortedNotes, key = { _, note -> note.id }) { index, note ->
+                        val dismissState = rememberSwipeToDismissBoxState(
+                            confirmValueChange = { dismissValue ->
+                                if (dismissValue == SwipeToDismissBoxValue.EndToStart) {
+                                    onDeleteNote(note)
+                                    true
+                                } else {
+                                    false
+                                }
+                            }
+                        )
+
+                        SwipeToDismissBox(
+                            state = dismissState,
+                            enableDismissFromStartToEnd = false,
+                            backgroundContent = {
+                                val color by animateColorAsState(
+                                    targetValue = if (dismissState.targetValue == SwipeToDismissBoxValue.EndToStart) 
+                                        MaterialTheme.colorScheme.error 
+                                    else 
+                                        Color.Transparent,
+                                    animationSpec = tween(300), label = "swipeColor"
+                                )
+                                val iconScale by animateDpAsState(
+                                    targetValue = if (dismissState.targetValue == SwipeToDismissBoxValue.EndToStart) 28.dp else 20.dp, label = "iconScale"
+                                )
+
+                                Box(
+                                    Modifier
+                                        .fillMaxSize()
+                                        .padding(vertical = 4.dp)
+                                        .clip(RoundedCornerShape(20.dp))
+                                        .background(color)
+                                        .padding(end = 24.dp),
+                                    contentAlignment = Alignment.CenterEnd
+                                ) {
+                                    Icon(
+                                        Icons.Default.Delete,
+                                        contentDescription = "Sil",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(iconScale)
+                                    )
+                                }
+                            }
+                        ) {
+                            NoteGridItem(
+                                note = note,
+                                onClick = { onEditNote(note) },
+                                modifier = if (sortType == SortType.MANUAL) {
+                                    Modifier.pointerInput(index) {
+                                        detectDragGesturesAfterLongPress(
+                                            onDrag = { _, _ -> },
+                                            onDragEnd = { }
+                                        )
+                                    }
+                                } else if (note.id == selectedNoteId) {
+                                    Modifier.background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(20.dp))
+                                } else Modifier
                             )
                         }
-                        NoteGridItem(
-                            note = note,
-                            onClick = { onEditNote(note) },
-                            modifier = if (isSelected) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(20.dp)) else Modifier
-                        )
+                    }
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 24.dp)
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(32.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f),
+                    tonalElevation = 12.dp,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
+                    modifier = Modifier.wrapContentWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        FloatingActionPill(icon = Icons.Default.Description, label = "Not", color = MaterialTheme.colorScheme.primary, onClick = onAddNote)
+                        FloatingActionPill(icon = Icons.Default.Checklist, label = "Liste", color = MaterialTheme.colorScheme.secondary, onClick = onAddChecklist)
+                        FloatingActionPill(icon = Icons.Default.Gesture, label = "Sketch", color = MaterialTheme.colorScheme.tertiary, onClick = onAddSketch)
                     }
                 }
             }
@@ -72,26 +180,93 @@ fun MainScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddActionButton(
+fun PremiumTopBar(
+    isSearchActive: Boolean,
+    searchQuery: String,
+    onSearchQueryChanged: (String) -> Unit,
+    onSearchToggle: (Boolean) -> Unit,
+    showSortMenu: Boolean,
+    onSortMenuToggle: (Boolean) -> Unit,
+    onSortSelected: (SortType) -> Unit
+) {
+    if (isSearchActive) {
+        Surface(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            tonalElevation = 4.dp
+        ) {
+            TextField(
+                value = searchQuery,
+                onValueChange = onSearchQueryChanged,
+                placeholder = { Text("Notlarda ara...", color = Color.Gray) },
+                modifier = Modifier.fillMaxWidth(),
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Color.Transparent,
+                    unfocusedContainerColor = Color.Transparent,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent
+                ),
+                singleLine = true,
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Ara", tint = Color.Gray) },
+                trailingIcon = {
+                    IconButton(onClick = { 
+                        onSearchQueryChanged("")
+                        onSearchToggle(false) 
+                    }) {
+                        Icon(Icons.Default.Close, contentDescription = "Kapat")
+                    }
+                }
+            )
+        }
+    } else {
+        CenterAlignedTopAppBar(
+            title = {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("TayfNotes", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
+                    Text("buildv01.${BuildConfig.BUILD_NO}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                }
+            },
+            actions = {
+                IconButton(onClick = { onSearchToggle(true) }) {
+                    Icon(Icons.Default.Search, contentDescription = "Ara")
+                }
+                Box {
+                    IconButton(onClick = { onSortMenuToggle(true) }) {
+                        Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sırala")
+                    }
+                    DropdownMenu(expanded = showSortMenu, onDismissRequest = { onSortMenuToggle(false) }) {
+                        DropdownMenuItem(text = { Text("Düzenlenme Zamanı") }, onClick = { onSortSelected(SortType.DATE_MODIFIED); onSortMenuToggle(false) })
+                        DropdownMenuItem(text = { Text("Oluşturulma Zamanı") }, onClick = { onSortSelected(SortType.DATE_CREATED); onSortMenuToggle(false) })
+                        DropdownMenuItem(text = { Text("Alfabetik") }, onClick = { onSortSelected(SortType.ALPHABETICAL); onSortMenuToggle(false) })
+                        DropdownMenuItem(text = { Text("Renge Göre") }, onClick = { onSortSelected(SortType.COLOR); onSortMenuToggle(false) })
+                    }
+                }
+            }
+        )
+    }
+}
+
+@Composable
+fun FloatingActionPill(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
     color: Color,
-    modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
-    Button(
-        onClick = onClick,
-        modifier = modifier.height(52.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = color, 
-            contentColor = if (color.luminance() > 0.5f) Color.Black else Color.White
-        ),
-        contentPadding = PaddingValues(0.dp)
+    Box(
+        modifier = Modifier
+            .clip(CircleShape)
+            .background(color.copy(alpha = 0.15f))
+            .clickable { onClick() }
+            .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
-        Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp))
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(label, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(18.dp))
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(label, style = MaterialTheme.typography.labelMedium, color = color, fontWeight = FontWeight.Bold)
+        }
     }
 }

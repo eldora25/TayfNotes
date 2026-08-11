@@ -144,6 +144,22 @@ class MainActivity : FragmentActivity() {
                     onDarkModeChanged = { noteViewModel.setDarkMode(it) },
                     onBack = { currentScreen = Screen.More }
                 )
+            } else if (currentScreen == Screen.Main) {
+                MainScreen(
+                    notes = notes,
+                    searchQuery = searchQuery,
+                    onSearchQueryChanged = { noteViewModel.onSearchQueryChanged(it) },
+                    onAddNote = { currentScreen = Screen.EditNote() },
+                    onAddChecklist = { currentScreen = Screen.EditNote(note = Note(id = System.currentTimeMillis().toString(), title = "", content = "", type = com.eldora25.tayfnotes.shared.model.NoteType.CHECKLIST)) },
+                    onAddSketch = { currentScreen = Screen.EditNote(initialSketch = true) },
+                    onEditNote = { currentScreen = Screen.EditNote(it) },
+                    onMoveNote = { f, t -> /* noteViewModel.moveNote(f, t) */ },
+                    onDeleteNote = { noteViewModel.trashNote(it.id) },
+                    selectedNoteId = selectedNoteInMasterDetail?.id,
+                    bottomBar = {
+                        BottomNavigationBar(currentScreen, { currentScreen = it }, { noteViewModel.onFolderSelected(null) })
+                    }
+                )
             } else {
                 Scaffold(
                     topBar = {
@@ -155,54 +171,29 @@ class MainActivity : FragmentActivity() {
                                 }
                             },
                             actions = {
-                                if (currentScreen == Screen.Main || currentScreen == Screen.Folders) {
+                                if (currentScreen == Screen.Folders) {
                                     IconButton(onClick = { showSortMenu = true }) { Icon(Icons.AutoMirrored.Filled.Sort, null) }
                                     DropdownMenu(expanded = showSortMenu, onDismissRequest = { showSortMenu = false }) {
-                                        DropdownMenuItem(text = { Text("Zamana Göre") }, onClick = { sortType = SortType.DATE_MODIFIED; showSortMenu = false })
                                         DropdownMenuItem(text = { Text("Alfabetik") }, onClick = { sortType = SortType.ALPHABETICAL; showSortMenu = false })
                                         DropdownMenuItem(text = { Text("Renge Göre") }, onClick = { sortType = SortType.COLOR; showSortMenu = false })
-                                        DropdownMenuItem(text = { Text("Manuel") }, onClick = { sortType = SortType.MANUAL; showSortMenu = false })
                                     }
                                 }
                             }
                         )
                     },
                     bottomBar = {
-                        Column {
-                            if (currentScreen == Screen.Main) {
-                                Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 8.dp) {
-                                    Row(modifier = Modifier.fillMaxWidth().padding(12.dp).navigationBarsPadding(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        AddActionButton(Icons.Default.Description, "Not", MaterialTheme.colorScheme.primary, Modifier.weight(1f)) { currentScreen = Screen.EditNote() }
-                                        AddActionButton(Icons.Default.Checklist, "Liste", MaterialTheme.colorScheme.secondary, Modifier.weight(1f)) { currentScreen = Screen.EditNote(note = Note(id = System.currentTimeMillis().toString(), title = "", content = "", type = com.eldora25.tayfnotes.shared.model.NoteType.CHECKLIST)) }
-                                        AddActionButton(Icons.Default.Gesture, "Sketch", MaterialTheme.colorScheme.tertiary, Modifier.weight(1f)) { currentScreen = Screen.EditNote(initialSketch = true) }
-                                    }
-                                }
-                            }
-                            BottomNavigationBar(currentScreen, { currentScreen = it }, { noteViewModel.onFolderSelected(null) })
-                        }
+                        BottomNavigationBar(currentScreen, { currentScreen = it }, { noteViewModel.onFolderSelected(null) })
                     }
                 ) { innerPadding ->
-                    Row(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
-                        Box(modifier = Modifier.weight(0.4f)) {
-                            when (currentScreen) {
-                                is Screen.Main -> MainScreen(notes, searchQuery, { selectedNoteInMasterDetail = it }, selectedNoteInMasterDetail?.id, sortType)
-                                is Screen.Folders -> FoldersScreen(folders, { noteViewModel.onFolderSelected(it.id); currentScreen = Screen.Main }, { n, c -> noteViewModel.addFolder(n, c) }, { noteViewModel.updateFolder(it) })
-                                is Screen.Calendar -> CalendarScreen(notes, { selectedNoteInMasterDetail = it })
-                                is Screen.More -> MoreScreen { currentScreen = it }
-                                is Screen.Archive -> NoteListScreen("Arşiv", archivedNotes, { currentScreen = Screen.More }, { selectedNoteInMasterDetail = it })
-                                is Screen.Trash -> NoteListScreen("Çöp", trashedNotes, { currentScreen = Screen.More }, { selectedNoteInMasterDetail = it }, { noteViewModel.emptyTrash() })
-                                is Screen.Settings -> SettingsScreen({ currentScreen = Screen.More }, isSyncing, { noteViewModel.syncData() }, currentTheme, { noteViewModel.setTheme(it) }, isDarkModePref, { noteViewModel.setDarkMode(it) }, isBiometricEnabled, { noteViewModel.setBiometricEnabled(it) }, activeCloudProvider, { noteViewModel.setCloudProvider(it) }, { noteViewModel.exportFullBackup { BackupPackageHelper.shareBackup(this@MainActivity, it) } }, { importLauncher.launch("application/zip") })
-                                else -> {}
-                            }
-                        }
-                        VerticalDivider(modifier = Modifier.fillMaxHeight(), thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
-                        Box(modifier = Modifier.weight(0.6f)) {
-                            DetailPane(selectedNoteInMasterDetail, Modifier.fillMaxSize())
-                            if (selectedNoteInMasterDetail != null) {
-                                IconButton(onClick = { currentScreen = Screen.EditNote(selectedNoteInMasterDetail) }, modifier = Modifier.align(Alignment.TopEnd).padding(16.dp)) {
-                                    EditorNeonIcon { Icon(Icons.Default.Edit, null) }
-                                }
-                            }
+                    Box(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
+                        when (currentScreen) {
+                            is Screen.Folders -> FoldersScreen(folders, { noteViewModel.onFolderSelected(it.id); currentScreen = Screen.Main }, { n, c -> noteViewModel.addFolder(n, c) }, { noteViewModel.updateFolder(it) })
+                            is Screen.Calendar -> CalendarScreen(notes, { currentScreen = Screen.EditNote(it) })
+                            is Screen.More -> MoreScreen { currentScreen = it }
+                            is Screen.Archive -> NoteListScreen("Arşiv", archivedNotes, { currentScreen = Screen.More }, { currentScreen = Screen.EditNote(it) })
+                            is Screen.Trash -> NoteListScreen("Çöp", trashedNotes, { currentScreen = Screen.More }, { currentScreen = Screen.EditNote(it) }, { noteViewModel.emptyTrash() })
+                            is Screen.Settings -> SettingsScreen({ currentScreen = Screen.More }, isSyncing, { noteViewModel.syncData() }, currentTheme, { noteViewModel.setTheme(it) }, isDarkModePref, { noteViewModel.setDarkMode(it) }, isBiometricEnabled, { noteViewModel.setBiometricEnabled(it) }, activeCloudProvider, { noteViewModel.setCloudProvider(it) }, { noteViewModel.exportFullBackup { BackupPackageHelper.shareBackup(this@MainActivity, it) } }, { importLauncher.launch("application/zip") })
+                            else -> {}
                         }
                     }
                 }
