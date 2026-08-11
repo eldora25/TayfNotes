@@ -13,7 +13,11 @@ data class DrawObject(
     val isFilled: Boolean = false,
     val fillColorHex: String? = null,
     val zIndex: Int = 0,
-    val pathData: String? = null
+    val pathData: String? = null,
+    val alpha: Float = 1f,
+    val offsetX: Float = 0f,
+    val offsetY: Float = 0f,
+    val scale: Float = 1f
 )
 
 enum class ToolType { PEN, MARKER, PIXEL_ERASER, OBJECT_ERASER, SHAPE, SELECT, PAINT_BUCKET }

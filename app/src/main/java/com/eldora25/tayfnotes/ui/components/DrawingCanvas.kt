@@ -92,8 +92,9 @@ fun DrawingCanvas(
                                 objects = objects.map { obj ->
                                     if (obj.id == selId) {
                                         when (dragHandle) {
-                                            4 -> obj.copy(points = obj.points.map { Point(it.x + dragAmount.x, it.y + dragAmount.y) })
+                                            4 -> obj.copy(offsetX = obj.offsetX + dragAmount.x, offsetY = obj.offsetY + dragAmount.y)
                                             0 -> {
+                                                // Simplified resize for now, can be improved to use scale
                                                 val newPoints = obj.points.toMutableList()
                                                 if (newPoints.isNotEmpty()) newPoints[0] = Point(newPoints[0].x + change.position.x - (newPoints[0].x), newPoints[0].y + change.position.y - (newPoints[0].y))
                                                 obj.copy(points = newPoints)
@@ -391,16 +392,26 @@ private fun getObjectBounds(obj: DrawObject): Rect {
         maxX = maxOf(maxX, it.x)
         maxY = maxOf(maxY, it.y)
     }
-    return Rect(minX, minY, maxX, maxY)
+    
+    val width = (maxX - minX) * obj.scale
+    val height = (maxY - minY) * obj.scale
+    val centerX = (minX + maxX) / 2 + obj.offsetX
+    val centerY = (minY + maxY) / 2 + obj.offsetY
+    
+    return Rect(centerX - width/2, centerY - height/2, centerX + width/2, centerY + height/2)
 }
 
 private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawDrawObject(obj: DrawObject, allObjects: List<DrawObject>, isSelected: Boolean) {
     val color = if (obj.toolType == ToolType.PIXEL_ERASER) Color.White else Color(android.graphics.Color.parseColor(obj.colorHex)).run {
-        if (obj.toolType == ToolType.MARKER) this.copy(alpha = 0.45f) else this
+        if (obj.toolType == ToolType.MARKER) this.copy(alpha = 0.45f * obj.alpha) else this.copy(alpha = obj.alpha)
     }
-    val fillColor = if (obj.isFilled && obj.fillColorHex != null) Color(android.graphics.Color.parseColor(obj.fillColorHex)) else Color.Transparent
+    val fillColor = if (obj.isFilled && obj.fillColorHex != null) Color(android.graphics.Color.parseColor(obj.fillColorHex)).copy(alpha = obj.alpha) else Color.Transparent
     val blendMode = if (obj.toolType == ToolType.MARKER) BlendMode.Multiply else BlendMode.SrcOver
     val pathData = obj.pathData
+
+    drawContext.canvas.save()
+    drawContext.canvas.translate(obj.offsetX, obj.offsetY)
+    drawContext.canvas.scale(obj.scale, obj.scale)
 
     if (obj.shapeType == ShapeType.INTERSECTION && pathData != null) {
         val ids = pathData.split("|")
@@ -524,14 +535,14 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawDrawObject(obj:
             else -> {}
         }
     } else {
-        val path = Path()
         if (obj.points.isNotEmpty()) {
-            path.moveTo(obj.points[0].x, obj.points[0].y)
-            obj.points.forEach { path.lineTo(it.x, it.y) }
+            val path = createSmoothPath(obj.points)
             drawPath(path = path, color = color, style = Stroke(width = obj.strokeWidth, cap = StrokeCap.Round), blendMode = blendMode)
         }
     }
     
+    drawContext.canvas.restore()
+
     if (isSelected) {
         val bounds = getObjectBounds(obj)
         drawRect(Color.Blue.copy(alpha = 0.3f), bounds.topLeft, bounds.size, style = Stroke(width = 2f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f))))
@@ -543,6 +554,31 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawDrawObject(obj:
         drawCircle(Color.White, radius = 12f, center = bounds.bottomRight, style = Stroke(width = 3f))
         drawCircle(Color.Blue, radius = 10f, center = bounds.bottomRight)
     }
+}
+
+private fun createSmoothPath(points: List<Point>): Path {
+    val path = Path()
+    if (points.isEmpty()) return path
+
+    path.moveTo(points.first().x, points.first().y)
+    var currentX = points.first().x
+    var currentY = points.first().y
+
+    for (i in 1 until points.size) {
+        val nextPoint = points[i]
+        val midPointX = (currentX + nextPoint.x) / 2
+        val midPointY = (currentY + nextPoint.y) / 2
+        
+        if (i == 1) {
+            path.lineTo(midPointX, midPointY)
+        } else {
+            path.quadraticTo(currentX, currentY, midPointX, midPointY)
+        }
+        currentX = nextPoint.x
+        currentY = nextPoint.y
+    }
+    path.lineTo(currentX, currentY)
+    return path
 }
 
 private fun getObjectPath(obj: DrawObject): Path {
