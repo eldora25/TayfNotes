@@ -3,24 +3,52 @@ package com.eldora25.tayfnotes.shared.model.drawing
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class DrawObject(
-    val id: String,
-    val points: List<Point>,
-    val colorHex: String,
-    val strokeWidth: Float,
-    val toolType: ToolType = ToolType.PEN,
-    val shapeType: ShapeType? = null,
+sealed class DrawObject {
+    abstract val id: String
+    abstract val colorHex: String
+    abstract val strokeWidth: Float
+    abstract val toolType: ToolType
+    abstract val alpha: Float
+    abstract val offsetX: Float
+    abstract val offsetY: Float
+    abstract val scale: Float
+    abstract val zIndex: Int
+    abstract val points: List<Point>
+}
+
+@Serializable
+data class DrawPath(
+    override val id: String,
+    override val colorHex: String,
+    override val strokeWidth: Float,
+    override val toolType: ToolType = ToolType.PEN,
+    override val alpha: Float = 1f,
+    override val offsetX: Float = 0f,
+    override val offsetY: Float = 0f,
+    override val scale: Float = 1f,
+    override val zIndex: Int = 0,
+    override val points: List<Point>
+) : DrawObject()
+
+@Serializable
+data class DrawShape(
+    override val id: String,
+    override val colorHex: String,
+    override val strokeWidth: Float,
+    override val toolType: ToolType = ToolType.SHAPE,
+    override val alpha: Float = 1f,
+    override val offsetX: Float = 0f,
+    override val offsetY: Float = 0f,
+    override val scale: Float = 1f,
+    override val zIndex: Int = 0,
+    override val points: List<Point>,
+    val shapeType: ShapeType,
     val isFilled: Boolean = false,
     val fillColorHex: String? = null,
-    val zIndex: Int = 0,
-    val pathData: String? = null,
-    val alpha: Float = 1f,
-    val offsetX: Float = 0f,
-    val offsetY: Float = 0f,
-    val scale: Float = 1f
-)
+    val pathData: String? = null
+) : DrawObject()
 
-enum class ToolType { PEN, MARKER, PIXEL_ERASER, OBJECT_ERASER, SHAPE, SELECT, PAINT_BUCKET }
+enum class ToolType { PEN, MARKER, PENCIL, HIGHLIGHTER, PIXEL_ERASER, OBJECT_ERASER, SHAPE, SELECTOR, PAINT_BUCKET }
 enum class ShapeType {
     SQUARE, RECTANGLE, CIRCLE, ELLIPSE, EQUILATERAL_TRIANGLE, RIGHT_TRIANGLE,
     TRAPEZOID, PARALLELOGRAM, DIAMOND, PENTAGON, HEXAGON, STAR, ARC, LINE, DOUBLE_ARROW,
