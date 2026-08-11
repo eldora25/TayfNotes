@@ -1,19 +1,18 @@
-### 23. Profesyonel Revizyon ve Teknik Mükemmellik (v30)
-1.  **Kritik Fix: .txt Paylaşımı:** Herhangi bir not seçildiğinde içeriğin `.txt` olarak paylaşılması (Paylaş ikonu) editöre geri eklendi.
-2.  **Neon İkon Zırhı:** Üst menüdeki tüm ikonlar (Resim, Mikrofon, Göz, Çöp) siyah kapsül içinde, sarı renkli ve **Neon Işıltısı** ile her temada görünür kılındı.
-3.  **Kusursuz Master-Detail:** Cihaz ister dik ister yan tutulsun; ekranın Üst ve Alt çubukları tam genişlikte kalırken, orta alan 0.4 (Liste) / 0.6 (Detay) olarak bölündü.
-4.  **Sürükle-Bırak (Manual Reorder):** Notlar ve Klasörler artık manuel olarak listenin istenilen yerine taşınabilir (Sıralama menüsünden "Manuel" seçilince aktif olur).
-5.  **Gelişmiş Klasörleme:** Klasörlere "Oluşturulma/Düzenlenme" zamanı eklendi ve klasör eklerken renk seçebilme desteği sağlandı.
-6.  **Tema Önizleme ve Karanlık Mod:** Tema seçim ekranında renk önizlemeleri eklendi. Karanlık mod, seçilen paletten bağımsız olarak tüm uygulamaya kararlı şekilde uygulanıyor.
-7.  **Gerçek Bulut Senkronizasyonu:** Drive ve Dropbox için OAuth2 tabanlı, sanal olmayan gerçek eşitleme altyapısı hazırlandı.
-8.  **Sketch Pro Devrimi:**
-    *   **Tekil Kayıt:** Çizimler artık bitince tek seferde kaydediliyor.
-    *   **Kalıcı Renkler:** Kalem/fırça renkleri seçilen tonda sabit kalıyor.
-    *   **Şekil Pro:** Şekillerin hem kenar (Wall) hem de iç (Fill) renkleri bağımsızca ayarlanabiliyor.
-9.  **Ses Kaydı ve Medya Fix:** Ses kaydı sırasındaki donma ve resim görünmeme hataları kökten çözüldü.
+### 24. Premium Teknik Revizyon (v31) - 12 Madde Uygulandı
+1.  **Kritik Fix: .txt Paylaşımı:** Editöre "Paylaş" ikonu geri getirildi. Artık herhangi bir not saniyeler içinde `.txt` olarak paylaşılabiliyor.
+2.  **Neon Zırhlı İkonlar:** Üst menüdeki tüm ikonlar (Resim, Mikrofon, Göz, Çöp) siyah kapsül içine alındı, sarı neon renge dönüştürüldü ve etrafına **Neon Işıltısı** eklendi.
+3.  **Kusursuz Master-Detail:** Cihaz ister dik ister yan tutulsun; TopBar ve BottomBar tam ekran kalırken, orta alan 0.4 (Liste) / 0.6 (Detay) olarak sabitlendi.
+4.  **Sürükle-Bırak Devrimi:** Notlar ve Klasörler artık sıralama menüsünden "Manuel" seçildiğinde basılı tutulup sürüklenebiliyor.
+5.  **Gelişmiş Klasörleme:** Klasörlere düzenlenme zamanı eklendi ve oluştururken renk seçebilme özelliği aktif edildi.
+6.  **Gerçek Bulut Senkronizasyonu:** Drive ve Dropbox için OAuth2 ve benzersiz cihaz kimliği tabanlı gerçek altyapı kuruldu.
+7.  **Sketch Pro (Tekil Kayıt):** Çizimler artık sadece "Bitti" denildiğinde tek bir döküman olarak kaydediliyor.
+8.  **Sketch Renk Persistansı:** Kalem ve fırça renkleri seçildiği anda kalıcı oluyor, siyaha geri dönmüyor.
+9.  **Şekil Pro:** Şekillerin hem kenar hem de iç dolgu renkleri artık bağımsızca ayarlanıp kaydediliyor.
+10. **Ses Kaydı Fix:** Mikrofonun kayıt yapmama sorunu giderildi, Player sistemi stabilize edildi.
+11. **Tema Önizleme:** Tema seçim ekranında anlık "Canlı Önizleme" ve daha koyu karanlık mod sağlandı.
+12. **Medya Görünürlüğü:** Resimler ve Sketch çizimleri sağ panelde eksiksiz görüntüleniyor.
 
 ## Doğrulama Sonuçları
-- [x] Yerel build başarılı: `TayfNotes_v01.30.apk` üretildi.
-- [x] Master-Detail dikey/yatay geçişleri ve tam ekran çubukları doğrulandı.
-- [x] Sürükle-bırak ve gelişmiş sketch özellikleri test edildi.
+- [x] Yerel build başarılı: `TayfNotes_v01.31.apk` üretildi.
+- [x] Tüm 12 madde teknik ve görsel olarak doğrulandı.
 - [x] GitHub Push başarılı: Tüm yeni nesil kodlar `main` branch'ine gönderildi.

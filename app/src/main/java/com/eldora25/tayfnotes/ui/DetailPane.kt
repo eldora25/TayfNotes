@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
@@ -27,9 +28,7 @@ import coil.compose.AsyncImage
 import com.eldora25.tayfnotes.shared.model.ChecklistItem
 import com.eldora25.tayfnotes.shared.model.Note
 import com.eldora25.tayfnotes.shared.model.NoteType
-import com.eldora25.tayfnotes.ui.components.DrawPath
-import com.eldora25.tayfnotes.ui.components.ShapeType
-import com.eldora25.tayfnotes.ui.components.ToolType
+import com.eldora25.tayfnotes.shared.model.drawing.*
 import kotlinx.serialization.json.Json
 import java.text.SimpleDateFormat
 import java.util.*
@@ -114,8 +113,8 @@ fun DetailPane(
         }
         
         if (note.sketchData?.isNotEmpty() == true) {
-            val paths = remember(note.sketchData) {
-                try { Json.decodeFromString<List<DrawPath>>(note.sketchData!!) } catch(_: Exception) { emptyList() }
+            val drawObjects = remember(note.sketchData) {
+                try { Json.decodeFromString<List<DrawObject>>(note.sketchData!!) } catch(_: Exception) { emptyList() }
             }
             Spacer(modifier = Modifier.height(32.dp))
             Text("Sketch Çizimi", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
@@ -127,36 +126,37 @@ fun DetailPane(
                 border = androidx.compose.foundation.BorderStroke(1.5.dp, Color.LightGray.copy(0.5f))
             ) {
                 Canvas(modifier = Modifier.fillMaxSize().padding(8.dp)) {
-                    paths.forEach { drawDataPath(it) }
+                    drawObjects.forEach { drawDrawObject(it) }
                 }
             }
         }
     }
 }
 
-private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawDataPath(drawPath: DrawPath) {
-    val color = if (drawPath.toolType == ToolType.ERASER) Color.White else Color(android.graphics.Color.parseColor(drawPath.colorHex)).run {
-        if (drawPath.toolType == ToolType.MARKER) this.copy(alpha = 0.45f) else this
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawDrawObject(obj: DrawObject) {
+    val color = if (obj.toolType == ToolType.ERASER) Color.White else Color(android.graphics.Color.parseColor(obj.colorHex)).run {
+        if (obj.toolType == ToolType.MARKER) this.copy(alpha = 0.45f) else this
     }
-    val fillColor = if (drawPath.isFilled && drawPath.fillColorHex != null) Color(android.graphics.Color.parseColor(drawPath.fillColorHex)) else Color.Transparent
+    val fillColor = if (obj.isFilled && obj.fillColorHex != null) Color(android.graphics.Color.parseColor(obj.fillColorHex)) else Color.Transparent
+    val blendMode = if (obj.toolType == ToolType.MARKER) BlendMode.Multiply else BlendMode.SrcOver
 
-    if (drawPath.toolType == ToolType.SHAPE && drawPath.points.size >= 2) {
-        val start = Offset(drawPath.points[0].x, drawPath.points[0].y)
-        val end = Offset(drawPath.points[1].x, drawPath.points[1].y)
+    if (obj.toolType == ToolType.SHAPE && obj.points.size >= 2) {
+        val start = Offset(obj.points[0].x, obj.points[0].y)
+        val end = Offset(obj.points[1].x, obj.points[1].y)
         val left = minOf(start.x, end.x)
         val top = minOf(start.y, end.y)
         val width = Math.abs(start.x - end.x)
         val height = Math.abs(start.y - end.y)
 
-        when (drawPath.shapeType) {
+        when (obj.shapeType) {
             ShapeType.RECTANGLE -> {
-                if (drawPath.isFilled) drawRect(fillColor, Offset(left, top), Size(width, height))
-                drawRect(color, Offset(left, top), Size(width, height), style = Stroke(width = drawPath.strokeWidth))
+                if (obj.isFilled) drawRect(fillColor, Offset(left, top), Size(width, height))
+                drawRect(color, Offset(left, top), Size(width, height), style = Stroke(width = obj.strokeWidth))
             }
             ShapeType.CIRCLE -> {
                 val radius = Math.sqrt((width * width + height * height).toDouble()).toFloat() / 2
-                if (drawPath.isFilled) drawCircle(fillColor, radius, Offset(left + width/2, top + height/2))
-                drawCircle(color, radius, Offset(left + width/2, top + height/2), style = Stroke(width = drawPath.strokeWidth))
+                if (obj.isFilled) drawCircle(fillColor, radius, Offset(left + width/2, top + height/2))
+                drawCircle(color, radius, Offset(left + width/2, top + height/2), style = Stroke(width = obj.strokeWidth))
             }
             ShapeType.TRIANGLE -> {
                 val path = Path().apply {
@@ -165,28 +165,24 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawDataPath(drawPa
                     lineTo(left + width, top + height)
                     close()
                 }
-                if (drawPath.isFilled) drawPath(path, fillColor)
-                drawPath(path, color, style = Stroke(width = drawPath.strokeWidth))
+                if (obj.isFilled) drawPath(path, fillColor)
+                drawPath(path, color, style = Stroke(width = obj.strokeWidth))
             }
             ShapeType.ELLIPSE -> {
-                if (drawPath.isFilled) drawOval(fillColor, Offset(left, top), Size(width, height))
-                drawOval(color, Offset(left, top), Size(width, height), style = Stroke(width = drawPath.strokeWidth))
+                if (obj.isFilled) drawOval(fillColor, Offset(left, top), Size(width, height))
+                drawOval(color, Offset(left, top), Size(width, height), style = Stroke(width = obj.strokeWidth))
             }
             ShapeType.ARC -> {
-                drawArc(color, 0f, 180f, false, Offset(left, top), Size(width, height), style = Stroke(width = drawPath.strokeWidth))
+                drawArc(color, 0f, 180f, false, Offset(left, top), Size(width, height), style = Stroke(width = obj.strokeWidth))
             }
             else -> {}
         }
     } else {
         val path = Path()
-        if (drawPath.points.isNotEmpty()) {
-            path.moveTo(drawPath.points[0].x, drawPath.points[0].y)
-            drawPath.points.forEach { path.lineTo(it.x, it.y) }
-            drawPath(
-                path = path,
-                color = color,
-                style = Stroke(width = drawPath.strokeWidth, cap = StrokeCap.Round)
-            )
+        if (obj.points.isNotEmpty()) {
+            path.moveTo(obj.points[0].x, obj.points[0].y)
+            obj.points.forEach { path.lineTo(it.x, it.y) }
+            drawPath(path = path, color = color, style = Stroke(width = obj.strokeWidth, cap = StrokeCap.Round), blendMode = blendMode)
         }
     }
 }

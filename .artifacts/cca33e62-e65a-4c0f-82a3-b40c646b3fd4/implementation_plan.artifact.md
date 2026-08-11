@@ -1,47 +1,45 @@
-# TayfNotes: Premium Arayüz, Gelişmiş Etkileşim ve Teknik Mükemmellik Planı (v31)
+# TayfNotes: Profesyonel Vektörel Sketch ve Tasarım Motoru Planı (v32)
 
-Bu plan, TayfNotes'u en üst düzey premium standartlara taşımayı, "Neon Zırh" ile görsel kusursuzluğu sağlamayı ve gerçek dünya senkronizasyon altyapısını kurmayı hedefler.
+Bu plan, TayfNotes'u basit bir çizim aracından çıkarıp; Figma, GoodNotes ve Procreate esintili gelişmiş bir "Vektörel Nesne Odaklı" tasarım merkezine dönüştürmeyi hedefler.
 
 ## User Review Required
 
 > [!IMPORTANT]
-> **Master-Detail:** Üst ve Alt barlar tam ekran genişliğinde kalırken, orta içerik alanı dikey ve yatayda 0.4 (Liste) / 0.6 (Detay) olarak bölünecektir.
-> **Sürükle-Bırak:** Manuel sıralama modu seçildiğinde notlar ve klasörler basılı tutularak yer değiştirilebilecektir.
-> **Gerçek Senkronizasyon:** Google/Dropbox hesap bağlama ekranları ve gerçek veri transferi protokolleri kurulacaktır.
+> **Nesne Odaklı Canvas:** Çizilen her şekil veya kalem darbesi artık bir "nesne" (Object) olarak ele alınacak; çizimden sonra dahi seçilip taşınabilecek, rengi ve kalınlığı değiştirilebilecektir.
+> **Premium Araçlar:** Dolma kalem (baskı duyarlı), kurşun kalem (dokulu) ve fosforlu kalem (Multiply Blend) modları eklenecektir.
 
 ## Proposed Changes
 
-### 1. Neon Zırh ve Premium Kontrast (Madde 1, 2, 7)
-- [MODIFY] `ui/theme/Theme.kt`: `EditorNeonIcon` bileşenini siyah dolgulu, sarı ikonlu ve dış neon ışıltılı olacak şekilde yenileme.
-- [MODIFY] `ui/ThemeSelectionScreen.kt`: Seçim anında tüm arayüzü güncelleyen "Live Preview" yapısı.
-- [MODIFY] `ui/components/NoteGridItem.kt`: "Accent Bar" ve %10 yansımalı premium kart tasarımı.
-
-### 2. Akıllı Ekran Yerleşimi (Madde 1, 3)
-- [MODIFY] `MainActivity.kt`: `Scaffold` yapısını barlar tam genişlikte kalacak, sadece `content` alanı 0.4/0.6 bölünecek şekilde refaktör etme.
-- [MODIFY] `ui/MainScreen.kt`: Not başlıklarının dar alanda `Ellipsis` ile dinamik sığdırılması.
-
-### 3. Sürükle-Bırak ve Gelişmiş Klasörleme (Madde 4, 5, 6)
-- [MODIFY] `ui/viewmodel/NoteViewModel.kt`: Pozisyon verilerini (`Int`) saklayacak ve güncelleyecek mantık.
-- [MODIFY] `ui/MainScreen.kt` & `ui/FoldersScreen.kt`: Uzun basım (Long Press) ile tetiklenen manuel yer değiştirme etkileşimi.
-
-### 4. Sketch Pro ve Gelişmiş Canvas (Madde 9, 10, 12)
+### 1. Vektörel Nesne Motoru (Object-Oriented Canvas)
 - [MODIFY] `ui/components/DrawingCanvas.kt`:
-    - **Wall & Fill:** Şekillerin kenar ve iç renklerinin bağımsız yönetimi.
-    - **Kalıcı Renk:** Kalem/Fırça geçişlerinde renk hafızasının korunması.
-    - **Tekil Kayıt:** Sadece "Bitti" tıklandığında Room'a nihai dökümanın gönderilmesi.
+    - Her `DrawPath` nesnesine `id`, `z-index`, `isSelected` alanlarının eklenmesi.
+    - **Seçim Modu:** Çizilen öğelerin üzerine tıklandığında seçilmesi ve etrafında sınır kutusu (Bounding Box) oluşması.
+    - **Bağlamsal Menü (Contextual Menu):** Seçili öğenin hemen üzerinde; Renk, Dolgu, Kalınlık ve Silme butonlarını içeren yüzen menü.
 
-### 5. Gerçek Bulut ve Ses Çözümü (Madde 8, 11)
-- [MODIFY] `util/AudioRecorder.kt`: Ses dosyasının yazılmama ve çalınmama sorununu gideren `MediaRecorder` konfigürasyon fixi.
-- [MODIFY] `shared/src/.../SyncManager.kt`: Gerçek OAuth2 akışlarını tetikleyen kimlik doğrulama katmanı.
+### 2. Premium UI/UX Geliştirmeleri
+- [MODIFY] `ui/components/DrawingCanvas.kt`:
+    - **Floating Glass Palette:** Sürüklenebilir, yarı saydam (Glassmorphism) hap şeklinde ana araç çubuğu.
+    - **Kalem Dinamikleri:**
+        - *Dolma Kalem:* Hıza bağlı uç kalınlığı değişimi (Baskı simülasyonu).
+        - *Kurşun Kalem:* Hafif doku ve %80 opaklık.
+        - *Fosforlu Kalem:* `BlendMode.Multiply` ile gerçekçi "soldurmayan" renk birleştirme.
+
+### 3. Gelişmiş Şekil ve Alan Yönetimi
+- [MODIFY] `ui/components/DrawingCanvas.kt`:
+    - Şekillerin (Kare, Daire, Elips, Yay, Üçgen) çizildikten sonra köşelerinden tutularak boyutlandırılması (Resize) ve taşınması.
+    - Karmaşık kesişim alanlarının doldurulması altyapısı.
+
+### 4. Teknik Altyapı ve Veri Kaydı
+- [MODIFY] `NoteViewModel.kt`: Vektörel nesne hiyerarşisini (Z-Index ve nesne ID'leri) koruyacak JSON serileştirme mantığı.
 
 ## Verification Plan
 
 ### Automated Verification
-- `./gradlew :app:assembleDebug` ile APK `v01.31` üretimi.
-- Unit testler ile position update mantığının kontrolü.
+- `./gradlew :app:assembleDebug` ile build kontrolü.
+- APK `TayfNotes_v01.32.apk` üretilecek.
 
 ### Manual Verification
-- Editör ikonlarının her renkte sarı/neon olarak parladığı görülecek.
-- Notu sola kaydırınca (Swipe) silme aksiyonu test edilecek.
-- Tablet dikey modda sağ panelin boş kalıp notla dolduğu doğrulanacak.
-- Ses kaydı yapılıp detay panelinden dinlenecek.
+- Bir kare çizilip daha sonra üzerine tıklanarak renginin değiştirildiği görülecek.
+- Araç çubuğunun ekranın farklı yerlerine sürüklenebildiği test edilecek.
+- Fosforlu kalemin alttaki yazıyı soldurmadan üzerine bindiği doğrulanacak.
+- GitHub Actions yedekleme kontrolü yapılacak.

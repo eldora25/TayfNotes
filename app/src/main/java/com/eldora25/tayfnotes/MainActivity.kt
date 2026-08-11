@@ -12,14 +12,18 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.automirrored.filled.Sort
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
+import com.eldora25.tayfnotes.BuildConfig
 import com.eldora25.tayfnotes.data.database.AppDatabase
 import com.eldora25.tayfnotes.data.repository.FolderRepository
 import com.eldora25.tayfnotes.data.repository.NoteRepository
@@ -69,28 +73,12 @@ class MainActivity : FragmentActivity() {
                 mutableStateOf(!isBiometricEnabled) 
             }
 
-            val permissionsToRequest = arrayOf(
-                Manifest.permission.CAMERA,
-                Manifest.permission.RECORD_AUDIO,
-                Manifest.permission.POST_NOTIFICATIONS
-            )
-
-            val permissionLauncher = rememberLauncherForActivityResult(
-                ActivityResultContracts.RequestMultiplePermissions()
-            ) { /* Results */ }
-
-            LaunchedEffect(Unit) {
-                permissionLauncher.launch(permissionsToRequest)
-            }
-
             LaunchedEffect(isBiometricEnabled) {
                 if (isBiometricEnabled && !isAuthenticated) {
                     BiometricHelper.authenticate(
                         activity = this@MainActivity,
                         onSuccess = { isAuthenticated = true },
-                        onError = { error ->
-                            Toast.makeText(this@MainActivity, "Güvenlik Hatası: $error", Toast.LENGTH_SHORT).show()
-                        }
+                        onError = { error -> Toast.makeText(this@MainActivity, "Güvenlik: $error", Toast.LENGTH_SHORT).show() }
                     )
                 }
             }
@@ -99,19 +87,15 @@ class MainActivity : FragmentActivity() {
                 darkTheme = isDarkModePref ?: isSystemInDarkTheme(),
                 currentTheme = currentTheme
             ) {
-                if (isAuthenticated) {
-                    MainAppContent()
-                } else {
-                    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
-                            Text("TayfNotes Kilitli", style = MaterialTheme.typography.headlineMedium)
-                        }
-                    }
+                if (isAuthenticated) MainAppContent()
+                else Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                    Box(contentAlignment = Alignment.Center) { Text("TayfNotes Kilitli", style = MaterialTheme.typography.headlineMedium) }
                 }
             }
         }
     }
 
+    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun MainAppContent() {
         var currentScreen by remember { mutableStateOf<Screen>(Screen.Main) }
@@ -127,20 +111,19 @@ class MainActivity : FragmentActivity() {
         val activeCloudProvider by noteViewModel.activeCloudProvider.collectAsState()
         
         var selectedNoteInMasterDetail by remember { mutableStateOf<Note?>(null) }
+        var sortType by remember { mutableStateOf(SortType.DATE_MODIFIED) }
+        var showSortMenu by remember { mutableStateOf(false) }
 
         val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
             uri?.let {
                 BackupImportHelper.importBackup(this, it, 
-                    onComplete = { Toast.makeText(this, "Yedek başarıyla yüklendi. Uygulamayı yeniden başlatın.", Toast.LENGTH_LONG).show() },
+                    onComplete = { Toast.makeText(this, "Yedek yüklendi.", Toast.LENGTH_LONG).show() },
                     onError = { e -> Toast.makeText(this, "Hata: ${e.message}", Toast.LENGTH_SHORT).show() }
                 )
             }
         }
 
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.background
-        ) {
+        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             if (currentScreen is Screen.EditNote) {
                 val screen = currentScreen as Screen.EditNote
                 BackHandler { currentScreen = Screen.Main }
@@ -150,10 +133,7 @@ class MainActivity : FragmentActivity() {
                     initialSketch = screen.initialSketch,
                     onBack = { currentScreen = Screen.Main },
                     onSave = { noteViewModel.saveNote(it) },
-                    onDelete = { 
-                        noteViewModel.trashNote(it.id)
-                        currentScreen = Screen.Main
-                    }
+                    onDelete = { noteViewModel.trashNote(it.id); currentScreen = Screen.Main }
                 )
             } else if (currentScreen is Screen.ThemeSelection) {
                 BackHandler { currentScreen = Screen.More }
@@ -165,105 +145,62 @@ class MainActivity : FragmentActivity() {
                     onBack = { currentScreen = Screen.More }
                 )
             } else {
-                // Madde 1, 3: Full Width Top/Bottom bars, Split only for Middle Content
                 Scaffold(
-                    bottomBar = {
-                        BottomNavigationBar(
-                            currentScreen = currentScreen,
-                            onScreenChange = { currentScreen = it },
-                            onNotesClick = { noteViewModel.onFolderSelected(null) }
+                    topBar = {
+                        CenterAlignedTopAppBar(
+                            title = { 
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text("TayfNotes", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold)
+                                    Text("buildv01.${BuildConfig.BUILD_NO} Tayfun YAMAK©", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                                }
+                            },
+                            actions = {
+                                if (currentScreen == Screen.Main || currentScreen == Screen.Folders) {
+                                    IconButton(onClick = { showSortMenu = true }) { Icon(Icons.AutoMirrored.Filled.Sort, null) }
+                                    DropdownMenu(expanded = showSortMenu, onDismissRequest = { showSortMenu = false }) {
+                                        DropdownMenuItem(text = { Text("Zamana Göre") }, onClick = { sortType = SortType.DATE_MODIFIED; showSortMenu = false })
+                                        DropdownMenuItem(text = { Text("Alfabetik") }, onClick = { sortType = SortType.ALPHABETICAL; showSortMenu = false })
+                                        DropdownMenuItem(text = { Text("Renge Göre") }, onClick = { sortType = SortType.COLOR; showSortMenu = false })
+                                        DropdownMenuItem(text = { Text("Manuel") }, onClick = { sortType = SortType.MANUAL; showSortMenu = false })
+                                    }
+                                }
+                            }
                         )
+                    },
+                    bottomBar = {
+                        Column {
+                            if (currentScreen == Screen.Main) {
+                                Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 8.dp) {
+                                    Row(modifier = Modifier.fillMaxWidth().padding(12.dp).navigationBarsPadding(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        AddActionButton(Icons.Default.Description, "Not", MaterialTheme.colorScheme.primary, Modifier.weight(1f)) { currentScreen = Screen.EditNote() }
+                                        AddActionButton(Icons.Default.Checklist, "Liste", MaterialTheme.colorScheme.secondary, Modifier.weight(1f)) { currentScreen = Screen.EditNote(note = Note(id = System.currentTimeMillis().toString(), title = "", content = "", type = com.eldora25.tayfnotes.shared.model.NoteType.CHECKLIST)) }
+                                        AddActionButton(Icons.Default.Gesture, "Sketch", MaterialTheme.colorScheme.tertiary, Modifier.weight(1f)) { currentScreen = Screen.EditNote(initialSketch = true) }
+                                    }
+                                }
+                            }
+                            BottomNavigationBar(currentScreen, { currentScreen = it }, { noteViewModel.onFolderSelected(null) })
+                        }
                     }
                 ) { innerPadding ->
                     Row(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
-                        // Left 0.4 column for LIST
                         Box(modifier = Modifier.weight(0.4f)) {
                             when (currentScreen) {
-                                is Screen.Main -> MainScreen(
-                                    notes = notes,
-                                    searchQuery = searchQuery,
-                                    onSearchQueryChanged = { noteViewModel.onSearchQueryChanged(it) },
-                                    onAddNote = { currentScreen = Screen.EditNote() },
-                                    onAddChecklist = { currentScreen = Screen.EditNote(note = Note(id = System.currentTimeMillis().toString(), title = "", content = "", type = com.eldora25.tayfnotes.shared.model.NoteType.CHECKLIST)) },
-                                    onAddSketch = { currentScreen = Screen.EditNote(initialSketch = true) },
-                                    onEditNote = { note -> 
-                                        selectedNoteInMasterDetail = note
-                                    },
-                                    onMoveNote = { from, to -> noteViewModel.updateNotePosition(from, to) },
-                                    selectedNoteId = selectedNoteInMasterDetail?.id
-                                )
-                                is Screen.Folders -> FoldersScreen(
-                                    folders = folders,
-                                    onFolderClick = { folder ->
-                                        noteViewModel.onFolderSelected(folder.id)
-                                        currentScreen = Screen.Main
-                                    },
-                                    onAddFolder = { name, color -> noteViewModel.addFolder(name, color) },
-                                    onUpdateFolder = { folder -> noteViewModel.updateFolder(folder) },
-                                    onMoveFolder = { from, to -> noteViewModel.updateFolderPosition(from, to) }
-                                )
-                                is Screen.Calendar -> CalendarScreen(
-                                    notes = notes,
-                                    onEditNote = { note -> selectedNoteInMasterDetail = note }
-                                )
-                                is Screen.More -> MoreScreen(onScreenChange = { currentScreen = it })
-                                is Screen.Archive -> NoteListScreen(
-                                    title = "Arşiv",
-                                    notes = archivedNotes,
-                                    onBack = { currentScreen = Screen.More },
-                                    onEditNote = { note -> selectedNoteInMasterDetail = note }
-                                )
-                                is Screen.Trash -> NoteListScreen(
-                                    title = "Çöp Kutusu",
-                                    notes = trashedNotes,
-                                    onBack = { currentScreen = Screen.More },
-                                    onEditNote = { note -> selectedNoteInMasterDetail = note },
-                                    onEmptyTrash = { noteViewModel.emptyTrash() }
-                                )
-                                is Screen.Settings -> SettingsScreen(
-                                    onBack = { currentScreen = Screen.More },
-                                    isSyncing = isSyncing,
-                                    onSyncClick = { 
-                                        if (activeCloudProvider == null) {
-                                            Toast.makeText(this@MainActivity, "Lütfen önce bir sağlayıcı seçin.", Toast.LENGTH_SHORT).show()
-                                        } else {
-                                            noteViewModel.syncData() 
-                                        }
-                                    },
-                                    currentTheme = currentTheme,
-                                    onThemeSelected = { noteViewModel.setTheme(it) },
-                                    isDarkMode = isDarkModePref,
-                                    onDarkModeChanged = { noteViewModel.setDarkMode(it) },
-                                    isBiometricEnabled = isBiometricEnabled,
-                                    onBiometricToggle = { noteViewModel.setBiometricEnabled(it) },
-                                    activeCloudProvider = activeCloudProvider,
-                                    onCloudProviderSelected = { noteViewModel.setCloudProvider(it) },
-                                    onFullBackupClick = {
-                                        noteViewModel.exportFullBackup { file ->
-                                            BackupPackageHelper.shareBackup(this@MainActivity, file)
-                                        }
-                                    },
-                                    onImportBackupClick = { importLauncher.launch("application/zip") }
-                                )
+                                is Screen.Main -> MainScreen(notes, searchQuery, { selectedNoteInMasterDetail = it }, selectedNoteInMasterDetail?.id, sortType)
+                                is Screen.Folders -> FoldersScreen(folders, { noteViewModel.onFolderSelected(it.id); currentScreen = Screen.Main }, { n, c -> noteViewModel.addFolder(n, c) }, { noteViewModel.updateFolder(it) })
+                                is Screen.Calendar -> CalendarScreen(notes, { selectedNoteInMasterDetail = it })
+                                is Screen.More -> MoreScreen { currentScreen = it }
+                                is Screen.Archive -> NoteListScreen("Arşiv", archivedNotes, { currentScreen = Screen.More }, { selectedNoteInMasterDetail = it })
+                                is Screen.Trash -> NoteListScreen("Çöp", trashedNotes, { currentScreen = Screen.More }, { selectedNoteInMasterDetail = it }, { noteViewModel.emptyTrash() })
+                                is Screen.Settings -> SettingsScreen({ currentScreen = Screen.More }, isSyncing, { noteViewModel.syncData() }, currentTheme, { noteViewModel.setTheme(it) }, isDarkModePref, { noteViewModel.setDarkMode(it) }, isBiometricEnabled, { noteViewModel.setBiometricEnabled(it) }, activeCloudProvider, { noteViewModel.setCloudProvider(it) }, { noteViewModel.exportFullBackup { BackupPackageHelper.shareBackup(this@MainActivity, it) } }, { importLauncher.launch("application/zip") })
                                 else -> {}
                             }
                         }
-                        
-                        // Right 0.6 Detail Pane
                         VerticalDivider(modifier = Modifier.fillMaxHeight(), thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
                         Box(modifier = Modifier.weight(0.6f)) {
-                            DetailPane(
-                                note = selectedNoteInMasterDetail,
-                                modifier = Modifier.fillMaxSize()
-                            )
+                            DetailPane(selectedNoteInMasterDetail, Modifier.fillMaxSize())
                             if (selectedNoteInMasterDetail != null) {
-                                IconButton(
-                                    onClick = { currentScreen = Screen.EditNote(selectedNoteInMasterDetail) },
-                                    modifier = Modifier.align(androidx.compose.ui.Alignment.TopEnd).padding(16.dp)
-                                ) {
-                                    EditorNeonIcon {
-                                        Icon(Icons.Default.Edit, contentDescription = "Düzenle")
-                                    }
+                                IconButton(onClick = { currentScreen = Screen.EditNote(selectedNoteInMasterDetail) }, modifier = Modifier.align(Alignment.TopEnd).padding(16.dp)) {
+                                    EditorNeonIcon { Icon(Icons.Default.Edit, null) }
                                 }
                             }
                         }

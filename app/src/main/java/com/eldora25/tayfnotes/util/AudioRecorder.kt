@@ -12,7 +12,7 @@ class AudioRecorder(private val context: Context) {
 
     fun startRecording(outputFile: File) {
         try {
-            if (recorder != null) stopRecording()
+            stopRecording() // Clean up existing
             
             recorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 MediaRecorder(context)
@@ -37,8 +37,7 @@ class AudioRecorder(private val context: Context) {
     fun stopRecording() {
         try {
             recorder?.stop()
-        } catch (e: Exception) {
-            // Stop fails if recording is too short
+        } catch (_: Exception) {
         } finally {
             recorder?.release()
             recorder = null
@@ -65,7 +64,9 @@ class AudioRecorder(private val context: Context) {
     }
 
     fun stopPlaying() {
-        player?.stop()
+        try {
+            player?.stop()
+        } catch (_: Exception) {}
         player?.release()
         player = null
     }
