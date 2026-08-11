@@ -16,7 +16,10 @@ data class DrawObject(
 )
 
 enum class ToolType { PEN, MARKER, ERASER, SHAPE, SELECT }
-enum class ShapeType { RECTANGLE, CIRCLE, TRIANGLE, ELLIPSE, ARC }
+enum class ShapeType {
+    SQUARE, RECTANGLE, CIRCLE, ELLIPSE, EQUILATERAL_TRIANGLE, RIGHT_TRIANGLE,
+    TRAPEZOID, PARALLELOGRAM, DIAMOND, PENTAGON, HEXAGON, STAR, ARC, LINE, DOUBLE_ARROW
+}
 
 @Serializable
 data class Point(val x: Float, val y: Float)

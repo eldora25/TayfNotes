@@ -23,6 +23,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.eldora25.tayfnotes.shared.model.drawing.*
@@ -55,6 +56,7 @@ fun DrawingCanvas(
     var currentTool by remember { mutableStateOf(ToolType.PEN) }
     var currentShape by remember { mutableStateOf(ShapeType.RECTANGLE) }
     var isFillEnabled by remember { mutableStateOf(false) }
+    var dragHandle by remember { mutableStateOf<Int?>(null) } // 0: TopLeft, 3: BottomRight, 4: Move
     
     // UI State
     var showColorPicker by remember { mutableStateOf(false) }
@@ -65,12 +67,55 @@ fun DrawingCanvas(
         Canvas(
             modifier = Modifier
                 .fillMaxSize()
-                .pointerInput(currentTool, currentShape, currentColor, currentStrokeWidth, isFillEnabled, currentFillColor) {
+                .pointerInput(currentTool, currentShape, currentColor, currentStrokeWidth, isFillEnabled, currentFillColor, selectedObjectId) {
                     if (currentTool == ToolType.SELECT) {
-                        detectTapGestures { offset ->
-                            val hit = objects.findLast { obj -> getObjectBounds(obj).contains(offset) }
-                            selectedObjectId = hit?.id
-                        }
+                        detectDragGestures(
+                            onDragStart = { offset ->
+                                val selObj = objects.find { it.id == selectedObjectId }
+                                if (selObj != null) {
+                                    val bounds = getObjectBounds(selObj)
+                                    if ((Offset(bounds.left, bounds.top) - offset).getDistance() < 30f) dragHandle = 0
+                                    else if ((Offset(bounds.right, bounds.bottom) - offset).getDistance() < 30f) dragHandle = 3
+                                    else if (bounds.contains(offset)) dragHandle = 4
+                                    else dragHandle = null
+                                }
+                                
+                                if (dragHandle == null) {
+                                    val hit = objects.findLast { obj -> getObjectBounds(obj).contains(offset) }
+                                    selectedObjectId = hit?.id
+                                    if (selectedObjectId != null) dragHandle = 4
+                                }
+                            },
+                            onDrag = { change, dragAmount ->
+                                change.consume()
+                                val selId = selectedObjectId ?: return@detectDragGestures
+                                objects = objects.map { obj ->
+                                    if (obj.id == selId) {
+                                        when (dragHandle) {
+                                            4 -> obj.copy(points = obj.points.map { Point(it.x + dragAmount.x, it.y + dragAmount.y) })
+                                            0 -> {
+                                                val newPoints = obj.points.toMutableList()
+                                                if (newPoints.isNotEmpty()) newPoints[0] = Point(newPoints[0].x + change.position.x - (newPoints[0].x), newPoints[0].y + change.position.y - (newPoints[0].y))
+                                                obj.copy(points = newPoints)
+                                            }
+                                            3 -> {
+                                                val newPoints = obj.points.toMutableList()
+                                                val idx = if (obj.toolType == ToolType.SHAPE) 1 else newPoints.size - 1
+                                                if (idx >= 0 && idx < newPoints.size) {
+                                                    newPoints[idx] = Point(change.position.x, change.position.y)
+                                                }
+                                                obj.copy(points = newPoints)
+                                            }
+                                            else -> obj
+                                        }
+                                    } else obj
+                                }
+                            },
+                            onDragEnd = {
+                                dragHandle = null
+                                onDataChanged(Json.encodeToString(objects))
+                            }
+                        )
                     } else {
                         detectDragGestures(
                             onDragStart = { offset ->
@@ -227,21 +272,54 @@ fun DrawingCanvas(
     if (showShapePicker) {
         AlertDialog(
             onDismissRequest = { showShapePicker = false },
-            title = { Text("Şekil Seç") },
+            title = { Text("Şekil Seçin", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) },
             text = {
-                Column {
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                        IconButton(onClick = { currentTool = ToolType.SHAPE; currentShape = ShapeType.RECTANGLE; showShapePicker = false }) { Icon(Icons.Default.Rectangle, null) }
-                        IconButton(onClick = { currentTool = ToolType.SHAPE; currentShape = ShapeType.CIRCLE; showShapePicker = false }) { Icon(Icons.Default.Circle, null) }
-                        IconButton(onClick = { currentTool = ToolType.SHAPE; currentShape = ShapeType.TRIANGLE; showShapePicker = false }) { Icon(Icons.Default.ChangeHistory, null) }
-                    }
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                        IconButton(onClick = { currentTool = ToolType.SHAPE; currentShape = ShapeType.ELLIPSE; showShapePicker = false }) { Icon(Icons.Default.FilterTiltShift, null) }
-                        IconButton(onClick = { currentTool = ToolType.SHAPE; currentShape = ShapeType.ARC; showShapePicker = false }) { Icon(Icons.Default.Architecture, null) }
+                val shapes = listOf(
+                    ShapeType.SQUARE to Icons.Default.Square,
+                    ShapeType.RECTANGLE to Icons.Default.Rectangle,
+                    ShapeType.CIRCLE to Icons.Default.Circle,
+                    ShapeType.ELLIPSE to Icons.Default.FilterTiltShift,
+                    ShapeType.EQUILATERAL_TRIANGLE to Icons.Default.ChangeHistory,
+                    ShapeType.RIGHT_TRIANGLE to Icons.Default.Details,
+                    ShapeType.TRAPEZOID to Icons.Default.Category,
+                    ShapeType.PARALLELOGRAM to Icons.Default.Layers,
+                    ShapeType.DIAMOND to Icons.Default.Diamond,
+                    ShapeType.PENTAGON to Icons.Default.Pentagon,
+                    ShapeType.HEXAGON to Icons.Default.Hexagon,
+                    ShapeType.STAR to Icons.Default.Star,
+                    ShapeType.ARC to Icons.Default.Architecture,
+                    ShapeType.LINE to Icons.Default.HorizontalRule,
+                    ShapeType.DOUBLE_ARROW to Icons.Default.SwapHoriz
+                )
+                
+                androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
+                    columns = androidx.compose.foundation.lazy.grid.GridCells.Fixed(3),
+                    modifier = Modifier.height(300.dp).fillMaxWidth(),
+                    contentPadding = PaddingValues(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(shapes.size) { index ->
+                        val (shape, icon) = shapes[index]
+                        Surface(
+                            onClick = {
+                                currentTool = ToolType.SHAPE
+                                currentShape = shape
+                                showShapePicker = false
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (currentShape == shape) Color(0xFFFFD700).copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant,
+                            border = if (currentShape == shape) androidx.compose.foundation.BorderStroke(1.5.dp, Color(0xFFFFD700)) else null,
+                            modifier = Modifier.aspectRatio(1f)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(icon, contentDescription = shape.name, modifier = Modifier.size(28.dp), tint = if (currentShape == shape) Color(0xFFFFD700) else MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
                     }
                 }
             },
-            confirmButton = {}
+            confirmButton = { TextButton(onClick = { showShapePicker = false }) { Text("Kapat") } }
         )
     }
 }
@@ -284,16 +362,25 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawDrawObject(obj:
         val height = Math.abs(start.y - end.y)
 
         when (obj.shapeType) {
+            ShapeType.SQUARE -> {
+                val side = minOf(width, height)
+                if (obj.isFilled) drawRect(fillColor, Offset(left, top), Size(side, side))
+                drawRect(color, Offset(left, top), Size(side, side), style = Stroke(width = obj.strokeWidth))
+            }
             ShapeType.RECTANGLE -> {
                 if (obj.isFilled) drawRect(fillColor, Offset(left, top), Size(width, height))
                 drawRect(color, Offset(left, top), Size(width, height), style = Stroke(width = obj.strokeWidth))
             }
             ShapeType.CIRCLE -> {
-                val radius = Math.sqrt((width * width + height * height).toDouble()).toFloat() / 2
+                val radius = minOf(width, height) / 2
                 if (obj.isFilled) drawCircle(fillColor, radius, Offset(left + width/2, top + height/2))
                 drawCircle(color, radius, Offset(left + width/2, top + height/2), style = Stroke(width = obj.strokeWidth))
             }
-            ShapeType.TRIANGLE -> {
+            ShapeType.ELLIPSE -> {
+                if (obj.isFilled) drawOval(fillColor, Offset(left, top), Size(width, height))
+                drawOval(color, Offset(left, top), Size(width, height), style = Stroke(width = obj.strokeWidth))
+            }
+            ShapeType.EQUILATERAL_TRIANGLE -> {
                 val path = Path().apply {
                     moveTo(left + width/2, top)
                     lineTo(left, top + height)
@@ -303,12 +390,74 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawDrawObject(obj:
                 if (obj.isFilled) drawPath(path, fillColor)
                 drawPath(path, color, style = Stroke(width = obj.strokeWidth))
             }
-            ShapeType.ELLIPSE -> {
-                if (obj.isFilled) drawOval(fillColor, Offset(left, top), Size(width, height))
-                drawOval(color, Offset(left, top), Size(width, height), style = Stroke(width = obj.strokeWidth))
+            ShapeType.RIGHT_TRIANGLE -> {
+                val path = Path().apply {
+                    moveTo(left, top)
+                    lineTo(left, top + height)
+                    lineTo(left + width, top + height)
+                    close()
+                }
+                if (obj.isFilled) drawPath(path, fillColor)
+                drawPath(path, color, style = Stroke(width = obj.strokeWidth))
+            }
+            ShapeType.TRAPEZOID -> {
+                val path = Path().apply {
+                    moveTo(left + width * 0.25f, top)
+                    lineTo(left + width * 0.75f, top)
+                    lineTo(left + width, top + height)
+                    lineTo(left, top + height)
+                    close()
+                }
+                if (obj.isFilled) drawPath(path, fillColor)
+                drawPath(path, color, style = Stroke(width = obj.strokeWidth))
+            }
+            ShapeType.PARALLELOGRAM -> {
+                val path = Path().apply {
+                    moveTo(left + width * 0.25f, top)
+                    lineTo(left + width, top)
+                    lineTo(left + width * 0.75f, top + height)
+                    lineTo(left, top + height)
+                    close()
+                }
+                if (obj.isFilled) drawPath(path, fillColor)
+                drawPath(path, color, style = Stroke(width = obj.strokeWidth))
+            }
+            ShapeType.DIAMOND -> {
+                val path = Path().apply {
+                    moveTo(left + width/2, top)
+                    lineTo(left + width, top + height/2)
+                    lineTo(left + width/2, top + height)
+                    lineTo(left, top + height/2)
+                    close()
+                }
+                if (obj.isFilled) drawPath(path, fillColor)
+                drawPath(path, color, style = Stroke(width = obj.strokeWidth))
+            }
+            ShapeType.PENTAGON -> {
+                val path = drawPolygon(left, top, width, height, 5)
+                if (obj.isFilled) drawPath(path, fillColor)
+                drawPath(path, color, style = Stroke(width = obj.strokeWidth))
+            }
+            ShapeType.HEXAGON -> {
+                val path = drawPolygon(left, top, width, height, 6)
+                if (obj.isFilled) drawPath(path, fillColor)
+                drawPath(path, color, style = Stroke(width = obj.strokeWidth))
+            }
+            ShapeType.STAR -> {
+                val path = drawStar(left, top, width, height)
+                if (obj.isFilled) drawPath(path, fillColor)
+                drawPath(path, color, style = Stroke(width = obj.strokeWidth))
             }
             ShapeType.ARC -> {
                 drawArc(color, 0f, 180f, false, Offset(left, top), Size(width, height), style = Stroke(width = obj.strokeWidth))
+            }
+            ShapeType.LINE -> {
+                drawLine(color, start, end, strokeWidth = obj.strokeWidth)
+            }
+            ShapeType.DOUBLE_ARROW -> {
+                drawLine(color, start, end, strokeWidth = obj.strokeWidth)
+                drawArrowHead(start, end, color, obj.strokeWidth)
+                drawArrowHead(end, start, color, obj.strokeWidth)
             }
             else -> {}
         }
@@ -324,9 +473,60 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawDrawObject(obj:
     if (isSelected) {
         val bounds = getObjectBounds(obj)
         drawRect(Color.Blue.copy(alpha = 0.3f), bounds.topLeft, bounds.size, style = Stroke(width = 2f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f))))
+        
+        // Drag Handles
+        drawCircle(Color.White, radius = 12f, center = bounds.topLeft, style = Stroke(width = 3f))
+        drawCircle(Color.Blue, radius = 10f, center = bounds.topLeft)
+        
+        drawCircle(Color.White, radius = 12f, center = bounds.bottomRight, style = Stroke(width = 3f))
+        drawCircle(Color.Blue, radius = 10f, center = bounds.bottomRight)
     }
 }
 
 private fun Color.toArgb(): Int {
     return (alpha * 255.0f + 0.5f).toInt() shl 24 or (red * 255.0f + 0.5f).toInt() shl 16 or (green * 255.0f + 0.5f).toInt() shl 8 or (blue * 255.0f + 0.5f).toInt()
+}
+
+private fun drawPolygon(left: Float, top: Float, width: Float, height: Float, sides: Int): Path {
+    val path = Path()
+    val centerX = left + width / 2
+    val centerY = top + height / 2
+    val radius = minOf(width, height) / 2
+    for (i in 0 until sides) {
+        val angle = 2.0 * Math.PI * i / sides - Math.PI / 2
+        val x = centerX + radius * Math.cos(angle).toFloat()
+        val y = centerY + radius * Math.sin(angle).toFloat()
+        if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+    }
+    path.close()
+    return path
+}
+
+private fun drawStar(left: Float, top: Float, width: Float, height: Float): Path {
+    val path = Path()
+    val centerX = left + width / 2
+    val centerY = top + height / 2
+    val outerRadius = minOf(width, height) / 2
+    val innerRadius = outerRadius * 0.4f
+    for (i in 0 until 10) {
+        val angle = Math.PI * i / 5 - Math.PI / 2
+        val r = if (i % 2 == 0) outerRadius else innerRadius
+        val x = centerX + r * Math.cos(angle).toFloat()
+        val y = centerY + r * Math.sin(angle).toFloat()
+        if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+    }
+    path.close()
+    return path
+}
+
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawArrowHead(start: Offset, end: Offset, color: Color, strokeWidth: Float) {
+    val angle = Math.atan2((end.y - start.y).toDouble(), (end.x - start.x).toDouble())
+    val arrowLength = 20f + strokeWidth
+    val arrowAngle = Math.PI / 6
+    val x1 = end.x - arrowLength * Math.cos(angle - arrowAngle).toFloat()
+    val y1 = end.y - arrowLength * Math.sin(angle - arrowAngle).toFloat()
+    val x2 = end.x - arrowLength * Math.cos(angle + arrowAngle).toFloat()
+    val y2 = end.y - arrowLength * Math.sin(angle + arrowAngle).toFloat()
+    drawLine(color, end, Offset(x1, y1), strokeWidth = strokeWidth)
+    drawLine(color, end, Offset(x2, y2), strokeWidth = strokeWidth)
 }

@@ -149,16 +149,25 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawDrawObject(obj:
         val height = Math.abs(start.y - end.y)
 
         when (obj.shapeType) {
+            ShapeType.SQUARE -> {
+                val side = minOf(width, height)
+                if (obj.isFilled) drawRect(fillColor, Offset(left, top), Size(side, side))
+                drawRect(color, Offset(left, top), Size(side, side), style = Stroke(width = obj.strokeWidth))
+            }
             ShapeType.RECTANGLE -> {
                 if (obj.isFilled) drawRect(fillColor, Offset(left, top), Size(width, height))
                 drawRect(color, Offset(left, top), Size(width, height), style = Stroke(width = obj.strokeWidth))
             }
             ShapeType.CIRCLE -> {
-                val radius = Math.sqrt((width * width + height * height).toDouble()).toFloat() / 2
+                val radius = minOf(width, height) / 2
                 if (obj.isFilled) drawCircle(fillColor, radius, Offset(left + width/2, top + height/2))
                 drawCircle(color, radius, Offset(left + width/2, top + height/2), style = Stroke(width = obj.strokeWidth))
             }
-            ShapeType.TRIANGLE -> {
+            ShapeType.ELLIPSE -> {
+                if (obj.isFilled) drawOval(fillColor, Offset(left, top), Size(width, height))
+                drawOval(color, Offset(left, top), Size(width, height), style = Stroke(width = obj.strokeWidth))
+            }
+            ShapeType.EQUILATERAL_TRIANGLE -> {
                 val path = Path().apply {
                     moveTo(left + width/2, top)
                     lineTo(left, top + height)
@@ -168,12 +177,74 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawDrawObject(obj:
                 if (obj.isFilled) drawPath(path, fillColor)
                 drawPath(path, color, style = Stroke(width = obj.strokeWidth))
             }
-            ShapeType.ELLIPSE -> {
-                if (obj.isFilled) drawOval(fillColor, Offset(left, top), Size(width, height))
-                drawOval(color, Offset(left, top), Size(width, height), style = Stroke(width = obj.strokeWidth))
+            ShapeType.RIGHT_TRIANGLE -> {
+                val path = Path().apply {
+                    moveTo(left, top)
+                    lineTo(left, top + height)
+                    lineTo(left + width, top + height)
+                    close()
+                }
+                if (obj.isFilled) drawPath(path, fillColor)
+                drawPath(path, color, style = Stroke(width = obj.strokeWidth))
+            }
+            ShapeType.TRAPEZOID -> {
+                val path = Path().apply {
+                    moveTo(left + width * 0.25f, top)
+                    lineTo(left + width * 0.75f, top)
+                    lineTo(left + width, top + height)
+                    lineTo(left, top + height)
+                    close()
+                }
+                if (obj.isFilled) drawPath(path, fillColor)
+                drawPath(path, color, style = Stroke(width = obj.strokeWidth))
+            }
+            ShapeType.PARALLELOGRAM -> {
+                val path = Path().apply {
+                    moveTo(left + width * 0.25f, top)
+                    lineTo(left + width, top)
+                    lineTo(left + width * 0.75f, top + height)
+                    lineTo(left, top + height)
+                    close()
+                }
+                if (obj.isFilled) drawPath(path, fillColor)
+                drawPath(path, color, style = Stroke(width = obj.strokeWidth))
+            }
+            ShapeType.DIAMOND -> {
+                val path = Path().apply {
+                    moveTo(left + width/2, top)
+                    lineTo(left + width, top + height/2)
+                    lineTo(left + width/2, top + height)
+                    lineTo(left, top + height/2)
+                    close()
+                }
+                if (obj.isFilled) drawPath(path, fillColor)
+                drawPath(path, color, style = Stroke(width = obj.strokeWidth))
+            }
+            ShapeType.PENTAGON -> {
+                val path = drawPolygon(left, top, width, height, 5)
+                if (obj.isFilled) drawPath(path, fillColor)
+                drawPath(path, color, style = Stroke(width = obj.strokeWidth))
+            }
+            ShapeType.HEXAGON -> {
+                val path = drawPolygon(left, top, width, height, 6)
+                if (obj.isFilled) drawPath(path, fillColor)
+                drawPath(path, color, style = Stroke(width = obj.strokeWidth))
+            }
+            ShapeType.STAR -> {
+                val path = drawStar(left, top, width, height)
+                if (obj.isFilled) drawPath(path, fillColor)
+                drawPath(path, color, style = Stroke(width = obj.strokeWidth))
             }
             ShapeType.ARC -> {
                 drawArc(color, 0f, 180f, false, Offset(left, top), Size(width, height), style = Stroke(width = obj.strokeWidth))
+            }
+            ShapeType.LINE -> {
+                drawLine(color, start, end, strokeWidth = obj.strokeWidth)
+            }
+            ShapeType.DOUBLE_ARROW -> {
+                drawLine(color, start, end, strokeWidth = obj.strokeWidth)
+                drawArrowHead(start, end, color, obj.strokeWidth)
+                drawArrowHead(end, start, color, obj.strokeWidth)
             }
             else -> {}
         }
@@ -186,3 +257,48 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawDrawObject(obj:
         }
     }
 }
+
+private fun drawPolygon(left: Float, top: Float, width: Float, height: Float, sides: Int): Path {
+    val path = Path()
+    val centerX = left + width / 2
+    val centerY = top + height / 2
+    val radius = minOf(width, height) / 2
+    for (i in 0 until sides) {
+        val angle = 2.0 * Math.PI * i / sides - Math.PI / 2
+        val x = centerX + radius * Math.cos(angle).toFloat()
+        val y = centerY + radius * Math.sin(angle).toFloat()
+        if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+    }
+    path.close()
+    return path
+}
+
+private fun drawStar(left: Float, top: Float, width: Float, height: Float): Path {
+    val path = Path()
+    val centerX = left + width / 2
+    val centerY = top + height / 2
+    val outerRadius = minOf(width, height) / 2
+    val innerRadius = outerRadius * 0.4f
+    for (i in 0 until 10) {
+        val angle = Math.PI * i / 5 - Math.PI / 2
+        val r = if (i % 2 == 0) outerRadius else innerRadius
+        val x = centerX + r * Math.cos(angle).toFloat()
+        val y = centerY + r * Math.sin(angle).toFloat()
+        if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+    }
+    path.close()
+    return path
+}
+
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawArrowHead(start: Offset, end: Offset, color: Color, strokeWidth: Float) {
+    val angle = Math.atan2((end.y - start.y).toDouble(), (end.x - start.x).toDouble())
+    val arrowLength = 20f + strokeWidth
+    val arrowAngle = Math.PI / 6
+    val x1 = end.x - arrowLength * Math.cos(angle - arrowAngle).toFloat()
+    val y1 = end.y - arrowLength * Math.sin(angle - arrowAngle).toFloat()
+    val x2 = end.x - arrowLength * Math.cos(angle + arrowAngle).toFloat()
+    val y2 = end.y - arrowLength * Math.sin(angle + arrowAngle).toFloat()
+    drawLine(color, end, Offset(x1, y1), strokeWidth = strokeWidth)
+    drawLine(color, end, Offset(x2, y2), strokeWidth = strokeWidth)
+}
+
