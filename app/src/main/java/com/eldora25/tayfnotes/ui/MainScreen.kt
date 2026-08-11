@@ -9,6 +9,7 @@ import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -18,8 +19,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -43,11 +46,16 @@ fun MainScreen(
     onMoveNote: (Int, Int) -> Unit,
     onDeleteNote: (Note) -> Unit = {},
     selectedNoteId: String? = null,
-    bottomBar: @Composable () -> Unit = {} // Added for integration
+    bottomBar: @Composable () -> Unit = {}
 ) {
     var isSearchActive by remember { mutableStateOf(false) }
     var sortType by remember { mutableStateOf(SortType.DATE_MODIFIED) }
     var showSortMenu by remember { mutableStateOf(false) }
+    
+    val listState = rememberLazyListState()
+    val isFabExpanded by remember {
+        derivedStateOf { listState.firstVisibleItemIndex == 0 }
+    }
 
     val sortedNotes = remember(notes, sortType) {
         when (sortType) {
@@ -71,7 +79,18 @@ fun MainScreen(
                 onSortSelected = { sortType = it }
             )
         },
-        bottomBar = bottomBar // Set bottom bar
+        bottomBar = bottomBar,
+        floatingActionButton = {
+            ExtendedFloatingActionButton(
+                onClick = onAddNote,
+                expanded = isFabExpanded,
+                icon = { Icon(Icons.Default.Add, contentDescription = null) },
+                text = { Text("Yeni Not") },
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                shape = RoundedCornerShape(50)
+            )
+        }
     ) { paddingValues ->
         Box(
             modifier = Modifier
@@ -85,6 +104,7 @@ fun MainScreen(
                 }
             } else {
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 100.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -155,22 +175,23 @@ fun MainScreen(
 
             Box(
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 24.dp)
+                    .align(Alignment.BottomStart)
+                    .padding(start = 16.dp, bottom = 24.dp)
+                    .graphicsLayer { clip = true }
+                    .blur(12.dp)
             ) {
                 Surface(
                     shape = RoundedCornerShape(32.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.75f),
                     tonalElevation = 12.dp,
                     border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
                     modifier = Modifier.wrapContentWidth()
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        FloatingActionPill(icon = Icons.Default.Description, label = "Not", color = MaterialTheme.colorScheme.primary, onClick = onAddNote)
                         FloatingActionPill(icon = Icons.Default.Checklist, label = "Liste", color = MaterialTheme.colorScheme.secondary, onClick = onAddChecklist)
                         FloatingActionPill(icon = Icons.Default.Gesture, label = "Sketch", color = MaterialTheme.colorScheme.tertiary, onClick = onAddSketch)
                     }

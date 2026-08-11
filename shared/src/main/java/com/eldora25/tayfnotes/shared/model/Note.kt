@@ -47,5 +47,6 @@ data class ChecklistItem(
     val id: String = java.util.UUID.randomUUID().toString(),
     val text: String,
     val isChecked: Boolean = false,
-    val subItems: List<ChecklistItem> = emptyList()
+    val subItems: List<ChecklistItem> = emptyList(),
+    val position: Int = 0
 )

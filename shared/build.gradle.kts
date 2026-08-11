@@ -28,4 +28,5 @@ dependencies {
     implementation(libs.ktor.client.android)
     implementation(libs.ktor.client.content.negotiation)
     implementation(libs.ktor.serialization.kotlinx.json)
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
 }

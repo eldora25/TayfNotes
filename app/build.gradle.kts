@@ -58,6 +58,12 @@ android {
     buildFeatures {
         compose = true
     }
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "META-INF/DEPENDENCIES"
+        }
+    }
 }
 
 androidComponents {
@@ -102,6 +108,9 @@ dependencies {
     // GDrive/Dropbox
     implementation("com.google.android.gms:play-services-auth:21.3.0")
     implementation("com.dropbox.core:dropbox-core-sdk:7.0.0")
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
+    implementation("com.google.api-client:google-api-client-android:1.33.0")
+    implementation("androidx.compose.ui:ui-text-google-fonts:1.6.8")
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)

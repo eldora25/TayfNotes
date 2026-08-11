@@ -1,7 +1,7 @@
 package com.eldora25.tayfnotes.ui.components
 
-import androidx.compose.animation.*
-import androidx.compose.foundation.clickable
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -11,6 +11,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextDecoration
@@ -25,7 +26,7 @@ fun ChecklistEditor(
     var newItemText by remember { mutableStateOf("") }
 
     val sortedItems = remember(items) {
-        items.sortedBy { it.isChecked } // Unchecked first
+        items.sortedWith(compareBy<ChecklistItem> { it.isChecked }.thenBy { it.position })
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -47,7 +48,7 @@ fun ChecklistEditor(
             )
             IconButton(onClick = {
                 if (newItemText.isNotEmpty()) {
-                    onItemsChanged(items + ChecklistItem(text = newItemText))
+                    onItemsChanged(items + ChecklistItem(text = newItemText, position = items.size))
                     newItemText = ""
                 }
             }) {
@@ -57,7 +58,10 @@ fun ChecklistEditor(
 
         LazyColumn(modifier = Modifier.weight(1f)) {
             items(sortedItems, key = { it.id }) { item ->
+                val alpha by animateFloatAsState(targetValue = if (item.isChecked) 0.4f else 1f, label = "alpha")
+                
                 ChecklistItemRow(
+                    modifier = Modifier.alpha(alpha),
                     item = item,
                     onToggle = { isChecked ->
                         val updated = items.map {
@@ -96,16 +100,23 @@ fun ChecklistItemRow(
     onToggle: (Boolean) -> Unit,
     onDelete: () -> Unit,
     onAddSubItem: (String) -> Unit,
-    onSubItemToggle: (String, Boolean) -> Unit
+    onSubItemToggle: (String, Boolean) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     var showSubTaskInput by remember { mutableStateOf(false) }
     var subTaskText by remember { mutableStateOf("") }
 
-    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+    Column(modifier = modifier.fillMaxWidth().padding(vertical = 4.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            Icon(
+                imageVector = Icons.Default.DragIndicator,
+                contentDescription = "Sürükle",
+                tint = Color.Gray.copy(alpha = 0.5f),
+                modifier = Modifier.padding(end = 4.dp)
+            )
             Checkbox(
                 checked = item.isChecked,
                 onCheckedChange = onToggle
