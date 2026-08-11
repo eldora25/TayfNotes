@@ -59,6 +59,7 @@ class NoteViewModel(
     private val ARCHIVE_IDS_KEY = stringPreferencesKey("archive_ids")
     private val TRASH_IDS_KEY = stringPreferencesKey("trash_ids")
     private val FONT_SIZE_KEY = floatPreferencesKey("font_size")
+    private val DROPBOX_TOKEN_KEY = stringPreferencesKey("dropbox_token")
 
     private val _isSyncing = MutableStateFlow(false)
     val isSyncing: StateFlow<Boolean> = _isSyncing.asStateFlow()
@@ -148,6 +149,13 @@ class NoteViewModel(
 
     fun setCloudProvider(providerName: String?) {
         viewModelScope.launch { dataStore.edit { if (providerName == null) it.remove(CLOUD_PROVIDER_KEY) else it[CLOUD_PROVIDER_KEY] = providerName } }
+    }
+
+    fun setDropboxToken(token: String) {
+        viewModelScope.launch {
+            dataStore.edit { it[DROPBOX_TOKEN_KEY] = token }
+            setCloudProvider("Dropbox")
+        }
     }
 
     fun saveNote(note: Note) {

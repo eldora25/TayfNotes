@@ -30,6 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.eldora25.tayfnotes.ui.theme.TayfTheme
+import com.eldora25.tayfnotes.ui.components.DropboxAuthLauncher
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.Scope
@@ -43,7 +44,7 @@ fun SettingsScreen(
     isSyncing: Boolean,
     activeCloudProvider: String?,
     onConnectGoogleDrive: () -> Unit, // YENİ: Gerçek OAuth tetikleyicisi
-    onConnectDropbox: () -> Unit,     // YENİ: Gerçek OAuth tetikleyicisi
+    onConnectDropbox: (String) -> Unit,     // YENİ: Gerçek OAuth tetikleyicisi
     onDisconnectCloud: () -> Unit,
     onAuthSuccess: (String) -> Unit,
     onAuthError: (Exception) -> Unit,
@@ -140,12 +141,15 @@ fun SettingsScreen(
                                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4285F4))
                                 ) { Text("Google Drive", color = Color.White) }
                                 
-                                Button(
-                                    onClick = onConnectDropbox,
-                                    modifier = Modifier.weight(1f),
-                                    shape = RoundedCornerShape(12.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0061FF))
-                                ) { Text("Dropbox", color = Color.White) }
+                                DropboxAuthLauncher(
+                                    appKey = "BURAYA_APP_KEY_GELECEK", // Console'dan aldığınız kod
+                                    onAuthSuccess = { token ->
+                                        onConnectDropbox(token) 
+                                    },
+                                    onAuthError = {
+                                        // Hata yönetimi
+                                    }
+                                )
                             }
                         } else {
                             OutlinedButton(
