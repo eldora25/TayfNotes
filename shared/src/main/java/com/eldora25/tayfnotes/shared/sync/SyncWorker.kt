@@ -3,9 +3,12 @@ package com.eldora25.tayfnotes.shared.sync
 import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import androidx.work.ListenableWorker.Result
+import com.dropbox.core.DbxRequestConfig
+import com.dropbox.core.v2.DbxClientV2
+import com.dropbox.core.v2.files.WriteMode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.ByteArrayInputStream
 
 class SyncWorker(
     context: Context,
@@ -14,19 +17,26 @@ class SyncWorker(
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         try {
-            // 1. Kullanıcının cihaz/hesap kimliğini al
-            val userId = inputData.getString("USER_ID") ?: return@withContext Result.failure()
-            
-            // 2. Yerel veritabanındaki değişmiş/yeni notları getir
-            // val unSyncedNotes = noteRepository.getUnsyncedNotes()
-            
-            // 3. Google Drive REST API veya Dropbox SDK'ya bağlan
-            // 4. JSON formatındaki notları buluta gönder (.json veya .zip olarak)
-            // 5. Buluttaki "last_modified" tarihi daha yeniyse yerel veritabanını güncelle
-            
+            // 1. Gerekli parametreleri WorkManager'dan al
+            val token = inputData.getString("DROPBOX_TOKEN") ?: return@withContext Result.failure()
+            val notesJson = inputData.getString("NOTES_JSON") ?: "[]"
+
+            // 2. Dropbox İstemcisini (Client) Hazırla
+            val config = DbxRequestConfig.newBuilder("tayfnotes/v1").build()
+            val client = DbxClientV2(config, token)
+
+            // 3. Veriyi InputStream'e dönüştür
+            val inputStream = ByteArrayInputStream(notesJson.toByteArray(Charsets.UTF_8))
+
+            // 4. Dropbox'taki "App Folder" içine yükle
+            client.files().uploadBuilder("/tayfnotes_backup.json")
+                .withMode(WriteMode.OVERWRITE)
+                .uploadAndFinish(inputStream)
+
             Result.success()
         } catch (e: Exception) {
-            Result.retry() // Bağlantı koparsa WorkManager tekrar dener
+            e.printStackTrace()
+            Result.retry()
         }
     }
 }

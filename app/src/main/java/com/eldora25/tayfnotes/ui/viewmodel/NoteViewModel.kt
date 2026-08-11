@@ -12,6 +12,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import androidx.work.*
 import com.eldora25.tayfnotes.data.repository.FolderRepository
 import com.eldora25.tayfnotes.data.repository.NoteRepository
 import com.eldora25.tayfnotes.shared.model.ChecklistItem
@@ -20,6 +21,7 @@ import com.eldora25.tayfnotes.shared.model.Note
 import com.eldora25.tayfnotes.shared.sync.DropboxProvider
 import com.eldora25.tayfnotes.shared.sync.GoogleDriveProvider
 import com.eldora25.tayfnotes.shared.sync.SyncManager
+import com.eldora25.tayfnotes.shared.sync.SyncWorker
 import com.eldora25.tayfnotes.ui.theme.TayfTheme
 import com.eldora25.tayfnotes.util.AlarmHelper
 import com.eldora25.tayfnotes.util.BackupPackageHelper
@@ -30,6 +32,7 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
+import java.util.concurrent.TimeUnit
 
 private val Context.dataStore by preferencesDataStore(name = "settings")
 
@@ -155,6 +158,38 @@ class NoteViewModel(
         viewModelScope.launch {
             dataStore.edit { it[DROPBOX_TOKEN_KEY] = token }
             setCloudProvider("Dropbox")
+        }
+    }
+
+    fun startDropboxSync(context: Context, dropboxToken: String) {
+        viewModelScope.launch {
+            val currentNotes = notes.value
+            val notesJson = Json.encodeToString(currentNotes)
+
+            val inputData = Data.Builder()
+                .putString("DROPBOX_TOKEN", dropboxToken)
+                .putString("NOTES_JSON", notesJson)
+                .build()
+
+            val constraints = Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .build()
+
+            val syncRequest = OneTimeWorkRequestBuilder<SyncWorker>()
+                .setConstraints(constraints)
+                .setInputData(inputData)
+                .setBackoffCriteria(
+                    BackoffPolicy.EXPONENTIAL, 
+                    WorkRequest.MIN_BACKOFF_MILLIS, 
+                    TimeUnit.MILLISECONDS
+                )
+                .build()
+
+            WorkManager.getInstance(context).enqueueUniqueWork(
+                "DropboxSyncWork",
+                ExistingWorkPolicy.REPLACE,
+                syncRequest
+            )
         }
     }
 

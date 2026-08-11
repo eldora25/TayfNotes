@@ -253,7 +253,8 @@ class MainActivity : FragmentActivity() {
                                 onConnectGoogleDrive = { noteViewModel.setCloudProvider("Google Drive") }, // Placeholder for real OAuth
                                 onConnectDropbox = { token ->
                                     noteViewModel.setDropboxToken(token)
-                                    Toast.makeText(this@MainActivity, "Dropbox Bağlandı", Toast.LENGTH_SHORT).show()
+                                    noteViewModel.startDropboxSync(this@MainActivity, token)
+                                    Toast.makeText(this@MainActivity, "Dropbox Bağlandı ve Senkronizasyon Başladı", Toast.LENGTH_SHORT).show()
                                 },
                                 onDisconnectCloud = { noteViewModel.setCloudProvider(null) },
                                 currentTheme = currentTheme,
