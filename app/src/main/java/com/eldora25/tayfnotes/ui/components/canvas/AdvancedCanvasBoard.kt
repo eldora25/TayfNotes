@@ -132,12 +132,16 @@ fun AdvancedCanvasBoard(
                         onDragCancel = { currentPathPoints = emptyList() }
                     )
                 } else if (currentTool == ToolType.OBJECT_ERASER) {
-                    detectTapGestures { offset ->
-                        val hit = objects.findLast { obj -> getObjectBounds(obj).contains(offset) }
-                        if (hit != null) {
-                            onObjectDeleted(hit)
+                    detectDragGestures(
+                        onDragStart = { offset ->
+                            val hit = objects.findLast { obj -> getObjectBounds(obj).contains(offset) }
+                            if (hit != null) onObjectDeleted(hit)
+                        },
+                        onDrag = { change, _ ->
+                            val hit = objects.findLast { obj -> getObjectBounds(obj).contains(change.position) }
+                            if (hit != null) onObjectDeleted(hit)
                         }
-                    }
+                    )
                 } else if (currentTool == ToolType.PAINT_BUCKET) {
                     detectTapGestures { offset ->
                         val hits = objects.filter { obj -> getObjectBounds(obj).contains(offset) }

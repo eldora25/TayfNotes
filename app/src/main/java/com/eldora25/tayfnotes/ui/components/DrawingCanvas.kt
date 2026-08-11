@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.eldora25.tayfnotes.shared.model.drawing.*
 import com.eldora25.tayfnotes.ui.components.canvas.AdvancedCanvasBoard
+import com.eldora25.tayfnotes.ui.components.canvas.FloatingToolBar
 import com.eldora25.tayfnotes.ui.theme.EditorNeonIcon
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -52,7 +53,6 @@ fun DrawingCanvas(
     // UI State
     var showColorPicker by remember { mutableStateOf(false) }
     var showShapePicker by remember { mutableStateOf(false) }
-    var toolbarOffset by remember { mutableStateOf(Offset(50f, 50f)) }
 
     Box(modifier = modifier.fillMaxSize().background(Color.White)) {
         AdvancedCanvasBoard(
@@ -78,48 +78,39 @@ fun DrawingCanvas(
             }
         )
 
-        // Floating Toolbar
+        FloatingToolBar(
+            currentTool = currentTool,
+            onToolSelected = { 
+                if (it == ToolType.SHAPE) showShapePicker = true
+                else currentTool = it 
+            },
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 32.dp)
+        )
+
+        // Color and Stroke Row (above toolbar)
         Surface(
             modifier = Modifier
-                .offset { IntOffset(toolbarOffset.x.roundToInt(), toolbarOffset.y.roundToInt()) }
-                .width(300.dp)
-                .pointerInput(Unit) {
-                    detectDragGestures { change, dragAmount ->
-                        change.consume()
-                        toolbarOffset += dragAmount
-                    }
-                },
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 110.dp)
+                .width(280.dp),
             shape = RoundedCornerShape(24.dp),
             color = Color.Black.copy(alpha = 0.85f),
             tonalElevation = 12.dp,
             border = androidx.compose.foundation.BorderStroke(1.5.dp, Color(0xFFFFD700).copy(alpha = 0.5f))
         ) {
-            Column(modifier = Modifier.padding(12.dp)) {
-                @OptIn(ExperimentalLayoutApi::class)
-                FlowRow(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                    ToolIcon(Icons.Default.PanToolAlt, "Seç", currentTool == ToolType.SELECTOR) { currentTool = ToolType.SELECTOR }
-                    ToolIcon(Icons.Default.Create, "Kalem", currentTool == ToolType.PEN) { currentTool = ToolType.PEN }
-                    ToolIcon(Icons.Default.Brush, "Fırça", currentTool == ToolType.MARKER) { currentTool = ToolType.MARKER }
-                    ToolIcon(Icons.Default.HistoryEdu, "Kurşun", currentTool == ToolType.PENCIL) { currentTool = ToolType.PENCIL }
-                    ToolIcon(Icons.Default.Highlight, "Fosfor", currentTool == ToolType.HIGHLIGHTER) { currentTool = ToolType.HIGHLIGHTER }
-                    ToolIcon(Icons.Default.Category, "Şekil", currentTool == ToolType.SHAPE) { showShapePicker = true }
-                    ToolIcon(Icons.Default.AutoFixNormal, "Silgi", currentTool == ToolType.OBJECT_ERASER) { currentTool = ToolType.OBJECT_ERASER }
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(modifier = Modifier.clickable { showColorPicker = true }.padding(4.dp)) {
-                        EditorNeonIcon(modifier = Modifier.size(32.dp)) {
-                            Box(modifier = Modifier.size(20.dp).background(currentColor, CircleShape).border(1.dp, Color.White, CircleShape))
-                        }
+            Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(modifier = Modifier.clickable { showColorPicker = true }.padding(4.dp)) {
+                    EditorNeonIcon(modifier = Modifier.size(32.dp)) {
+                        Box(modifier = Modifier.size(20.dp).background(currentColor, CircleShape).border(1.dp, Color.White, CircleShape))
                     }
-                    Slider(
-                        value = currentStrokeWidth,
-                        onValueChange = { currentStrokeWidth = it },
-                        valueRange = 1f..100f,
-                        modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
-                        colors = SliderDefaults.colors(thumbColor = Color(0xFFFFD700), activeTrackColor = Color(0xFFFFD700))
-                    )
                 }
+                Slider(
+                    value = currentStrokeWidth,
+                    onValueChange = { currentStrokeWidth = it },
+                    valueRange = 1f..100f,
+                    modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
+                    colors = SliderDefaults.colors(thumbColor = Color(0xFFFFD700), activeTrackColor = Color(0xFFFFD700))
+                )
             }
         }
     }
