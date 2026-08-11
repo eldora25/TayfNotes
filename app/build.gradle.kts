@@ -94,6 +94,7 @@ afterEvaluate {
 dependencies {
     implementation(project(":shared"))
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.jsoup)
     
     // Room
     implementation(libs.androidx.room.runtime)

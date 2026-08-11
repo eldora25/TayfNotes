@@ -13,6 +13,7 @@ data class Note(
     val colorHex: String = "#FFFFFF",
     val type: NoteType = NoteType.TEXT,
     val tags: List<String> = emptyList(),
+    val sourceUrl: String? = null,
     val folderId: String? = null,
     val imageUris: List<String> = emptyList(),
     val audioPath: String? = null,

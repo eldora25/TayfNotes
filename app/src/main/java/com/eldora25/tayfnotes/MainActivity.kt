@@ -1,6 +1,7 @@
 package com.eldora25.tayfnotes
 
 import android.Manifest
+import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
@@ -37,6 +38,7 @@ import com.eldora25.tayfnotes.ui.viewmodel.NoteViewModelFactory
 import com.eldora25.tayfnotes.util.BackupImportHelper
 import com.eldora25.tayfnotes.util.BackupPackageHelper
 import com.eldora25.tayfnotes.util.BiometricHelper
+import kotlinx.coroutines.flow.MutableSharedFlow
 
 sealed class Screen {
     object Main : Screen()
@@ -48,6 +50,7 @@ sealed class Screen {
     object Settings : Screen()
     object ThemeSelection : Screen()
     data class EditNote(val note: Note? = null, val initialSketch: Boolean = false) : Screen()
+    data class WebClipper(val url: String) : Screen()
 }
 
 class MainActivity : FragmentActivity() {
@@ -60,9 +63,28 @@ class MainActivity : FragmentActivity() {
         NoteViewModelFactory(application, noteRepository, folderRepository)
     }
 
+    private val sharedUrlFlow = MutableSharedFlow<String>(extraBufferCapacity = 1)
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(intent: Intent) {
+        if (Intent.ACTION_SEND == intent.action && "text/plain" == intent.type) {
+            intent.getStringExtra(Intent.EXTRA_TEXT)?.let { text ->
+                val url = text.split("\\s+".toRegex()).find { it.startsWith("http") }
+                if (url != null) {
+                    sharedUrlFlow.tryEmit(url)
+                }
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        handleIntent(intent)
         
         setContent {
             val currentTheme by noteViewModel.currentTheme.collectAsState()
@@ -114,6 +136,12 @@ class MainActivity : FragmentActivity() {
         var sortType by remember { mutableStateOf(SortType.DATE_MODIFIED) }
         var showSortMenu by remember { mutableStateOf(false) }
 
+        LaunchedEffect(Unit) {
+            sharedUrlFlow.collect { url ->
+                currentScreen = Screen.WebClipper(url)
+            }
+        }
+
         val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
             uri?.let {
                 BackupImportHelper.importBackup(this, it, 
@@ -134,6 +162,18 @@ class MainActivity : FragmentActivity() {
                     onBack = { currentScreen = Screen.Main },
                     onSave = { noteViewModel.saveNote(it) },
                     onDelete = { noteViewModel.trashNote(it.id); currentScreen = Screen.Main }
+                )
+            } else if (currentScreen is Screen.WebClipper) {
+                val screen = currentScreen as Screen.WebClipper
+                BackHandler { currentScreen = Screen.Main }
+                WebClipperScreen(
+                    url = screen.url,
+                    folders = folders,
+                    onSave = { 
+                        noteViewModel.saveNote(it)
+                        currentScreen = Screen.Main 
+                    },
+                    onCancel = { currentScreen = Screen.Main }
                 )
             } else if (currentScreen is Screen.ThemeSelection) {
                 BackHandler { currentScreen = Screen.More }
