@@ -142,7 +142,7 @@ fun SettingsScreen(
                                 ) { Text("Google Drive", color = Color.White) }
                                 
                                 DropboxAuthLauncher(
-                                    appKey = "BURAYA_APP_KEY_GELECEK", // Console'dan aldığınız kod
+                                    appKey = "ctnqddduaepcw33", // Console'dan aldığınız kod
                                     onAuthSuccess = { token ->
                                         onConnectDropbox(token) 
                                     },
