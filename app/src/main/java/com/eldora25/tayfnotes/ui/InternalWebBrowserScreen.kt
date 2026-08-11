@@ -1,6 +1,7 @@
 package com.eldora25.tayfnotes.ui
 
 import android.annotation.SuppressLint
+import android.widget.Toast
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -12,6 +13,7 @@ import androidx.compose.material.icons.filled.ContentCut
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 
@@ -23,6 +25,7 @@ fun InternalWebBrowserScreen(
     onBack: () -> Unit,
     onClipContent: (String, String, String) -> Unit // title, url, extractedText
 ) {
+    val context = LocalContext.current
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
     var currentUrl by remember { mutableStateOf(initialUrl) }
     var currentTitle by remember { mutableStateOf("Yükleniyor...") }
@@ -53,6 +56,7 @@ fun InternalWebBrowserScreen(
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = {
+                    Toast.makeText(context, "İçerik kırpılıyor...", Toast.LENGTH_SHORT).show()
                     // JavaScript Enjeksiyonu: Seçili metin varsa onu al, yoksa ana makaleyi veya body'yi al
                     val jsCode = """
                         (function() {

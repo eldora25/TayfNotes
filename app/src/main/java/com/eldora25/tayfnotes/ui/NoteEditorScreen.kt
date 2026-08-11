@@ -44,7 +44,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Calendar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -190,6 +190,39 @@ fun NoteEditorScreen(
                             FileExportHelper.exportNoteToTxt(context, currentNote)
                         }) {
                             EditorNeonIcon { Icon(Icons.Default.Share, contentDescription = "Paylaş") }
+                        }
+
+                        IconButton(onClick = {
+                            val calendar = Calendar.getInstance()
+                            val datePickerDialog = DatePickerDialog(
+                                context,
+                                { _, year, month, dayOfMonth ->
+                                    val timePickerDialog = TimePickerDialog(
+                                        context,
+                                        { _, hourOfDay, minute ->
+                                            calendar.set(year, month, dayOfMonth, hourOfDay, minute)
+                                            reminderTimestamp = calendar.timeInMillis
+                                            Toast.makeText(context, "Hatırlatıcı ayarlandı!", Toast.LENGTH_SHORT).show()
+                                        },
+                                        calendar.get(Calendar.HOUR_OF_DAY),
+                                        calendar.get(Calendar.MINUTE),
+                                        true
+                                    )
+                                    timePickerDialog.show()
+                                },
+                                calendar.get(Calendar.YEAR),
+                                calendar.get(Calendar.MONTH),
+                                calendar.get(Calendar.DAY_OF_MONTH)
+                            )
+                            datePickerDialog.show()
+                        }) {
+                            EditorNeonIcon {
+                                Icon(
+                                    imageVector = Icons.Default.Alarm,
+                                    contentDescription = "Hatırlatıcı",
+                                    tint = if (reminderTimestamp != null) MaterialTheme.colorScheme.primary else Color.Unspecified
+                                )
+                            }
                         }
                         
                         IconButton(onClick = { isPreviewMode = !isPreviewMode }) {

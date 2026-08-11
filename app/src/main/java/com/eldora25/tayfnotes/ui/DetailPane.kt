@@ -14,6 +14,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
@@ -161,7 +162,7 @@ fun DetailPane(
                 
                 Spacer(modifier = Modifier.height(8.dp))
                 Surface(
-                    modifier = Modifier.fillMaxWidth().height(450.dp),
+                    modifier = Modifier.fillMaxWidth().height(450.dp).clipToBounds(),
                     shape = RoundedCornerShape(16.dp),
                     color = Color.White,
                     border = androidx.compose.foundation.BorderStroke(1.5.dp, Color.LightGray.copy(0.5f))
@@ -179,8 +180,9 @@ fun DetailPane(
         Column(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(end = 32.dp, bottom = 48.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalAlignment = Alignment.End
         ) {
             SmallFloatingActionButton(
                 onClick = onDelete,

@@ -15,6 +15,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
@@ -87,7 +88,7 @@ fun DrawingCanvas(
     var showSettings by remember { mutableStateOf(false) }
     var showShapePicker by remember { mutableStateOf(false) }
 
-    Box(modifier = modifier.fillMaxSize().background(Color.White)) {
+    Box(modifier = modifier.fillMaxSize().background(Color.White).clipToBounds()) {
         AdvancedCanvasBoard(
             modifier = Modifier.fillMaxSize(),
             currentColor = currentColor,
