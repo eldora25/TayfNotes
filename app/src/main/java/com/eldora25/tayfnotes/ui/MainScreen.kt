@@ -110,7 +110,7 @@ fun MainScreen(
 
             Row(modifier = Modifier.fillMaxSize()) {
                 // LEFT SIDE: LIST
-                Box(modifier = Modifier.weight(1f)) {
+                Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
                     if (sortedNotes.isEmpty()) {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             Text(if (searchQuery.isEmpty()) "Henüz not yok." else "Sonuç bulunamadı.", color = Color.Gray)
@@ -232,12 +232,16 @@ fun MainScreen(
 
                 // RIGHT SIDE: PREVIEW
                 if (isWideScreen) {
+                    VerticalDivider(
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                        thickness = 1.dp
+                    )
                     Box(modifier = Modifier.weight(1.5f).fillMaxHeight()) {
                         if (selectedNote != null) {
                             DetailPane(note = selectedNote)
                         } else {
                             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Text("Görüntülemek için bir not seçin", color = Color.Gray)
+                                Text("Görüntülemek için soldan bir not seçin", color = Color.Gray, style = MaterialTheme.typography.bodyLarge)
                             }
                         }
                     }

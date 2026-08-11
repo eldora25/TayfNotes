@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.sp
 import com.eldora25.tayfnotes.shared.model.ChecklistItem
 import com.eldora25.tayfnotes.shared.model.Note
 import com.eldora25.tayfnotes.shared.model.NoteType
+import com.eldora25.tayfnotes.util.parseNoteColor
 import kotlinx.serialization.json.Json
 
 @Composable
@@ -32,14 +33,15 @@ fun NoteGridItem(
     modifier: Modifier = Modifier,
     elevation: androidx.compose.ui.unit.Dp = 0.dp
 ) {
-    val noteColor = try {
-        Color(android.graphics.Color.parseColor(note.colorHex))
-    } catch (e: Exception) {
-        MaterialTheme.colorScheme.primary
+    val customColor = parseNoteColor(note.colorHex)
+    val baseSurface = MaterialTheme.colorScheme.surfaceVariant
+    val backgroundColor = if (customColor != Color.Unspecified) {
+        customColor.copy(alpha = 0.25f) // Subtle tint
+    } else {
+        baseSurface.copy(alpha = 0.9f)
     }
-
-    val backgroundColor = noteColor.copy(alpha = 0.15f)
     val contentColor = MaterialTheme.colorScheme.onSurface
+    val accentColor = if (customColor != Color.Unspecified) customColor else MaterialTheme.colorScheme.primary
 
     Card(
         modifier = modifier
@@ -47,7 +49,7 @@ fun NoteGridItem(
             .clickable { onClick() },
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = backgroundColor),
-        border = androidx.compose.foundation.BorderStroke(1.dp, noteColor.copy(alpha = 0.2f)),
+        border = androidx.compose.foundation.BorderStroke(1.dp, accentColor.copy(alpha = 0.2f)),
         elevation = CardDefaults.cardElevation(defaultElevation = elevation)
     ) {
         Row(modifier = Modifier.height(IntrinsicSize.Min)) {
@@ -55,7 +57,7 @@ fun NoteGridItem(
                 modifier = Modifier
                     .width(6.dp)
                     .fillMaxHeight()
-                    .background(noteColor)
+                    .background(accentColor)
             )
 
             Column(
@@ -83,7 +85,7 @@ fun NoteGridItem(
                         Icon(
                             imageVector = Icons.Default.Lock,
                             contentDescription = "Locked",
-                            tint = noteColor.copy(alpha = 0.7f),
+                            tint = accentColor.copy(alpha = 0.7f),
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -100,7 +102,7 @@ fun NoteGridItem(
                                     modifier = Modifier
                                         .size(12.dp)
                                         .clip(CircleShape)
-                                        .background(if (item.isChecked) noteColor.copy(alpha = 0.5f) else Color.Transparent)
+                                        .background(if (item.isChecked) accentColor.copy(alpha = 0.5f) else Color.Transparent)
                                         .border(1.5.dp, if (item.isChecked) Color.Transparent else contentColor.copy(alpha = 0.3f), CircleShape)
                                 )
                                 Spacer(modifier = Modifier.width(10.dp))
@@ -119,7 +121,7 @@ fun NoteGridItem(
                             Text(
                                 text = "+ ${items.size - 3} öğe daha", 
                                 style = MaterialTheme.typography.labelSmall,
-                                color = noteColor, 
+                                color = accentColor, 
                                 modifier = Modifier.padding(start = 22.dp, top = 2.dp)
                             )
                         }
@@ -140,12 +142,12 @@ fun NoteGridItem(
                     Row(
                         verticalAlignment = Alignment.CenterVertically, 
                         modifier = Modifier
-                            .background(noteColor.copy(alpha = 0.12f), RoundedCornerShape(8.dp))
+                            .background(accentColor.copy(alpha = 0.12f), RoundedCornerShape(8.dp))
                             .padding(horizontal = 10.dp, vertical = 6.dp)
                     ) {
-                        Icon(Icons.Default.Gesture, contentDescription = null, tint = noteColor, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.Gesture, contentDescription = null, tint = accentColor, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Sketch İçeriyor", style = MaterialTheme.typography.labelMedium, color = noteColor)
+                        Text("Sketch İçeriyor", style = MaterialTheme.typography.labelMedium, color = accentColor)
                     }
                 }
             }
