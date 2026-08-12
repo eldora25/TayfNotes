@@ -78,7 +78,7 @@ fun NavigationDrawerContent(
                 icon = Icons.Default.Search,
                 label = "Arama",
                 isSelected = false,
-                onClick = { onScreenSelected(Screen.Main) } // Search is in Main top bar
+                onClick = { onScreenSelected(Screen.Main) } 
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -87,8 +87,8 @@ fun NavigationDrawerContent(
             DrawerItem(
                 icon = Icons.Default.AllInclusive,
                 label = "Tüm Notlar",
-                isSelected = false,
-                onClick = { onPlaceholderSelected("Tüm Notlar") }
+                isSelected = currentScreen is Screen.Main,
+                onClick = { onScreenSelected(Screen.Main) }
             )
             DrawerItem(
                 icon = Icons.Default.Archive,
@@ -138,7 +138,7 @@ fun NavigationDrawerContent(
                 icon = Icons.Default.CloudSync,
                 label = "Senkronizasyon",
                 isSelected = false,
-                onClick = { onScreenSelected(Screen.Settings) } // GDrive sync is in settings
+                onClick = { onScreenSelected(Screen.Settings) } 
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -201,7 +201,7 @@ fun DrawerHeader() {
             color = MaterialTheme.colorScheme.primaryContainer
         ) {
             Icon(
-                imageVector = Icons.Default.StickyNote2,
+                imageVector = Icons.Default.Description,
                 contentDescription = "App Icon",
                 modifier = Modifier.padding(12.dp),
                 tint = MaterialTheme.colorScheme.primary
