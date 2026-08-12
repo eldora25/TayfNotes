@@ -3,6 +3,7 @@ package com.eldora25.tayfnotes.ui.components.canvas
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
@@ -13,9 +14,13 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.eldora25.tayfnotes.shared.model.drawing.*
 import java.util.UUID
 
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.rememberTextMeasurer
+// ...
 @Composable
 fun AdvancedCanvasBoard(
     modifier: Modifier = Modifier,
@@ -41,6 +46,7 @@ fun AdvancedCanvasBoard(
     var globalScale by remember { mutableStateOf(1f) }
 
     val latestObjects by rememberUpdatedState(objects)
+    val textMeasurer = rememberTextMeasurer()
 
     Box(modifier = modifier.fillMaxSize()) {
         Canvas(
@@ -54,6 +60,24 @@ fun AdvancedCanvasBoard(
                         detectTransformGestures { _, pan, zoom, _ ->
                             globalOffset += pan
                             globalScale *= zoom
+                        }
+                    }
+                }
+
+                // 1.5 TEXT TOOL
+                .pointerInput(currentTool, globalOffset, globalScale) {
+                    if (currentTool == ToolType.TEXT) {
+                        detectTapGestures { offset ->
+                            val adjusted = (offset - globalOffset) / globalScale
+                            // Trigger text input dialog (hoisted via onObjectAdded with a temp object or separate callback)
+                            onObjectAdded(DrawText(
+                                id = UUID.randomUUID().toString(),
+                                colorHex = String.format("#%06X", 0xFFFFFF and currentColor.toArgb()),
+                                strokeWidth = currentStrokeWidth * 5f, // Use strokeWidth as base font size
+                                offsetX = adjusted.x,
+                                offsetY = adjusted.y,
+                                text = "Metin girin..."
+                            ))
                         }
                     }
                 }
@@ -108,6 +132,12 @@ fun AdvancedCanvasBoard(
                                             rotation = obj.rotation + rotation
                                         )
                                         is DrawShape -> obj.copy(
+                                            offsetX = obj.offsetX + pan.x / globalScale,
+                                            offsetY = obj.offsetY + pan.y / globalScale,
+                                            scale = obj.scale * zoom,
+                                            rotation = obj.rotation + rotation
+                                        )
+                                        is DrawText -> obj.copy(
                                             offsetX = obj.offsetX + pan.x / globalScale,
                                             offsetY = obj.offsetY + pan.y / globalScale,
                                             scale = obj.scale * zoom,
@@ -204,16 +234,35 @@ fun AdvancedCanvasBoard(
                         rotate(obj.rotation, pivot = getObjectBounds(obj).center)
                         scale(obj.scale, obj.scale, pivot = getObjectBounds(obj).center)
                     }) {
-                        if (obj is DrawPath) {
-                            drawPath(
-                                path = createSmoothPath(obj.points),
-                                color = color,
-                                style = Stroke(width = obj.strokeWidth, cap = StrokeCap.Round, join = StrokeJoin.Round),
-                                blendMode = blendMode
-                            )
-                        } else if (obj is DrawShape) {
-                            val fillCol = try { obj.fillColorHex?.let { Color(android.graphics.Color.parseColor(it)) } ?: Color.Transparent } catch(e: Exception) { Color.Transparent }
-                            drawAdvancedShape(obj, color, fillCol, objects)
+                        when (obj) {
+                            is DrawPath -> {
+                                drawPath(
+                                    path = createSmoothPath(obj.points),
+                                    color = color,
+                                    style = Stroke(width = obj.strokeWidth, cap = StrokeCap.Round, join = StrokeJoin.Round),
+                                    blendMode = blendMode
+                                )
+                            }
+                            is DrawShape -> {
+                                val fillCol = try { obj.fillColorHex?.let { Color(android.graphics.Color.parseColor(it)) } ?: Color.Transparent } catch(e: Exception) { Color.Transparent }
+                                drawAdvancedShape(obj, color, fillCol, objects)
+                            }
+                            is DrawText -> {
+                                val style = androidx.compose.ui.text.TextStyle(
+                                    color = color,
+                                    fontSize = obj.strokeWidth.sp,
+                                    fontFamily = when(obj.fontFamily) {
+                                        "Serif" -> androidx.compose.ui.text.font.FontFamily.Serif
+                                        "Monospace" -> androidx.compose.ui.text.font.FontFamily.Monospace
+                                        else -> androidx.compose.ui.text.font.FontFamily.Default
+                                    }
+                                )
+                                drawText(
+                                    textMeasurer = textMeasurer,
+                                    text = obj.text,
+                                    style = style
+                                )
+                            }
                         }
                     }
 

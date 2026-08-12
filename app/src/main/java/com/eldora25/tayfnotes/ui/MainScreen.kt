@@ -48,6 +48,7 @@ fun MainScreen(
     onEditNote: (Note) -> Unit,
     onMoveNote: (Int, Int) -> Unit,
     onDeleteNote: (Note) -> Unit = {},
+    onArchiveNote: (String, Boolean) -> Unit = { _, _ -> },
     onUndoDelete: (String) -> Unit = {},
     onNoteClick: (Note) -> Unit = {},
     selectedNoteId: String? = null,
@@ -151,6 +152,17 @@ fun MainScreen(
                                                 if (result == SnackbarResult.ActionPerformed) onUndoDelete(note.id)
                                             }
                                             true
+                                        } else if (dismissValue == SwipeToDismissBoxValue.StartToEnd) {
+                                            onArchiveNote(note.id, true)
+                                            scope.launch {
+                                                val result = snackbarHostState.showSnackbar(
+                                                    message = "Not arşivlendi",
+                                                    actionLabel = "Geri Al",
+                                                    duration = SnackbarDuration.Short
+                                                )
+                                                if (result == SnackbarResult.ActionPerformed) onArchiveNote(note.id, false)
+                                            }
+                                            true
                                         } else false
                                     }
                                 )
@@ -186,10 +198,27 @@ fun MainScreen(
                                 ) {
                                     SwipeToDismissBox(
                                         state = dismissState,
-                                        enableDismissFromStartToEnd = false,
+                                        enableDismissFromStartToEnd = true, // Madde 4: Archive
                                         backgroundContent = {
-                                            Box(Modifier.fillMaxSize().padding(vertical = 4.dp).clip(RoundedCornerShape(20.dp)).background(MaterialTheme.colorScheme.error).padding(end = 24.dp), contentAlignment = Alignment.CenterEnd) {
-                                                Icon(Icons.Default.Delete, null, tint = Color.White)
+                                            val direction = dismissState.dismissDirection
+                                            val color = when (direction) {
+                                                SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.error
+                                                SwipeToDismissBoxValue.StartToEnd -> MaterialTheme.colorScheme.secondary
+                                                else -> Color.Transparent
+                                            }
+                                            val alignment = when (direction) {
+                                                SwipeToDismissBoxValue.EndToStart -> Alignment.CenterEnd
+                                                SwipeToDismissBoxValue.StartToEnd -> Alignment.CenterStart
+                                                else -> Alignment.Center
+                                            }
+                                            val icon = when (direction) {
+                                                SwipeToDismissBoxValue.EndToStart -> Icons.Default.Delete
+                                                SwipeToDismissBoxValue.StartToEnd -> Icons.Default.Archive
+                                                else -> Icons.Default.Delete
+                                            }
+
+                                            Box(Modifier.fillMaxSize().padding(vertical = 4.dp).clip(RoundedCornerShape(20.dp)).background(color).padding(horizontal = 24.dp), contentAlignment = alignment) {
+                                                Icon(icon, null, tint = Color.White)
                                             }
                                         }
                                     ) {

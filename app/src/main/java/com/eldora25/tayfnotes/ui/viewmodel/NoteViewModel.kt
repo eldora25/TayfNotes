@@ -127,7 +127,7 @@ class NoteViewModel(
     }.flatMapLatest { filter ->
         noteRepository.allNotes.map { all ->
             all.filter { note ->
-                val isArchived = filter.archives.contains(note.id)
+                val isArchived = note.isArchived // Madde 4
                 val isTrashed = filter.trash.contains(note.id)
                 val matchesFolder = if (filter.folderId != null) note.folderId == filter.folderId else true
                 val matchesSearch = if (filter.query.isNotEmpty()) note.title.contains(filter.query, ignoreCase = true) || note.content.contains(filter.query, ignoreCase = true) else true
@@ -136,8 +136,8 @@ class NoteViewModel(
         }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    val archivedNotes: StateFlow<List<Note>> = combine(noteRepository.allNotes, archiveIds) { all, archives ->
-        all.filter { archives.contains(it.id) }.sortedByDescending { it.lastModified }
+    val archivedNotes: StateFlow<List<Note>> = noteRepository.allNotes.map { all ->
+        all.filter { it.isArchived }.sortedByDescending { it.lastModified }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val trashedNotes: StateFlow<List<Note>> = combine(noteRepository.allNotes, trashIds) { all, trash ->
@@ -333,10 +333,22 @@ class NoteViewModel(
 
     fun trashNote(noteId: String) {
         viewModelScope.launch {
-            dataStore.edit { pref ->
-                val current = pref[TRASH_IDS_KEY]?.split(",")?.filter { it.isNotEmpty() }?.toMutableSet() ?: mutableSetOf()
-                current.add(noteId)
-                pref[TRASH_IDS_KEY] = current.joinToString(",")
+            noteRepository.allNotes.first().find { it.id == noteId }?.let {
+                // If it's already trashed, it's a permanent delete or just keep in trash state
+                // But current logic uses a Set in DataStore for Trash
+                dataStore.edit { pref ->
+                    val current = pref[TRASH_IDS_KEY]?.split(",")?.filter { it.isNotEmpty() }?.toMutableSet() ?: mutableSetOf()
+                    current.add(noteId)
+                    pref[TRASH_IDS_KEY] = current.joinToString(",")
+                }
+            }
+        }
+    }
+
+    fun archiveNote(noteId: String, isArchived: Boolean) {
+        viewModelScope.launch {
+            noteRepository.allNotes.first().find { it.id == noteId }?.let {
+                noteRepository.insert(it.copy(isArchived = isArchived))
             }
         }
     }

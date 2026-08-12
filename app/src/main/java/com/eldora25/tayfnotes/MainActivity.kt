@@ -31,6 +31,7 @@ import com.eldora25.tayfnotes.data.database.AppDatabase
 import com.eldora25.tayfnotes.data.repository.FolderRepository
 import com.eldora25.tayfnotes.data.repository.NoteRepository
 import com.eldora25.tayfnotes.shared.model.Note
+import com.eldora25.tayfnotes.shared.model.NoteType
 import com.eldora25.tayfnotes.ui.*
 import com.eldora25.tayfnotes.ui.components.BottomNavigationBar
 import com.eldora25.tayfnotes.ui.components.NavigationDrawerContent
@@ -57,6 +58,7 @@ sealed class Screen {
     object InternalBrowser : Screen()
     data class Placeholder(val title: String) : Screen()
     data class DetailNote(val note: Note) : Screen()
+    data class List(val type: NoteType?) : Screen() // Madde 3: Filtreleme
 }
 
 class MainActivity : FragmentActivity() {
@@ -183,6 +185,28 @@ class MainActivity : FragmentActivity() {
         var selectedNoteInMasterDetail by remember { mutableStateOf<Note?>(null) }
         var sortType by remember { mutableStateOf(SortType.DATE_MODIFIED) }
         var showSortMenu by remember { mutableStateOf(false) }
+        
+        // Madde 3: Navigasyon ve Filtreleme
+        val currentFilter = remember(currentScreen) {
+            when (currentScreen) {
+                is Screen.Main -> null // Combined/All
+                is Screen.Folders -> null 
+                // Add more logic here if needed for specific types
+                else -> null
+            }
+        }
+
+        val filteredNotes = remember(notes, currentScreen) {
+            when (currentScreen) {
+                is Screen.Main -> notes // Combined
+                is Screen.List -> {
+                    val targetType = (currentScreen as Screen.List).type
+                    if (targetType == null) notes
+                    else notes.filter { it.type == targetType }
+                }
+                else -> notes
+            }
+        }
 
         val isWideScreen = LocalConfiguration.current.screenWidthDp > 600
 
@@ -255,9 +279,9 @@ class MainActivity : FragmentActivity() {
                     onDarkModeChanged = { noteViewModel.setDarkMode(it) },
                     onBack = { onScreenChange(Screen.Main) }
                 )
-            } else if (currentScreen == Screen.Main) {
+            } else if (currentScreen == Screen.Main || currentScreen is Screen.List) {
                 MainScreen(
-                    notes = notes,
+                    notes = filteredNotes,
                     searchQuery = searchQuery,
                     onSearchQueryChanged = { noteViewModel.onSearchQueryChanged(it) },
                     onAddNote = { onScreenChange(Screen.EditNote()) },
@@ -266,6 +290,7 @@ class MainActivity : FragmentActivity() {
                     onEditNote = { onScreenChange(Screen.EditNote(it)) },
                     onMoveNote = { f, t -> noteViewModel.updateNotePosition(f, t) },
                     onDeleteNote = { noteViewModel.trashNote(it.id) },
+                    onArchiveNote = { id, arc -> noteViewModel.archiveNote(id, arc) },
                     onUndoDelete = { noteViewModel.restoreNote(it) },
                     onNoteClick = { 
                         if (isWideScreen) selectedNoteInMasterDetail = it
@@ -296,6 +321,7 @@ class MainActivity : FragmentActivity() {
                             notes = archivedNotes,
                             onBack = { onScreenChange(Screen.Main) },
                             onEditNote = { onScreenChange(Screen.EditNote(it)) },
+                            onUnarchiveNote = { noteViewModel.archiveNote(it, false) },
                             onMenuClick = onMenuClick
                         )
                         is Screen.Trash -> NoteListScreen(

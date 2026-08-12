@@ -24,11 +24,12 @@ data class Note(
     val reminderTimestamp: Long? = null,
     val reminderRepeat: RepeatInterval? = null,
     val isLocked: Boolean = false,
+    val isArchived: Boolean = false, // Madde 4
     val position: Int = 0 
 )
 
 enum class NoteType {
-    TEXT, CHECKLIST
+    TEXT, CHECKLIST, SKETCH
 }
 
 enum class RepeatInterval {

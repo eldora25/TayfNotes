@@ -25,12 +25,14 @@ fun NoteListScreen(
     onBack: () -> Unit,
     onEditNote: (Note) -> Unit,
     onRestoreNote: (String) -> Unit = {},
+    onUnarchiveNote: (String) -> Unit = {}, // Madde 4
     onBulkRestore: (Set<String>) -> Unit = {},
     onBulkDelete: (Set<String>) -> Unit = {},
     onEmptyTrash: (() -> Unit)? = null,
     onMenuClick: () -> Unit
 ) {
     var noteToRestore by remember { mutableStateOf<Note?>(null) }
+    var noteToUnarchive by remember { mutableStateOf<Note?>(null) } // Madde 4
     var selectedIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     val isSelectionMode = selectedIds.isNotEmpty()
 
@@ -95,6 +97,8 @@ fun NoteListScreen(
                                 selectedIds = if (isSelected) selectedIds - note.id else selectedIds + note.id
                             } else if (onEmptyTrash != null) {
                                 noteToRestore = note
+                            } else if (title == "Arşiv") { // Madde 4
+                                noteToUnarchive = note
                             } else {
                                 onEditNote(note)
                             }
@@ -119,6 +123,23 @@ fun NoteListScreen(
             },
             dismissButton = {
                 TextButton(onClick = { noteToRestore = null }) { Text("İptal") }
+            }
+        )
+    }
+
+    noteToUnarchive?.let { note ->
+        AlertDialog(
+            onDismissRequest = { noteToUnarchive = null },
+            title = { Text("Notu Arşivden Çıkar") },
+            text = { Text("Bu notu ana listeye geri yüklemek istiyor musunuz?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    onUnarchiveNote(note.id)
+                    noteToUnarchive = null
+                }) { Text("Geri Yükle") }
+            },
+            dismissButton = {
+                TextButton(onClick = { noteToUnarchive = null }) { Text("İptal") }
             }
         )
     }

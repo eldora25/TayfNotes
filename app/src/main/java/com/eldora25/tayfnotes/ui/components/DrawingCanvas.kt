@@ -94,6 +94,12 @@ fun DrawingCanvas(
     var currentStrokeWidth by remember { mutableStateOf(10f) }
     var currentTool by remember { mutableStateOf(ToolType.PEN) }
     var currentShape by remember { mutableStateOf(ShapeType.RECTANGLE) }
+    
+    // Madde 2: Text Tool State
+    var textInput by remember { mutableStateOf("") }
+    var showTextInput by remember { mutableStateOf(false) }
+    var textObjectToEdit by remember { mutableStateOf<DrawText?>(null) }
+
     var isFillEnabled by remember { mutableStateOf(false) }
     var currentFillColor by remember { mutableStateOf(Color.Transparent) }
     
@@ -108,6 +114,7 @@ fun DrawingCanvas(
                     when (obj) {
                         is DrawPath -> obj.copy(colorHex = hex, strokeWidth = currentStrokeWidth)
                         is DrawShape -> obj.copy(colorHex = hex, strokeWidth = currentStrokeWidth)
+                        is DrawText -> obj.copy(colorHex = hex, strokeWidth = currentStrokeWidth * 5f)
                     }
                 } else obj
             }
@@ -122,10 +129,15 @@ fun DrawingCanvas(
     var showColorPicker by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
     var showShapePicker by remember { mutableStateOf(false) }
+    var showSizeSettings by remember { mutableStateOf(false) } // Madde 2: Canvas Size
+    
+    // Canvas Size State
+    var canvasWidth by remember { mutableStateOf(1080) }
+    var canvasHeight by remember { mutableStateOf(1920) }
 
     Box(modifier = modifier.fillMaxSize().background(Color.White).clipToBounds()) {
         AdvancedCanvasBoard(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.size(canvasWidth.dp, canvasHeight.dp),
             currentColor = currentColor,
             currentStrokeWidth = currentStrokeWidth,
             currentTool = currentTool,
@@ -136,6 +148,11 @@ fun DrawingCanvas(
             selectedObjectIds = selectedObjectIds,
             onSelectionChanged = { selectedObjectIds = it },
             onObjectAdded = { newObj ->
+                if (newObj is DrawText) {
+                    textObjectToEdit = newObj
+                    textInput = ""
+                    showTextInput = true
+                }
                 saveStateForUndo(objects)
                 objects = objects + newObj
                 onDataChanged(Json.encodeToString(objects))
@@ -180,6 +197,10 @@ fun DrawingCanvas(
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = { showSizeSettings = true }) {
+                    Icon(Icons.Default.AspectRatio, "Boyut", tint = MaterialTheme.colorScheme.primary)
+                }
+                
                 IconButton(onClick = { performUndo() }, enabled = undoStack.isNotEmpty()) {
                     Icon(Icons.AutoMirrored.Filled.Undo, "Geri", tint = if (undoStack.isNotEmpty()) MaterialTheme.colorScheme.primary else Color.Gray)
                 }
@@ -210,5 +231,43 @@ fun DrawingCanvas(
                 currentTool = ToolType.SHAPE
             }
         )
+
+        if (showSizeSettings) {
+            AlertDialog(
+                onDismissRequest = { showSizeSettings = false },
+                title = { Text("Kanvas Boyutu") },
+                text = {
+                    Column {
+                        TextField(value = canvasWidth.toString(), onValueChange = { canvasWidth = it.toIntOrNull() ?: canvasWidth }, label = { Text("Genişlik (px)") })
+                        TextField(value = canvasHeight.toString(), onValueChange = { canvasHeight = it.toIntOrNull() ?: canvasHeight }, label = { Text("Yükseklik (px)") })
+                    }
+                },
+                confirmButton = { Button(onClick = { showSizeSettings = false }) { Text("Tamam") } }
+            )
+        }
+
+        if (showTextInput) {
+            AlertDialog(
+                onDismissRequest = { showTextInput = false },
+                title = { Text("Metin Girin") },
+                text = { TextField(value = textInput, onValueChange = { textInput = it }) },
+                confirmButton = {
+                    Button(onClick = {
+                        textObjectToEdit?.let { old ->
+                            val updated = old.copy(text = textInput)
+                            val index = objects.indexOfFirst { it.id == old.id }
+                            if (index != -1) {
+                                val newList = objects.toMutableList()
+                                newList[index] = updated
+                                objects = newList
+                                onDataChanged(Json.encodeToString(objects))
+                            }
+                        }
+                        showTextInput = false
+                        textInput = ""
+                    }) { Text("Kaydet") }
+                }
+            )
+        }
     }
 }

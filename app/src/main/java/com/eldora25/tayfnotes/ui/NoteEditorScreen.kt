@@ -10,6 +10,7 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -136,7 +137,11 @@ fun NoteEditorScreen(
                 content = finalContent,
                 colorHex = colorHex,
                 emoji = if (emoji.isEmpty()) null else emoji,
-                type = if (checklistItems.isNotEmpty()) NoteType.CHECKLIST else NoteType.TEXT,
+                type = when {
+                    sketchData != null -> NoteType.SKETCH
+                    checklistItems.isNotEmpty() -> NoteType.CHECKLIST
+                    else -> NoteType.TEXT
+                },
                 reminderTimestamp = reminderTimestamp,
                 folderId = folderId,
                 imageUris = imageUris,
@@ -158,26 +163,26 @@ fun NoteEditorScreen(
 
     Scaffold(
         topBar = {
-            if (!isSketchMode) {
-                TopAppBar(
-                    title = { 
-                        Text(
-                            if (note == null) "Yeni Ekle" else "Düzenle",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        ) 
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = {
-                            saveCurrentNote()
-                            onBack()
-                        }) { 
-                            EditorNeonIcon {
-                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Geri") 
-                            }
+            TopAppBar(
+                title = { 
+                    Text(
+                        if (note == null) "Yeni Ekle" else "Düzenle",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    ) 
+                },
+                navigationIcon = {
+                    IconButton(onClick = {
+                        saveCurrentNote()
+                        onBack()
+                    }) { 
+                        EditorNeonIcon {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Geri") 
                         }
-                    },
-                    actions = {
+                    }
+                },
+                actions = {
+                    if (!isSketchMode) {
                         IconButton(onClick = { isSketchMode = true }) {
                             EditorNeonIcon { Icon(Icons.Default.Gesture, contentDescription = "Sketch") }
                         }
@@ -230,7 +235,6 @@ fun NoteEditorScreen(
                                         { _, hourOfDay, minute ->
                                             calendar.set(year, month, dayOfMonth, hourOfDay, minute)
                                             reminderTimestamp = calendar.timeInMillis
-                                            scheduleAlarm(context, calendar.timeInMillis, title.ifEmpty { "Hatırlatıcı" })
                                             Toast.makeText(context, "Hatırlatıcı ayarlandı!", Toast.LENGTH_SHORT).show()
                                         },
                                         calendar.get(Calendar.HOUR_OF_DAY),
@@ -257,60 +261,38 @@ fun NoteEditorScreen(
                         IconButton(onClick = { isPreviewMode = !isPreviewMode }) {
                             EditorNeonIcon { Icon(if (isPreviewMode) Icons.Default.Edit else Icons.Default.Visibility, contentDescription = "Önizle") }
                         }
-                        if (note != null) {
-                            IconButton(onClick = { showDeleteDialog = true }) {
-                                EditorNeonIcon { Icon(Icons.Default.Delete, contentDescription = "Sil") }
-                            }
+                    } else {
+                        IconButton(onClick = { isSketchMode = false }) {
+                            EditorNeonIcon { Icon(Icons.Default.TextFields, contentDescription = "Metin Modu") }
                         }
-                        IconButton(onClick = {
-                            saveCurrentNote()
-                            onBack()
-                        }) {
-                            EditorNeonIcon { Icon(Icons.Default.Check, contentDescription = "Bitti") }
+                    }
+                    
+                    if (note != null) {
+                        IconButton(onClick = { showDeleteDialog = true }) {
+                            EditorNeonIcon { Icon(Icons.Default.Delete, contentDescription = "Sil") }
                         }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = backgroundColor.copy(alpha = 0.9f))
-                )
-            }
+                    }
+                    
+                    IconButton(onClick = {
+                        saveCurrentNote()
+                        onBack()
+                    }) {
+                        EditorNeonIcon { Icon(Icons.Default.Check, contentDescription = "Bitti") }
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = backgroundColor.copy(alpha = 0.9f))
+            )
         }
     ) { paddingValues ->
-        if (isSketchMode) {
-            Row(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-                // Madde 2: Thin vertical bar for title in sketch mode
-                Column(
-                    modifier = Modifier
-                        .width(48.dp)
-                        .fillMaxHeight()
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .padding(vertical = 16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    IconButton(onClick = { isSketchMode = false }) {
-                        Icon(Icons.Default.Close, contentDescription = "Sketch Kapat")
-                    }
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = title.ifEmpty { "Skeç" },
-                        modifier = Modifier.graphicsLayer(rotationZ = -90f),
-                        maxLines = 1,
-                        style = MaterialTheme.typography.labelMedium
-                    )
-                }
-                DrawingCanvas(
-                    modifier = Modifier.fillMaxSize(),
-                    initialData = sketchData,
-                    onDataChanged = { sketchData = it }
-                )
-            }
-        } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .background(backgroundColor.copy(alpha = 0.1f))
-                    .verticalScroll(rememberScrollState()) // Madde 1: Scroll for landscape
-            ) {
-                if (!isPreviewMode) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .background(backgroundColor.copy(alpha = 0.1f))
+        ) {
+            if (!isPreviewMode) {
+                // Header fields (Title, Emoji, Folder)
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(16.dp), 
                         horizontalArrangement = Arrangement.SpaceBetween, 
@@ -324,15 +306,22 @@ fun NoteEditorScreen(
                                     leadingIcon = { Icon(Icons.Default.EmojiEmotions, null, modifier = Modifier.size(18.dp)) },
                                     shape = RoundedCornerShape(12.dp)
                                 )
-                                DropdownMenu(expanded = showEmojiMenu, onDismissRequest = { showEmojiMenu = false }) {
-                                    val emojis = listOf("📝", "✅", "💡", "📅", "🎨", "🚀", "❤️", "⭐", "🛒", "💻", "🔥", "📌")
-                                    Column(modifier = Modifier.padding(8.dp).width(160.dp)) {
-                                        emojis.chunked(4).forEach { rowEmojis ->
+                                // Fixed Emoji Picker
+                                DropdownMenu(
+                                    expanded = showEmojiMenu, 
+                                    onDismissRequest = { showEmojiMenu = false },
+                                    modifier = Modifier.heightIn(max = 400.dp).width(200.dp)
+                                ) {
+                                    val emojiList = listOf("📝", "✅", "💡", "📅", "🎨", "🚀", "❤️", "⭐", "🛒", "💻", "🔥", "📌", "🌈", "⚙️")
+                                    Column(modifier = Modifier.padding(8.dp)) {
+                                        emojiList.chunked(4).forEach { row ->
                                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                                                rowEmojis.forEach { e ->
-                                                    IconButton(onClick = { emoji = e; showEmojiMenu = false }) {
-                                                        Text(e, fontSize = 20.sp)
-                                                    }
+                                                row.forEach { e ->
+                                                    Text(
+                                                        text = e, 
+                                                        fontSize = 24.sp, 
+                                                        modifier = Modifier.clickable { emoji = e; showEmojiMenu = false }.padding(8.dp)
+                                                    )
                                                 }
                                             }
                                         }
@@ -367,74 +356,81 @@ fun NoteEditorScreen(
                         colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent),
                         textStyle = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold, fontSize = (fontSize + 4).sp)
                     )
+                }
 
-                    if (note?.type == NoteType.CHECKLIST || checklistItems.isNotEmpty()) {
-                        TodoEditor(items = checklistItems, onItemsChanged = { checklistItems = it })
-                    } else {
-                        if (imageUris.isNotEmpty()) {
-                            LazyRow(modifier = Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                items(imageUris) { uri ->
-                                    Box {
-                                        AsyncImage(model = uri, contentDescription = null, modifier = Modifier.size(120.dp).clip(RoundedCornerShape(8.dp)), contentScale = ContentScale.Crop)
-                                        IconButton(onClick = { imageUris = imageUris - uri }, modifier = Modifier.align(Alignment.TopEnd).size(24.dp).background(Color.Black.copy(0.5f), CircleShape)) {
-                                            Icon(Icons.Default.Close, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
-                                        }
+                if (isSketchMode) {
+                    // Sketch mode specific note field
+                    TextField(
+                        value = content,
+                        onValueChange = { content = it },
+                        placeholder = { Text("Sketch Alt Notu...", style = MaterialTheme.typography.bodyMedium) },
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                        colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent)
+                    )
+                    DrawingCanvas(
+                        modifier = Modifier.weight(1f),
+                        initialData = sketchData,
+                        onDataChanged = { sketchData = it }
+                    )
+                } else if (note?.type == NoteType.CHECKLIST || checklistItems.isNotEmpty()) {
+                    TodoEditor(items = checklistItems, onItemsChanged = { checklistItems = it })
+                } else {
+                    if (imageUris.isNotEmpty()) {
+                        LazyRow(modifier = Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            items(imageUris) { uri ->
+                                Box {
+                                    AsyncImage(model = uri, contentDescription = null, modifier = Modifier.size(120.dp).clip(RoundedCornerShape(8.dp)), contentScale = ContentScale.Crop)
+                                    IconButton(onClick = { imageUris = imageUris - uri }, modifier = Modifier.align(Alignment.TopEnd).size(24.dp).background(Color.Black.copy(0.5f), CircleShape)) {
+                                        Icon(Icons.Default.Close, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
                                     }
                                 }
                             }
                         }
-                        TextField(
-                            value = content,
-                            onValueChange = { content = it },
-                            placeholder = { 
-                                Text(
-                                    "Notunuzu yazın...", 
-                                    style = MaterialTheme.typography.bodyLarge.copy(
-                                        fontSize = fontSize.sp,
-                                        fontFamily = composeFontFamily
-                                    )
-                                ) 
-                            },
-                            modifier = Modifier.fillMaxWidth().padding(16.dp),
-                            colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent),
-                            textStyle = MaterialTheme.typography.bodyLarge.copy(
-                                fontSize = fontSize.sp,
-                                lineHeight = (fontSize * 1.5).sp,
-                                fontFamily = composeFontFamily
-                            )
-                        )
                     }
-                } else {
-                    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-                        val displayTitle = (if (emoji.isNotEmpty()) "$emoji " else "") + if (title.isEmpty() && checklistItems.isNotEmpty()) {
-                            checklistItems.firstOrNull()?.text ?: "Başlıksız Not"
-                        } else if (title.isEmpty()) {
-                            "Başlıksız Not"
-                        } else {
-                            title
-                        }
-                        
-                        Text(displayTitle, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                        Spacer(modifier = Modifier.height(16.dp))
-                        if (checklistItems.isNotEmpty()) {
-                            checklistItems.forEach { item ->
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Checkbox(checked = item.isChecked, onCheckedChange = null, enabled = false)
-                                    Text(
-                                        item.text, 
-                                        style = if (item.isChecked) 
-                                            MaterialTheme.typography.bodyLarge.copy(textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough, fontSize = fontSize.sp, fontFamily = composeFontFamily) 
-                                        else 
-                                            MaterialTheme.typography.bodyLarge.copy(fontSize = fontSize.sp, fontFamily = composeFontFamily)
-                                    )
-                                }
+                    TextField(
+                        value = content,
+                        onValueChange = { content = it },
+                        placeholder = { 
+                            Text(
+                                "Notunuzu yazın...", 
+                                style = MaterialTheme.typography.bodyLarge.copy(
+                                    fontSize = fontSize.sp,
+                                    fontFamily = composeFontFamily
+                                )
+                            ) 
+                        },
+                        modifier = Modifier.fillMaxSize().weight(1f).padding(16.dp),
+                        colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent),
+                        textStyle = MaterialTheme.typography.bodyLarge.copy(
+                            fontSize = fontSize.sp,
+                            lineHeight = (fontSize * 1.5).sp,
+                            fontFamily = composeFontFamily
+                        )
+                    )
+                }
+            } else {
+                Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
+                    val displayTitle = (if (emoji.isNotEmpty()) "$emoji " else "") + if (title.isEmpty()) "Başlıksız Not" else title
+                    Text(displayTitle, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    if (checklistItems.isNotEmpty()) {
+                        checklistItems.forEach { item ->
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Checkbox(checked = item.isChecked, onCheckedChange = null, enabled = false)
+                                Text(
+                                    item.text, 
+                                    style = if (item.isChecked) 
+                                        MaterialTheme.typography.bodyLarge.copy(textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough, fontSize = fontSize.sp, fontFamily = composeFontFamily) 
+                                    else 
+                                        MaterialTheme.typography.bodyLarge.copy(fontSize = fontSize.sp, fontFamily = composeFontFamily)
+                                )
                             }
-                        } else {
-                            Text(content, style = MaterialTheme.typography.bodyLarge.copy(fontSize = fontSize.sp, fontFamily = composeFontFamily))
                         }
-                        imageUris.forEach { uri ->
-                            AsyncImage(model = uri, contentDescription = null, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).clip(RoundedCornerShape(8.dp)), contentScale = ContentScale.FillWidth)
-                        }
+                    } else {
+                        Text(content, style = MaterialTheme.typography.bodyLarge.copy(fontSize = fontSize.sp, fontFamily = composeFontFamily))
+                    }
+                    imageUris.forEach { uri ->
+                        AsyncImage(model = uri, contentDescription = null, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).clip(RoundedCornerShape(8.dp)), contentScale = ContentScale.FillWidth)
                     }
                 }
             }
@@ -457,28 +453,5 @@ fun NoteEditorScreen(
                 TextButton(onClick = { showDeleteDialog = false }) { Text("Vazgeç") }
             }
         )
-    }
-}
-
-private fun scheduleAlarm(context: Context, timestamp: Long, noteTitle: String) {
-    val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-    val intent = Intent(context, ReminderReceiver::class.java).apply {
-        putExtra("TITLE", noteTitle)
-    }
-    val pendingIntent = PendingIntent.getBroadcast(
-        context,
-        System.currentTimeMillis().toInt(),
-        intent,
-        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-    )
-    
-    try {
-        alarmManager.setExactAndAllowWhileIdle(
-            AlarmManager.RTC_WAKEUP,
-            timestamp,
-            pendingIntent
-        )
-    } catch (e: SecurityException) {
-        // Android 13+ permission handling
     }
 }

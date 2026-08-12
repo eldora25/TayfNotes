@@ -26,6 +26,7 @@ data class NoteEntity(
     val reminderTimestamp: Long?,
     val reminderRepeat: String? = null,
     val isLocked: Boolean,
+    val isArchived: Boolean = false,
     val position: Int = 0
 ) {
     fun toDomain(): Note = Note(
@@ -46,6 +47,7 @@ data class NoteEntity(
         reminderTimestamp = reminderTimestamp,
         reminderRepeat = reminderRepeat?.let { RepeatInterval.valueOf(it) },
         isLocked = isLocked,
+        isArchived = isArchived,
         position = position
     )
 
@@ -68,6 +70,7 @@ data class NoteEntity(
             reminderTimestamp = note.reminderTimestamp,
             reminderRepeat = note.reminderRepeat?.name,
             isLocked = note.isLocked,
+            isArchived = note.isArchived,
             position = note.position
         )
     }

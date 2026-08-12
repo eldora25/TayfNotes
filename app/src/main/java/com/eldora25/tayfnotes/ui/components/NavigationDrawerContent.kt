@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.sp
 import com.eldora25.tayfnotes.BuildConfig
 import com.eldora25.tayfnotes.R
 import com.eldora25.tayfnotes.Screen
+import com.eldora25.tayfnotes.shared.model.NoteType
 
 @Composable
 fun NavigationDrawerContent(
@@ -48,20 +49,20 @@ fun NavigationDrawerContent(
             DrawerItem(
                 icon = Icons.AutoMirrored.Filled.List,
                 label = "Notlar",
-                isSelected = currentScreen is Screen.Main,
-                onClick = { onScreenSelected(Screen.Main) }
+                isSelected = currentScreen is Screen.List && (currentScreen as Screen.List).type == NoteType.TEXT,
+                onClick = { onScreenSelected(Screen.List(NoteType.TEXT)) }
             )
             DrawerItem(
                 icon = Icons.Default.Gesture,
                 label = "Skeçler",
-                isSelected = false,
-                onClick = { onPlaceholderSelected("Skeçler") }
+                isSelected = currentScreen is Screen.List && (currentScreen as Screen.List).type == NoteType.SKETCH,
+                onClick = { onScreenSelected(Screen.List(NoteType.SKETCH)) }
             )
             DrawerItem(
                 icon = Icons.Default.FactCheck,
                 label = "Yapılacaklar Listesi",
-                isSelected = false,
-                onClick = { onPlaceholderSelected("Yapılacaklar Listesi") }
+                isSelected = currentScreen is Screen.List && (currentScreen as Screen.List).type == NoteType.CHECKLIST,
+                onClick = { onScreenSelected(Screen.List(NoteType.CHECKLIST)) }
             )
             DrawerItem(
                 icon = Icons.Default.Folder,
@@ -88,7 +89,7 @@ fun NavigationDrawerContent(
             DrawerItem(
                 icon = Icons.Default.AllInclusive,
                 label = "Tüm Notlar",
-                isSelected = false,
+                isSelected = currentScreen is Screen.Main,
                 onClick = { onScreenSelected(Screen.Main) }
             )
             DrawerItem(

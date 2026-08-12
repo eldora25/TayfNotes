@@ -7,6 +7,12 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import com.eldora25.tayfnotes.shared.model.drawing.*
 
 fun getObjectBounds(obj: DrawObject): Rect {
+    if (obj is DrawText) {
+        // Approximate bounds for text
+        val size = obj.strokeWidth * obj.scale
+        return Rect(obj.offsetX, obj.offsetY, obj.offsetX + size * obj.text.length * 0.6f, obj.offsetY + size)
+    }
+    
     if (obj.points.isEmpty() && obj is DrawShape && obj.shapeType != ShapeType.INTERSECTION) return Rect.Zero
     
     var minX = Float.MAX_VALUE
@@ -68,6 +74,7 @@ fun extractPathFromDrawObject(obj: DrawObject): Path {
             }
         }
         is DrawPath -> createSmoothPath(obj.points)
+        is DrawText -> Path() // Text has no path for boolean ops usually
     }
     
     val matrix = Matrix()

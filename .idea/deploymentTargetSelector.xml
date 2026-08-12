@@ -4,14 +4,21 @@
     <selectionStates>
       <SelectionState runConfigName="app">
         <option name="selectionMode" value="DROPDOWN" />
+        <DropdownSelection timestamp="2026-08-12T22:23:06.929279800Z">
+          <Target type="DEFAULT_BOOT">
+            <handle>
+              <DeviceId pluginId="LocalEmulator" identifier="path=X:\Android\AVD\Lenovo_IdeaTab_TB336FU.avd" />
+            </handle>
+          </Target>
+        </DropdownSelection>
         <DialogSelection />
       </SelectionState>
       <SelectionState runConfigName="androidTest">
         <option name="selectionMode" value="DROPDOWN" />
-        <DropdownSelection timestamp="2026-08-12T20:12:59.269635100Z">
+        <DropdownSelection timestamp="2026-08-12T22:23:06.929279800Z">
           <Target type="DEFAULT_BOOT">
             <handle>
-              <DeviceId pluginId="LocalEmulator" identifier="path=X:\Android\AVD\Samsung_Galaxy_A73_5G.avd" />
+              <DeviceId pluginId="LocalEmulator" identifier="path=X:\Android\AVD\Lenovo_IdeaTab_TB336FU.avd" />
             </handle>
           </Target>
         </DropdownSelection>
