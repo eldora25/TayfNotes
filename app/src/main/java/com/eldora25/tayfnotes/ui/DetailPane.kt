@@ -54,6 +54,7 @@ fun DetailPane(
     note: Note?,
     modifier: Modifier = Modifier,
     fontSize: Float = 16f,
+    fontFamily: String = "Roboto",
     onEdit: () -> Unit = {},
     onDelete: () -> Unit = {}
 ) {
@@ -68,6 +69,15 @@ fun DetailPane(
         Color(android.graphics.Color.parseColor(note.colorHex))
     } catch (_: Exception) {
         MaterialTheme.colorScheme.surface
+    }
+
+    val composeFontFamily = remember(fontFamily) {
+        when(fontFamily) {
+            "Serif" -> androidx.compose.ui.text.font.FontFamily.Serif
+            "Monospace" -> androidx.compose.ui.text.font.FontFamily.Monospace
+            "Sans Serif" -> androidx.compose.ui.text.font.FontFamily.SansSerif
+            else -> androidx.compose.ui.text.font.FontFamily.Default
+        }
     }
 
     Box(modifier = modifier.fillMaxSize()) {
@@ -119,7 +129,7 @@ fun DetailPane(
                         Checkbox(checked = item.isChecked, onCheckedChange = null, enabled = false)
                         Text(
                             text = item.text,
-                            style = if (item.isChecked) MaterialTheme.typography.bodyLarge.copy(textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough, fontSize = fontSize.sp) else MaterialTheme.typography.bodyLarge.copy(fontSize = fontSize.sp),
+                            style = if (item.isChecked) MaterialTheme.typography.bodyLarge.copy(textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough, fontSize = fontSize.sp, fontFamily = composeFontFamily) else MaterialTheme.typography.bodyLarge.copy(fontSize = fontSize.sp, fontFamily = composeFontFamily),
                             color = if (item.isChecked) Color.Gray else MaterialTheme.colorScheme.onBackground
                         )
                     }
@@ -129,7 +139,8 @@ fun DetailPane(
                     text = note.content,
                     style = MaterialTheme.typography.bodyLarge.copy(
                         fontSize = fontSize.sp,
-                        lineHeight = (fontSize * 1.5).sp
+                        lineHeight = (fontSize * 1.5).sp,
+                        fontFamily = composeFontFamily
                     ),
                     color = MaterialTheme.colorScheme.onBackground
                 )

@@ -133,6 +133,7 @@ class MainActivity : FragmentActivity() {
         val isBiometricEnabled by noteViewModel.isBiometricEnabled.collectAsState()
         val activeCloudProvider by noteViewModel.activeCloudProvider.collectAsState()
         val currentFontSize by noteViewModel.currentFontSize.collectAsState()
+        val currentFontFamily by noteViewModel.currentFontFamily.collectAsState()
         
         var selectedNoteInMasterDetail by remember { mutableStateOf<Note?>(null) }
         var sortType by remember { mutableStateOf(SortType.DATE_MODIFIED) }
@@ -162,6 +163,7 @@ class MainActivity : FragmentActivity() {
                     folders = folders,
                     initialSketch = screen.initialSketch,
                     fontSize = currentFontSize,
+                    fontFamily = currentFontFamily,
                     onBack = { currentScreen = Screen.Main },
                     onSave = { noteViewModel.saveNote(it) },
                     onDelete = { noteViewModel.trashNote(it.id); currentScreen = Screen.Main }
@@ -212,6 +214,8 @@ class MainActivity : FragmentActivity() {
                     onUndoDelete = { noteViewModel.restoreNote(it) },
                     onNoteClick = { selectedNoteInMasterDetail = it },
                     selectedNoteId = selectedNoteInMasterDetail?.id,
+                    fontSize = currentFontSize,
+                    fontFamily = currentFontFamily,
                     bottomBar = {
                         BottomNavigationBar(currentScreen, { currentScreen = it }, { noteViewModel.onFolderSelected(null) })
                     }
@@ -275,6 +279,8 @@ class MainActivity : FragmentActivity() {
                                 onDarkModeChanged = { noteViewModel.setDarkMode(it) },
                                 currentFontSize = currentFontSize,
                                 onFontSizeChanged = { noteViewModel.setFontSize(it) },
+                                currentFontFamily = currentFontFamily,
+                                onFontFamilyChanged = { noteViewModel.setFontFamily(it) },
                                 onAuthSuccess = { email ->
                                     noteViewModel.setCloudProvider("Google Drive")
                                     noteViewModel.startGoogleDriveSync(this@MainActivity, email)

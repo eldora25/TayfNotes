@@ -58,6 +58,8 @@ fun SettingsScreen(
     // YENİ: Tipografi
     currentFontSize: Float,
     onFontSizeChanged: (Float) -> Unit,
+    currentFontFamily: String,
+    onFontFamilyChanged: (String) -> Unit,
     // Güvenlik ve Veri
     isBiometricEnabled: Boolean,
     onBiometricToggle: (Boolean) -> Unit,
@@ -160,24 +162,13 @@ fun SettingsScreen(
                 PremiumCard {
                     Column(modifier = Modifier.padding(16.dp)) {
                         
-                        // Font Büyüklüğü (Slider)
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.FormatSize, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text("Yazı Tipi Boyutu", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("A", fontSize = 12.sp, modifier = Modifier.padding(end = 8.dp))
-                            Slider(
-                                value = currentFontSize,
-                                onValueChange = onFontSizeChanged,
-                                valueRange = 12f..24f,
-                                steps = 5,
-                                modifier = Modifier.weight(1f)
-                            )
-                            Text("A", fontSize = 24.sp, modifier = Modifier.padding(start = 8.dp))
-                        }
+                        // Font Ayarları (Dropdown & Önizleme)
+                        FontSettingsSection(
+                            currentFontSize = currentFontSize,
+                            onFontSizeChanged = onFontSizeChanged,
+                            currentFontFamily = currentFontFamily,
+                            onFontFamilyChanged = onFontFamilyChanged
+                        )
                         
                         HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
                         
@@ -241,6 +232,94 @@ fun SettingsScreen(
             }
             
             item { Spacer(modifier = Modifier.height(24.dp)) }
+        }
+    }
+}
+
+@Composable
+fun FontSettingsSection(
+    currentFontSize: Float,
+    onFontSizeChanged: (Float) -> Unit,
+    currentFontFamily: String,
+    onFontFamilyChanged: (String) -> Unit
+) {
+    val fontSizes = listOf(12f, 14f, 16f, 18f, 20f, 24f, 28f)
+    val fontFamilies = listOf("Roboto", "Serif", "Monospace", "Sans Serif")
+    
+    var showSizeMenu by remember { mutableStateOf(false) }
+    var showFontMenu by remember { mutableStateOf(false) }
+
+    Column {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.FormatSize, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Spacer(modifier = Modifier.width(12.dp))
+            Text("Yazı Tipi Ayarları", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        }
+        
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            // Yazı Boyutu Dropdown
+            Box(modifier = Modifier.weight(1f)) {
+                OutlinedButton(
+                    onClick = { showSizeMenu = true }, 
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("${currentFontSize.toInt()} px")
+                }
+                DropdownMenu(expanded = showSizeMenu, onDismissRequest = { showSizeMenu = false }) {
+                    fontSizes.forEach { size ->
+                        DropdownMenuItem(
+                            text = { Text("${size.toInt()} px") }, 
+                            onClick = { onFontSizeChanged(size); showSizeMenu = false }
+                        )
+                    }
+                }
+            }
+
+            // Font Ailesi Dropdown
+            Box(modifier = Modifier.weight(1f)) {
+                OutlinedButton(
+                    onClick = { showFontMenu = true }, 
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(currentFontFamily)
+                }
+                DropdownMenu(expanded = showFontMenu, onDismissRequest = { showFontMenu = false }) {
+                    fontFamilies.forEach { font ->
+                        DropdownMenuItem(
+                            text = { Text(font) }, 
+                            onClick = { onFontFamilyChanged(font); showFontMenu = false }
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Önizleme Kutusu
+        Surface(
+            modifier = Modifier.fillMaxWidth().height(100.dp),
+            shape = RoundedCornerShape(12.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
+        ) {
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(16.dp)) {
+                Text(
+                    "Bu bir önizleme metnidir.",
+                    fontSize = currentFontSize.sp,
+                    fontFamily = when(currentFontFamily) {
+                        "Serif" -> androidx.compose.ui.text.font.FontFamily.Serif
+                        "Monospace" -> androidx.compose.ui.text.font.FontFamily.Monospace
+                        "Sans Serif" -> androidx.compose.ui.text.font.FontFamily.SansSerif
+                        else -> androidx.compose.ui.text.font.FontFamily.Default
+                    },
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+            }
         }
     }
 }

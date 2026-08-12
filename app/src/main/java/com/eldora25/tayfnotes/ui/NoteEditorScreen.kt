@@ -58,12 +58,22 @@ fun NoteEditorScreen(
     folders: List<Folder> = emptyList(),
     initialSketch: Boolean = false,
     fontSize: Float = 16f,
+    fontFamily: String = "Roboto",
     onBack: () -> Unit,
     onSave: (Note) -> Unit,
     onDelete: (Note) -> Unit
 ) {
     val context = LocalContext.current
     val noteId = remember { note?.id ?: System.currentTimeMillis().toString() }
+
+    val composeFontFamily = remember(fontFamily) {
+        when(fontFamily) {
+            "Serif" -> androidx.compose.ui.text.font.FontFamily.Serif
+            "Monospace" -> androidx.compose.ui.text.font.FontFamily.Monospace
+            "Sans Serif" -> androidx.compose.ui.text.font.FontFamily.SansSerif
+            else -> androidx.compose.ui.text.font.FontFamily.Default
+        }
+    }
     
     var title by remember { mutableStateOf(note?.title ?: "") }
     var content by remember { mutableStateOf(note?.content ?: "") }
@@ -328,12 +338,21 @@ fun NoteEditorScreen(
                     TextField(
                         value = content,
                         onValueChange = { content = it },
-                        placeholder = { Text("Notunuzu yazın...", style = MaterialTheme.typography.bodyLarge.copy(fontSize = fontSize.sp)) },
+                        placeholder = { 
+                            Text(
+                                "Notunuzu yazın...", 
+                                style = MaterialTheme.typography.bodyLarge.copy(
+                                    fontSize = fontSize.sp,
+                                    fontFamily = composeFontFamily
+                                )
+                            ) 
+                        },
                         modifier = Modifier.fillMaxSize().weight(1f).padding(16.dp),
                         colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent),
                         textStyle = MaterialTheme.typography.bodyLarge.copy(
                             fontSize = fontSize.sp,
-                            lineHeight = (fontSize * 1.5).sp
+                            lineHeight = (fontSize * 1.5).sp,
+                            fontFamily = composeFontFamily
                         )
                     )
                 }
@@ -353,11 +372,17 @@ fun NoteEditorScreen(
                         checklistItems.forEach { item ->
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Checkbox(checked = item.isChecked, onCheckedChange = null, enabled = false)
-                                Text(item.text, style = if (item.isChecked) MaterialTheme.typography.bodyLarge.copy(textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough, fontSize = fontSize.sp) else MaterialTheme.typography.bodyLarge.copy(fontSize = fontSize.sp))
+                                Text(
+                                    item.text, 
+                                    style = if (item.isChecked) 
+                                        MaterialTheme.typography.bodyLarge.copy(textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough, fontSize = fontSize.sp, fontFamily = composeFontFamily) 
+                                    else 
+                                        MaterialTheme.typography.bodyLarge.copy(fontSize = fontSize.sp, fontFamily = composeFontFamily)
+                                )
                             }
                         }
                     } else {
-                        Text(content, style = MaterialTheme.typography.bodyLarge.copy(fontSize = fontSize.sp))
+                        Text(content, style = MaterialTheme.typography.bodyLarge.copy(fontSize = fontSize.sp, fontFamily = composeFontFamily))
                     }
                     if (sketchData?.isNotEmpty() == true) {
                         Spacer(modifier = Modifier.height(24.dp))

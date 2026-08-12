@@ -65,6 +65,7 @@ class NoteViewModel(
     private val ARCHIVE_IDS_KEY = stringPreferencesKey("archive_ids")
     private val TRASH_IDS_KEY = stringPreferencesKey("trash_ids")
     private val FONT_SIZE_KEY = floatPreferencesKey("font_size")
+    private val FONT_FAMILY_KEY = stringPreferencesKey("font_family")
     private val DROPBOX_TOKEN_KEY = stringPreferencesKey("dropbox_token")
     private val ONEDRIVE_TOKEN_KEY = stringPreferencesKey("onedrive_token")
 
@@ -94,6 +95,10 @@ class NoteViewModel(
     val currentFontSize: StateFlow<Float> = dataStore.data
         .map { pref -> pref[FONT_SIZE_KEY] ?: 16f }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 16f)
+
+    val currentFontFamily: StateFlow<String> = dataStore.data
+        .map { pref -> pref[FONT_FAMILY_KEY] ?: "Roboto" }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "Roboto")
 
     val activeCloudProvider: StateFlow<String?> = dataStore.data
         .map { pref -> pref[CLOUD_PROVIDER_KEY] }
@@ -152,6 +157,10 @@ class NoteViewModel(
 
     fun setFontSize(size: Float) {
         viewModelScope.launch { dataStore.edit { it[FONT_SIZE_KEY] = size } }
+    }
+
+    fun setFontFamily(family: String) {
+        viewModelScope.launch { dataStore.edit { it[FONT_FAMILY_KEY] = family } }
     }
 
     fun setCloudProvider(providerName: String?) {

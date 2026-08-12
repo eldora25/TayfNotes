@@ -52,6 +52,8 @@ fun MainScreen(
     onUndoDelete: (String) -> Unit = {}, // Add this
     onNoteClick: (Note) -> Unit = {},
     selectedNoteId: String? = null,
+    fontSize: Float = 16f,
+    fontFamily: String = "Roboto",
     bottomBar: @Composable () -> Unit = {}
 ) {
     var isSearchActive by remember { mutableStateOf(false) }
@@ -241,6 +243,8 @@ fun MainScreen(
                         if (selectedNote != null) {
                             DetailPane(
                                 note = selectedNote,
+                                fontSize = fontSize,
+                                fontFamily = fontFamily,
                                 onEdit = { onEditNote(selectedNote) },
                                 onDelete = { onDeleteNote(selectedNote) }
                             )
