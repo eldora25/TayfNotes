@@ -38,9 +38,9 @@ import com.eldora25.tayfnotes.shared.model.ChecklistItem
 import com.eldora25.tayfnotes.shared.model.Folder
 import com.eldora25.tayfnotes.shared.model.Note
 import com.eldora25.tayfnotes.shared.model.NoteType
-import com.eldora25.tayfnotes.ui.components.ChecklistEditor
 import com.eldora25.tayfnotes.ui.components.ColorSelector
 import com.eldora25.tayfnotes.ui.components.DrawingCanvas
+import com.eldora25.tayfnotes.ui.components.TodoEditor
 import com.eldora25.tayfnotes.ui.theme.EditorNeonIcon
 import com.eldora25.tayfnotes.util.AudioRecorder
 import com.eldora25.tayfnotes.util.FileExportHelper
@@ -294,14 +294,24 @@ fun NoteEditorScreen(
                             AssistChip(
                                 onClick = { showEmojiMenu = true },
                                 label = { Text(if (emoji.isEmpty()) "Emoji" else emoji) },
-                                leadingIcon = { Icon(Icons.Default.EmojiEmotions, null, modifier = Modifier.size(18.dp)) }
+                                leadingIcon = { Icon(Icons.Default.EmojiEmotions, null, modifier = Modifier.size(18.dp)) },
+                                shape = RoundedCornerShape(12.dp)
                             )
                             DropdownMenu(expanded = showEmojiMenu, onDismissRequest = { showEmojiMenu = false }) {
-                                val emojiList = listOf("📝", "✅", "💡", "📅", "🎨", "🚀", "❤️", "⭐", "🛒", "💻")
-                                emojiList.forEach { e ->
-                                    DropdownMenuItem(text = { Text(e) }, onClick = { emoji = e; showEmojiMenu = false })
+                                val emojis = listOf("📝", "✅", "💡", "📅", "🎨", "🚀", "❤️", "⭐", "🛒", "💻", "🔥", "📌")
+                                Column(modifier = Modifier.padding(8.dp).width(160.dp)) {
+                                    // Split into rows for better display
+                                    emojis.chunked(4).forEach { rowEmojis ->
+                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                                            rowEmojis.forEach { e ->
+                                                IconButton(onClick = { emoji = e; showEmojiMenu = false }) {
+                                                    Text(e, fontSize = 20.sp)
+                                                }
+                                            }
+                                        }
+                                    }
+                                    DropdownMenuItem(text = { Text("Emoji Kaldır") }, onClick = { emoji = ""; showEmojiMenu = false })
                                 }
-                                DropdownMenuItem(text = { Text("Temizle") }, onClick = { emoji = ""; showEmojiMenu = false })
                             }
                         }
                         Spacer(modifier = Modifier.width(8.dp))
@@ -309,7 +319,8 @@ fun NoteEditorScreen(
                             AssistChip(
                                 onClick = { showFolderMenu = true },
                                 label = { Text(folders.find { it.id == folderId }?.name ?: "Klasör Seç") },
-                                leadingIcon = { Icon(Icons.Default.Folder, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                                leadingIcon = { Icon(Icons.Default.Folder, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                                shape = RoundedCornerShape(12.dp)
                             )
                             DropdownMenu(expanded = showFolderMenu, onDismissRequest = { showFolderMenu = false }) {
                                 DropdownMenuItem(text = { Text("Klasör Yok") }, onClick = { folderId = null; showFolderMenu = false })
@@ -345,7 +356,7 @@ fun NoteEditorScreen(
                         onDataChanged = { sketchData = it }
                     )
                 } else if (note?.type == NoteType.CHECKLIST || checklistItems.isNotEmpty()) {
-                    ChecklistEditor(items = checklistItems, onItemsChanged = { checklistItems = it })
+                    TodoEditor(items = checklistItems, onItemsChanged = { checklistItems = it })
                 } else {
                     if (imageUris.isNotEmpty()) {
                         LazyRow(modifier = Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
