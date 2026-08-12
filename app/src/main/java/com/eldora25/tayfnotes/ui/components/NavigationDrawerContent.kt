@@ -200,10 +200,11 @@ fun DrawerHeader() {
             shape = CircleShape,
             color = MaterialTheme.colorScheme.primaryContainer
         ) {
-            Image(
-                painter = painterResource(id = R.mipmap.ic_launcher),
+            Icon(
+                imageVector = Icons.Default.StickyNote2,
                 contentDescription = "App Icon",
-                modifier = Modifier.padding(12.dp)
+                modifier = Modifier.padding(12.dp),
+                tint = MaterialTheme.colorScheme.primary
             )
         }
         Spacer(modifier = Modifier.height(12.dp))
