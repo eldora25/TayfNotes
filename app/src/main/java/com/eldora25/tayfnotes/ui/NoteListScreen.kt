@@ -1,12 +1,14 @@
 package com.eldora25.tayfnotes.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,24 +25,49 @@ fun NoteListScreen(
     notes: List<Note>,
     onBack: () -> Unit,
     onEditNote: (Note) -> Unit,
-    onRestoreNote: (String) -> Unit = {}, // Add this
+    onRestoreNote: (String) -> Unit = {},
+    onBulkRestore: (Set<String>) -> Unit = {},
+    onBulkDelete: (Set<String>) -> Unit = {},
     onEmptyTrash: (() -> Unit)? = null
 ) {
-    var noteToRestore by remember { mutableStateOf<Note?>(null) } // Add this
+    var noteToRestore by remember { mutableStateOf<Note?>(null) }
+    var selectedIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    val isSelectionMode = selectedIds.isNotEmpty()
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(title) },
+                title = { 
+                    if (isSelectionMode) Text("${selectedIds.size} Seçildi")
+                    else Text(title) 
+                },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Geri")
+                    if (isSelectionMode) {
+                        IconButton(onClick = { selectedIds = emptySet() }) {
+                            Icon(Icons.Default.Close, contentDescription = "İptal")
+                        }
+                    } else {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Geri")
+                        }
                     }
                 },
                 actions = {
                     if (onEmptyTrash != null) {
-                        IconButton(onClick = onEmptyTrash) {
-                            Icon(Icons.Default.DeleteSweep, contentDescription = "Çöpü Boşalt")
+                        if (isSelectionMode) {
+                            IconButton(onClick = { onBulkRestore(selectedIds); selectedIds = emptySet() }) {
+                                Icon(Icons.Default.SettingsBackupRestore, contentDescription = "Seçilenleri Geri Yükle")
+                            }
+                            IconButton(onClick = { onBulkDelete(selectedIds); selectedIds = emptySet() }) {
+                                Icon(Icons.Default.DeleteForever, contentDescription = "Seçilenleri Sil")
+                            }
+                        } else {
+                            IconButton(onClick = { selectedIds = notes.map { it.id }.toSet() }) {
+                                Icon(Icons.Default.SelectAll, contentDescription = "Tümünü Seç")
+                            }
+                            IconButton(onClick = onEmptyTrash) {
+                                Icon(Icons.Default.DeleteSweep, contentDescription = "Çöpü Boşalt")
+                            }
                         }
                     }
                 }
@@ -60,12 +87,19 @@ fun NoteListScreen(
                 verticalItemSpacing = 8.dp
             ) {
                 items(notes) { note ->
+                    val isSelected = selectedIds.contains(note.id)
                     NoteGridItem(
                         note = note, 
                         onClick = { 
-                            if (onEmptyTrash != null) noteToRestore = note
-                            else onEditNote(note)
-                        }
+                            if (isSelectionMode) {
+                                selectedIds = if (isSelected) selectedIds - note.id else selectedIds + note.id
+                            } else if (onEmptyTrash != null) {
+                                noteToRestore = note
+                            } else {
+                                onEditNote(note)
+                            }
+                        },
+                        modifier = if (isSelected) Modifier.background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(20.dp)) else Modifier
                     )
                 }
             }

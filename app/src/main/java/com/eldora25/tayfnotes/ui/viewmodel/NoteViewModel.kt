@@ -347,6 +347,29 @@ class NoteViewModel(
         }
     }
 
+    fun bulkRestoreNotes(noteIds: Set<String>) {
+        viewModelScope.launch {
+            dataStore.edit { pref ->
+                val current = pref[TRASH_IDS_KEY]?.split(",")?.filter { it.isNotEmpty() }?.toMutableSet() ?: mutableSetOf()
+                current.removeAll(noteIds)
+                pref[TRASH_IDS_KEY] = current.joinToString(",")
+            }
+        }
+    }
+
+    fun bulkPermanentlyDeleteNotes(noteIds: Set<String>) {
+        viewModelScope.launch {
+            noteIds.forEach { id ->
+                noteRepository.allNotes.first().find { it.id == id }?.let { noteRepository.delete(it) }
+            }
+            dataStore.edit { pref ->
+                val current = pref[TRASH_IDS_KEY]?.split(",")?.filter { it.isNotEmpty() }?.toMutableSet() ?: mutableSetOf()
+                current.removeAll(noteIds)
+                pref[TRASH_IDS_KEY] = current.joinToString(",")
+            }
+        }
+    }
+
     fun emptyTrash() {
         viewModelScope.launch {
             val currentTrash = trashIds.value

@@ -320,6 +320,8 @@ class MainActivity : FragmentActivity() {
                                 onBack = { onScreenChange(Screen.Main) }, 
                                 onEditNote = { onScreenChange(Screen.EditNote(it)) }, 
                                 onRestoreNote = { noteViewModel.restoreNote(it) },
+                                onBulkRestore = { noteViewModel.bulkRestoreNotes(it) },
+                                onBulkDelete = { noteViewModel.bulkPermanentlyDeleteNotes(it) },
                                 onEmptyTrash = { noteViewModel.emptyTrash() }
                             )
                             is Screen.Settings -> SettingsScreen(

@@ -128,12 +128,14 @@ fun MainScreen(
                                 val dismissState = rememberSwipeToDismissBoxState(
                                     confirmValueChange = { dismissValue ->
                                         if (dismissValue == SwipeToDismissBoxValue.EndToStart) {
+                                            // Increase threshold feel by checking positional info if possible?
+                                            // For now, standard confirm.
                                             onDeleteNote(note)
                                             scope.launch {
                                                 val result = snackbarHostState.showSnackbar(
                                                     message = "Not çöpe taşındı",
                                                     actionLabel = "Geri Al",
-                                                    duration = SnackbarDuration.Short
+                                                    duration = SnackbarDuration.Long
                                                 )
                                                 if (result == SnackbarResult.ActionPerformed) {
                                                     onUndoDelete(note.id)
@@ -352,10 +354,31 @@ fun PremiumTopBar(
                         Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sırala")
                     }
                     DropdownMenu(expanded = showSortMenu, onDismissRequest = { onSortMenuToggle(false) }) {
-                        DropdownMenuItem(text = { Text("Düzenlenme Zamanı") }, onClick = { onSortSelected(SortType.DATE_MODIFIED); onSortMenuToggle(false) })
-                        DropdownMenuItem(text = { Text("Oluşturulma Zamanı") }, onClick = { onSortSelected(SortType.DATE_CREATED); onSortMenuToggle(false) })
-                        DropdownMenuItem(text = { Text("Alfabetik") }, onClick = { onSortSelected(SortType.ALPHABETICAL); onSortMenuToggle(false) })
-                        DropdownMenuItem(text = { Text("Renge Göre") }, onClick = { onSortSelected(SortType.COLOR); onSortMenuToggle(false) })
+                        DropdownMenuItem(
+                            text = { Text("Düzenlenme Zamanı") }, 
+                            onClick = { onSortSelected(SortType.DATE_MODIFIED); onSortMenuToggle(false) },
+                            leadingIcon = { Icon(Icons.Default.Update, null) }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Oluşturulma Zamanı") }, 
+                            onClick = { onSortSelected(SortType.DATE_CREATED); onSortMenuToggle(false) },
+                            leadingIcon = { Icon(Icons.Default.AddCircleOutline, null) }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Alfabetik") }, 
+                            onClick = { onSortSelected(SortType.ALPHABETICAL); onSortMenuToggle(false) },
+                            leadingIcon = { Icon(Icons.Default.SortByAlpha, null) }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Renge Göre") }, 
+                            onClick = { onSortSelected(SortType.COLOR); onSortMenuToggle(false) },
+                            leadingIcon = { Icon(Icons.Default.Palette, null) }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Manuel (Sürükle)") }, 
+                            onClick = { onSortSelected(SortType.MANUAL); onSortMenuToggle(false) },
+                            leadingIcon = { Icon(Icons.Default.DragIndicator, null) }
+                        )
                     }
                 }
             }
