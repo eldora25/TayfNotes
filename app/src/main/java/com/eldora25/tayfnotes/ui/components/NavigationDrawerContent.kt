@@ -8,6 +8,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.automirrored.filled.StickyNote2
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -43,7 +44,7 @@ fun NavigationDrawerContent(
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
 
-            // Menu Items
+            // Primary Navigation
             DrawerItem(
                 icon = Icons.AutoMirrored.Filled.List,
                 label = "Notlar",
@@ -87,7 +88,7 @@ fun NavigationDrawerContent(
             DrawerItem(
                 icon = Icons.Default.AllInclusive,
                 label = "Tüm Notlar",
-                isSelected = currentScreen is Screen.Main,
+                isSelected = false,
                 onClick = { onScreenSelected(Screen.Main) }
             )
             DrawerItem(
@@ -200,11 +201,10 @@ fun DrawerHeader() {
             shape = CircleShape,
             color = MaterialTheme.colorScheme.primaryContainer
         ) {
-            Icon(
-                imageVector = Icons.Default.Description,
+            Image(
+                painter = painterResource(id = R.drawable.ic_launcher_foreground),
                 contentDescription = "App Icon",
-                modifier = Modifier.padding(12.dp),
-                tint = MaterialTheme.colorScheme.primary
+                modifier = Modifier.padding(8.dp)
             )
         }
         Spacer(modifier = Modifier.height(12.dp))

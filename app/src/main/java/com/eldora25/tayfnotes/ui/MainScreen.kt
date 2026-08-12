@@ -20,7 +20,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -49,7 +48,7 @@ fun MainScreen(
     onEditNote: (Note) -> Unit,
     onMoveNote: (Int, Int) -> Unit,
     onDeleteNote: (Note) -> Unit = {},
-    onUndoDelete: (String) -> Unit = {}, // Add this
+    onUndoDelete: (String) -> Unit = {},
     onNoteClick: (Note) -> Unit = {},
     selectedNoteId: String? = null,
     fontSize: Float = 16f,
@@ -93,18 +92,12 @@ fun MainScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
         BoxWithConstraints(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .background(MaterialTheme.colorScheme.background)
+            modifier = Modifier.fillMaxSize().padding(paddingValues).background(MaterialTheme.colorScheme.background)
         ) {
             val isWideScreen = this@BoxWithConstraints.maxWidth > 600.dp
-            val selectedNote = remember(selectedNoteId, notes) {
-                notes.find { it.id == selectedNoteId }
-            }
+            val selectedNote = remember(selectedNoteId, notes) { notes.find { it.id == selectedNoteId } }
 
             Row(modifier = Modifier.fillMaxSize()) {
-                // LEFT SIDE: LIST
                 Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
                     if (sortedNotes.isEmpty()) {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -114,22 +107,19 @@ fun MainScreen(
                         LazyColumn(
                             state = listState,
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 100.dp),
+                            contentPadding = PaddingValues(16.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             itemsIndexed(sortedNotes, key = { _, note -> note.id }) { index, note ->
                                 val isManualSort = sortType == SortType.MANUAL
                                 val isDragging = reorderState.draggedItemIndex == index && isManualSort
                                 
-                                val elevation by animateDpAsState(if (isDragging) 12.dp else 0.dp, label = "elevation")
-                                val scaleFactor by animateFloatAsState(if (isDragging) 1.02f else 1f, label = "scale")
-                                val alphaFactor by animateFloatAsState(if (isDragging) 0.9f else 1f, label = "alpha")
+                                val elevation by animateDpAsState(if (isDragging) 8.dp else 0.dp)
+                                val scale by animateFloatAsState(if (isDragging) 1.02f else 1f)
 
                                 val dismissState = rememberSwipeToDismissBoxState(
                                     confirmValueChange = { dismissValue ->
                                         if (dismissValue == SwipeToDismissBoxValue.EndToStart) {
-                                            // Increase threshold feel by checking positional info if possible?
-                                            // For now, standard confirm.
                                             onDeleteNote(note)
                                             scope.launch {
                                                 val result = snackbarHostState.showSnackbar(
@@ -137,88 +127,48 @@ fun MainScreen(
                                                     actionLabel = "Geri Al",
                                                     duration = SnackbarDuration.Long
                                                 )
-                                                if (result == SnackbarResult.ActionPerformed) {
-                                                    onUndoDelete(note.id)
-                                                }
+                                                if (result == SnackbarResult.ActionPerformed) onUndoDelete(note.id)
                                             }
                                             true
-                                        } else {
-                                            false
-                                        }
+                                        } else false
                                     }
                                 )
 
                                 Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .graphicsLayer {
-                                            translationY = if (isManualSort) reorderState.calculateCurrentOffset(index) else 0f
-                                            scaleX = scaleFactor
-                                            scaleY = scaleFactor
-                                        }
-                                        .zIndex(if (isDragging) 1f else 0f)
-                                        .alpha(alphaFactor)
-                                        .pointerInput(isManualSort) {
-                                            if (isManualSort) {
-                                                detectDragGesturesAfterLongPress(
-                                                    onDragStart = { reorderState.draggedItemIndex = index },
-                                                    onDrag = { change, dragAmount ->
-                                                        change.consume()
-                                                        reorderState.draggedItemOffset += dragAmount.y
-                                                        
-                                                        val itemHeight = 300f 
-                                                        if (reorderState.draggedItemOffset > itemHeight && index < sortedNotes.lastIndex) {
-                                                            onMoveNote(index, index + 1)
-                                                            reorderState.draggedItemIndex = index + 1
-                                                            reorderState.draggedItemOffset -= itemHeight
-                                                        } else if (reorderState.draggedItemOffset < -itemHeight && index > 0) {
-                                                            onMoveNote(index, index - 1)
-                                                            reorderState.draggedItemIndex = index - 1
-                                                            reorderState.draggedItemOffset += itemHeight
-                                                        }
-                                                    },
-                                                    onDragEnd = {
-                                                        reorderState.draggedItemIndex = null
-                                                        reorderState.draggedItemOffset = 0f
-                                                    },
-                                                    onDragCancel = {
-                                                        reorderState.draggedItemIndex = null
-                                                        reorderState.draggedItemOffset = 0f
+                                    modifier = Modifier.fillMaxWidth().graphicsLayer {
+                                        translationY = if (isManualSort) reorderState.calculateCurrentOffset(index) else 0f
+                                        scaleX = scale
+                                        scaleY = scale
+                                    }.zIndex(if (isDragging) 1f else 0f).pointerInput(isManualSort) {
+                                        if (isManualSort) {
+                                            detectDragGesturesAfterLongPress(
+                                                onDragStart = { reorderState.draggedItemIndex = index },
+                                                onDrag = { change, dragAmount ->
+                                                    change.consume()
+                                                    reorderState.draggedItemOffset += dragAmount.y
+                                                    val threshold = 200f
+                                                    if (reorderState.draggedItemOffset > threshold && index < sortedNotes.lastIndex) {
+                                                        onMoveNote(index, index + 1)
+                                                        reorderState.draggedItemIndex = index + 1
+                                                        reorderState.draggedItemOffset -= threshold
+                                                    } else if (reorderState.draggedItemOffset < -threshold && index > 0) {
+                                                        onMoveNote(index, index - 1)
+                                                        reorderState.draggedItemIndex = index - 1
+                                                        reorderState.draggedItemOffset += threshold
                                                     }
-                                                )
-                                            }
+                                                },
+                                                onDragEnd = { reorderState.draggedItemIndex = null; reorderState.draggedItemOffset = 0f },
+                                                onDragCancel = { reorderState.draggedItemIndex = null; reorderState.draggedItemOffset = 0f }
+                                            )
                                         }
+                                    }
                                 ) {
                                     SwipeToDismissBox(
                                         state = dismissState,
                                         enableDismissFromStartToEnd = false,
                                         backgroundContent = {
-                                            val color by androidx.compose.animation.animateColorAsState(
-                                                targetValue = if (dismissState.targetValue == SwipeToDismissBoxValue.EndToStart) 
-                                                    MaterialTheme.colorScheme.error 
-                                                else 
-                                                    Color.Transparent,
-                                                animationSpec = tween(300), label = "swipeColor"
-                                            )
-                                            val iconScale by animateDpAsState(
-                                                targetValue = if (dismissState.targetValue == SwipeToDismissBoxValue.EndToStart) 28.dp else 20.dp, label = "iconScale"
-                                            )
-
-                                            Box(
-                                                Modifier
-                                                    .fillMaxSize()
-                                                    .padding(vertical = 4.dp)
-                                                    .clip(RoundedCornerShape(20.dp))
-                                                    .background(color)
-                                                    .padding(end = 24.dp),
-                                                contentAlignment = Alignment.CenterEnd
-                                            ) {
-                                                Icon(
-                                                    Icons.Default.Delete,
-                                                    contentDescription = "Sil",
-                                                    tint = Color.White,
-                                                    modifier = Modifier.size(iconScale)
-                                                )
+                                            Box(Modifier.fillMaxSize().padding(vertical = 4.dp).clip(RoundedCornerShape(20.dp)).background(MaterialTheme.colorScheme.error).padding(end = 24.dp), contentAlignment = Alignment.CenterEnd) {
+                                                Icon(Icons.Default.Delete, null, tint = Color.White)
                                             }
                                         }
                                     ) {
@@ -227,9 +177,7 @@ fun MainScreen(
                                             onClick = { onNoteClick(note) },
                                             onTitleClick = { onEditNote(note) },
                                             elevation = elevation,
-                                            modifier = if (note.id == selectedNoteId) {
-                                                Modifier.background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(20.dp))
-                                            } else Modifier
+                                            modifier = if (note.id == selectedNoteId) Modifier.background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(20.dp)) else Modifier
                                         )
                                     }
                                 }
@@ -238,21 +186,11 @@ fun MainScreen(
                     }
                 }
 
-                // RIGHT SIDE: PREVIEW
                 if (isWideScreen) {
-                    VerticalDivider(
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                        thickness = 1.dp
-                    )
+                    VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), thickness = 1.dp)
                     Box(modifier = Modifier.weight(1.5f).fillMaxHeight()) {
                         if (selectedNote != null) {
-                            DetailPane(
-                                note = selectedNote,
-                                fontSize = fontSize,
-                                fontFamily = fontFamily,
-                                onEdit = { onEditNote(selectedNote) },
-                                onDelete = { onDeleteNote(selectedNote) }
-                            )
+                            DetailPane(note = selectedNote, fontSize = fontSize, fontFamily = fontFamily, onEdit = { onEditNote(selectedNote) }, onDelete = { onDeleteNote(selectedNote) })
                         } else {
                             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                 Text("Görüntülemek için soldan bir not seçin", color = Color.Gray, style = MaterialTheme.typography.bodyLarge)
@@ -262,26 +200,12 @@ fun MainScreen(
                 }
             }
 
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(start = 16.dp, bottom = 24.dp)
-            ) {
-                Surface(
-                    shape = RoundedCornerShape(32.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f),
-                    tonalElevation = 8.dp,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
-                    modifier = Modifier.wrapContentWidth()
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        FloatingActionPill(icon = Icons.Default.Add, label = "Not", color = MaterialTheme.colorScheme.primary, onClick = onAddNote)
-                        FloatingActionPill(icon = Icons.Default.Checklist, label = "Liste", color = MaterialTheme.colorScheme.secondary, onClick = onAddChecklist)
-                        FloatingActionPill(icon = Icons.Default.Gesture, label = "Sketch", color = MaterialTheme.colorScheme.tertiary, onClick = onAddSketch)
+            Box(modifier = Modifier.align(Alignment.BottomStart).padding(start = 16.dp, bottom = 24.dp)) {
+                Surface(shape = RoundedCornerShape(32.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f), tonalElevation = 8.dp, border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)), modifier = Modifier.wrapContentWidth()) {
+                    Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                        FloatingActionPill(Icons.Default.Add, "Not", MaterialTheme.colorScheme.primary, onAddNote)
+                        FloatingActionPill(Icons.Default.Checklist, "Liste", MaterialTheme.colorScheme.secondary, onAddChecklist)
+                        FloatingActionPill(Icons.Default.Gesture, "Sketch", MaterialTheme.colorScheme.tertiary, onAddSketch)
                     }
                 }
             }
@@ -302,43 +226,12 @@ fun PremiumTopBar(
     onMenuClick: () -> Unit = {}
 ) {
     if (isSearchActive) {
-        // ... (existing search bar code)
-        Surface(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant,
-            tonalElevation = 4.dp
-        ) {
-            TextField(
-                value = searchQuery,
-                onValueChange = onSearchQueryChanged,
-                placeholder = { Text("Notlarda ara...", color = Color.Gray) },
-                modifier = Modifier.fillMaxWidth(),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent
-                ),
-                singleLine = true,
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Ara", tint = Color.Gray) },
-                trailingIcon = {
-                    IconButton(onClick = { 
-                        onSearchQueryChanged("")
-                        onSearchToggle(false) 
-                    }) {
-                        Icon(Icons.Default.Close, contentDescription = "Kapat")
-                    }
-                }
-            )
+        Surface(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceVariant, tonalElevation = 4.dp) {
+            TextField(value = searchQuery, onValueChange = onSearchQueryChanged, placeholder = { Text("Notlarda ara...", color = Color.Gray) }, modifier = Modifier.fillMaxWidth(), colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent), singleLine = true, leadingIcon = { Icon(Icons.Default.Search, null, tint = Color.Gray) }, trailingIcon = { IconButton(onClick = { onSearchQueryChanged(""); onSearchToggle(false) }) { Icon(Icons.Default.Close, null) } })
         }
     } else {
         CenterAlignedTopAppBar(
-            navigationIcon = {
-                IconButton(onClick = onMenuClick) {
-                    Icon(Icons.Default.Menu, contentDescription = "Menü")
-                }
-            },
+            navigationIcon = { IconButton(onClick = onMenuClick) { Icon(Icons.Default.Menu, null) } },
             title = {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("TayfNotes", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
@@ -346,39 +239,15 @@ fun PremiumTopBar(
                 }
             },
             actions = {
-                IconButton(onClick = { onSearchToggle(true) }) {
-                    Icon(Icons.Default.Search, contentDescription = "Ara")
-                }
+                IconButton(onClick = { onSearchToggle(true) }) { Icon(Icons.Default.Search, null) }
                 Box {
-                    IconButton(onClick = { onSortMenuToggle(true) }) {
-                        Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sırala")
-                    }
+                    IconButton(onClick = { onSortMenuToggle(true) }) { Icon(Icons.AutoMirrored.Filled.Sort, null) }
                     DropdownMenu(expanded = showSortMenu, onDismissRequest = { onSortMenuToggle(false) }) {
-                        DropdownMenuItem(
-                            text = { Text("Düzenlenme Zamanı") }, 
-                            onClick = { onSortSelected(SortType.DATE_MODIFIED); onSortMenuToggle(false) },
-                            leadingIcon = { Icon(Icons.Default.Update, null) }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Oluşturulma Zamanı") }, 
-                            onClick = { onSortSelected(SortType.DATE_CREATED); onSortMenuToggle(false) },
-                            leadingIcon = { Icon(Icons.Default.AddCircleOutline, null) }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Alfabetik") }, 
-                            onClick = { onSortSelected(SortType.ALPHABETICAL); onSortMenuToggle(false) },
-                            leadingIcon = { Icon(Icons.Default.SortByAlpha, null) }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Renge Göre") }, 
-                            onClick = { onSortSelected(SortType.COLOR); onSortMenuToggle(false) },
-                            leadingIcon = { Icon(Icons.Default.Palette, null) }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Manuel (Sürükle)") }, 
-                            onClick = { onSortSelected(SortType.MANUAL); onSortMenuToggle(false) },
-                            leadingIcon = { Icon(Icons.Default.DragIndicator, null) }
-                        )
+                        DropdownMenuItem(text = { Text("Düzenlenme Zamanı") }, onClick = { onSortSelected(SortType.DATE_MODIFIED); onSortMenuToggle(false) }, leadingIcon = { Icon(Icons.Default.Update, null) })
+                        DropdownMenuItem(text = { Text("Oluşturulma Zamanı") }, onClick = { onSortSelected(SortType.DATE_CREATED); onSortMenuToggle(false) }, leadingIcon = { Icon(Icons.Default.AddCircleOutline, null) })
+                        DropdownMenuItem(text = { Text("Alfabetik") }, onClick = { onSortSelected(SortType.ALPHABETICAL); onSortMenuToggle(false) }, leadingIcon = { Icon(Icons.Default.SortByAlpha, null) })
+                        DropdownMenuItem(text = { Text("Renge Göre") }, onClick = { onSortSelected(SortType.COLOR); onSortMenuToggle(false) }, leadingIcon = { Icon(Icons.Default.Palette, null) })
+                        DropdownMenuItem(text = { Text("Manuel (Sürükle)") }, onClick = { onSortSelected(SortType.MANUAL); onSortMenuToggle(false) }, leadingIcon = { Icon(Icons.Default.DragIndicator, null) })
                     }
                 }
             }
@@ -387,21 +256,10 @@ fun PremiumTopBar(
 }
 
 @Composable
-fun FloatingActionPill(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    label: String,
-    color: Color,
-    onClick: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .clip(CircleShape)
-            .background(color.copy(alpha = 0.15f))
-            .clickable { onClick() }
-            .padding(horizontal = 16.dp, vertical = 12.dp)
-    ) {
+fun FloatingActionPill(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, color: Color, onClick: () -> Unit) {
+    Box(modifier = Modifier.clip(CircleShape).background(color.copy(alpha = 0.15f)).clickable { onClick() }.padding(horizontal = 16.dp, vertical = 12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(18.dp))
+            Icon(icon, null, tint = color, modifier = Modifier.size(18.dp))
             Spacer(modifier = Modifier.width(6.dp))
             Text(label, style = MaterialTheme.typography.labelMedium, color = color, fontWeight = FontWeight.Bold)
         }

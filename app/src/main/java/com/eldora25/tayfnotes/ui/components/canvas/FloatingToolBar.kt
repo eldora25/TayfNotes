@@ -34,130 +34,56 @@ fun FloatingToolBar(
     Surface(
         modifier = modifier
             .padding(8.dp)
-            .shadow(
-                elevation = 16.dp, 
-                shape = RoundedCornerShape(32.dp),
-                ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                spotColor = MaterialTheme.colorScheme.primary
-            ),
+            .shadow(16.dp, RoundedCornerShape(32.dp)),
         shape = RoundedCornerShape(32.dp),
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.15f))
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
     ) {
         Row(
             modifier = Modifier
-                .padding(horizontal = 8.dp, vertical = 6.dp)
+                .padding(horizontal = 12.dp, vertical = 8.dp)
                 .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            ToolButton(
-                icon = Icons.Default.PanToolAlt,
-                isSelected = currentTool == ToolType.SELECTOR,
-                onClick = { onToolSelected(ToolType.SELECTOR) }
-            )
-            ToolButton(
-                icon = Icons.Default.Gesture,
-                isSelected = currentTool == ToolType.LASSO,
-                onClick = { onToolSelected(ToolType.LASSO) }
-            )
-            
-            VerticalDivider()
-
-            ToolButton(
-                icon = Icons.Default.Edit,
-                isSelected = currentTool == ToolType.PEN,
-                onClick = { onToolSelected(ToolType.PEN) }
-            )
-            ToolButton(
-                icon = Icons.Default.HistoryEdu,
-                isSelected = currentTool == ToolType.PENCIL,
-                onClick = { onToolSelected(ToolType.PENCIL) }
-            )
-            ToolButton(
-                icon = Icons.Default.Brush,
-                isSelected = currentTool == ToolType.BRUSH,
-                onClick = { onToolSelected(ToolType.BRUSH) }
-            )
-            ToolButton(
-                icon = Icons.Default.BorderColor,
-                isSelected = currentTool == ToolType.MARKER,
-                onClick = { onToolSelected(ToolType.MARKER) }
-            )
-            ToolButton(
-                icon = Icons.Default.Highlight,
-                isSelected = currentTool == ToolType.HIGHLIGHTER,
-                onClick = { onToolSelected(ToolType.HIGHLIGHTER) }
-            )
+            ToolButton(Icons.Default.PanToolAlt, "Seçici", currentTool == ToolType.SELECTOR) { onToolSelected(ToolType.SELECTOR) }
+            ToolButton(Icons.Default.Gesture, "Kement", currentTool == ToolType.LASSO) { onToolSelected(ToolType.LASSO) }
             
             VerticalDivider()
             
-            ToolButton(
-                icon = Icons.Default.Category,
-                isSelected = currentTool == ToolType.SHAPE,
-                onClick = { onToolSelected(ToolType.SHAPE) }
-            )
-            ToolButton(
-                icon = Icons.Default.FormatPaint,
-                isSelected = currentTool == ToolType.PAINT_BUCKET,
-                onClick = { onToolSelected(ToolType.PAINT_BUCKET) }
-            )
+            ToolButton(Icons.Default.Edit, "Kalem", currentTool == ToolType.PEN) { onToolSelected(ToolType.PEN) }
+            ToolButton(Icons.Default.HistoryEdu, "Kurşun Kalem", currentTool == ToolType.PENCIL) { onToolSelected(ToolType.PENCIL) }
+            ToolButton(Icons.Default.Brush, "Fırça", currentTool == ToolType.BRUSH) { onToolSelected(ToolType.BRUSH) }
+            ToolButton(Icons.Default.BorderColor, "Marker", currentTool == ToolType.MARKER) { onToolSelected(ToolType.MARKER) }
+            ToolButton(Icons.Default.Highlight, "Fosforlu", currentTool == ToolType.HIGHLIGHTER) { onToolSelected(ToolType.HIGHLIGHTER) }
             
             VerticalDivider()
-
-            ToolButton(
-                icon = Icons.Default.AutoFixNormal,
-                isSelected = currentTool == ToolType.OBJECT_ERASER,
-                onClick = { onToolSelected(ToolType.OBJECT_ERASER) }
-            )
-            ToolButton(
-                icon = Icons.Default.CleaningServices,
-                isSelected = currentTool == ToolType.PIXEL_ERASER,
-                onClick = { onToolSelected(ToolType.PIXEL_ERASER) }
-            )
+            
+            ToolButton(Icons.Default.Category, "Şekil", currentTool == ToolType.SHAPE) { onToolSelected(ToolType.SHAPE) }
+            ToolButton(Icons.Default.FormatPaint, "Kova", currentTool == ToolType.PAINT_BUCKET) { onToolSelected(ToolType.PAINT_BUCKET) }
+            
+            VerticalDivider()
+            
+            ToolButton(Icons.Default.AutoFixNormal, "Obje Silgisi", currentTool == ToolType.OBJECT_ERASER) { onToolSelected(ToolType.OBJECT_ERASER) }
+            ToolButton(Icons.Default.CleaningServices, "Piksel Silgisi", currentTool == ToolType.PIXEL_ERASER) { onToolSelected(ToolType.PIXEL_ERASER) }
         }
     }
 }
 
 @Composable
-private fun VerticalDivider() {
-    Box(modifier = Modifier.height(24.dp).width(1.dp).background(Color.Gray.copy(alpha = 0.3f)))
+private fun ToolButton(icon: ImageVector, label: String, isSelected: Boolean, onClick: () -> Unit) {
+    val bg by animateColorAsState(if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent)
+    val tint by animateColorAsState(if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface)
+    
+    Box(
+        modifier = Modifier.size(44.dp).clip(CircleShape).background(bg).clickable { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(icon, contentDescription = label, tint = tint, modifier = Modifier.size(22.dp))
+    }
 }
 
 @Composable
-private fun ToolButton(
-    icon: ImageVector,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-    val backgroundColor by animateColorAsState(
-        targetValue = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
-        label = "ToolBgColor"
-    )
-    val iconTint by animateColorAsState(
-        targetValue = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
-        label = "ToolIconColor"
-    )
-    
-    val size by animateDpAsState(
-        targetValue = if (isSelected) 48.dp else 40.dp,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
-        label = "ToolSize"
-    )
-
-    Box(
-        modifier = Modifier
-            .size(size)
-            .clip(CircleShape)
-            .background(backgroundColor)
-            .clickable { onClick() },
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = iconTint,
-            modifier = Modifier.size(22.dp)
-        )
-    }
+private fun VerticalDivider() {
+    Box(modifier = Modifier.height(24.dp).width(1.dp).background(Color.Gray.copy(alpha = 0.2f)))
 }

@@ -1,6 +1,5 @@
 package com.eldora25.tayfnotes.ui.theme
 
-import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -22,16 +21,10 @@ enum class TayfTheme {
     MIDNIGHT, SUNSET, FOREST, OCEAN, LAVENDER, ROSE, SLATE, EMERALD, ROYAL, CRIMSON
 }
 
-/**
- * Extension to get a high-contrast color (Black or White) based on background luminance
- */
 fun Color.contentColor(): Color {
     return if (this.luminance() > 0.45f) Color.Black else Color.White
 }
 
-/**
- * Editor specific Neon Icon: Black capsule with Yellow content and Neon Glow
- */
 @Composable
 fun EditorNeonIcon(
     modifier: Modifier = Modifier,
@@ -52,9 +45,9 @@ fun EditorNeonIcon(
     }
 }
 
-private fun getDarkColorScheme(theme: TayfTheme) = darkColorScheme(
-    primary = when(theme) {
-        TayfTheme.MIDNIGHT -> PremiumGold
+private fun getThemePrimary(theme: TayfTheme): Color {
+    return when(theme) {
+        TayfTheme.MIDNIGHT -> MidnightPrimary
         TayfTheme.SUNSET -> SunsetPrimary
         TayfTheme.FOREST -> ForestPrimary
         TayfTheme.OCEAN -> OceanPrimary
@@ -64,39 +57,46 @@ private fun getDarkColorScheme(theme: TayfTheme) = darkColorScheme(
         TayfTheme.EMERALD -> EmeraldPrimary
         TayfTheme.ROYAL -> RoyalPrimary
         TayfTheme.CRIMSON -> CrimsonPrimary
-    },
-    secondary = MidnightLight,
-    background = Color(0xFF0A0A0A), // Deepest black (Madde 4)
-    surface = Color(0xFF161616), // Darker surface
-    onPrimary = Color.Black,
-    onBackground = Color.White,
-    onSurface = Color.White,
-    onSurfaceVariant = Color(0xFFB0B0B0),
-    outline = Color.White.copy(alpha = 0.5f)
-)
+    }
+}
 
-private fun getLightColorScheme(theme: TayfTheme) = lightColorScheme(
-    primary = when(theme) {
-        TayfTheme.MIDNIGHT -> MidnightBlue
-        TayfTheme.SUNSET -> SunsetPrimary
-        TayfTheme.FOREST -> ForestPrimary
-        TayfTheme.OCEAN -> OceanPrimary
-        TayfTheme.LAVENDER -> LavenderPrimary
-        TayfTheme.ROSE -> RosePrimary
-        TayfTheme.SLATE -> SlatePrimary
-        TayfTheme.EMERALD -> EmeraldPrimary
-        TayfTheme.ROYAL -> RoyalPrimary
-        TayfTheme.CRIMSON -> CrimsonPrimary
-    },
-    secondary = MidnightLight,
-    background = Color.White,
-    surface = Color.White,
-    onPrimary = Color.White,
-    onBackground = Color(0xFF0A0A0A),
-    onSurface = Color(0xFF0A0A0A),
-    onSurfaceVariant = Color(0xFF404040),
-    outline = Color.Black.copy(alpha = 0.5f)
-)
+private fun getDarkColorScheme(theme: TayfTheme): ColorScheme {
+    val primary = getThemePrimary(theme)
+    return darkColorScheme(
+        primary = primary,
+        onPrimary = Color.Black,
+        primaryContainer = primary.copy(alpha = 0.3f),
+        onPrimaryContainer = Color.White,
+        secondary = primary.copy(alpha = 0.7f),
+        onSecondary = Color.Black,
+        background = Color(0xFF0A0A0A),
+        onBackground = Color.White,
+        surface = Color(0xFF121212),
+        onSurface = Color.White,
+        surfaceVariant = Color(0xFF1E1E1E),
+        onSurfaceVariant = Color(0xFFB0B0B0),
+        outline = primary.copy(alpha = 0.5f)
+    )
+}
+
+private fun getLightColorScheme(theme: TayfTheme): ColorScheme {
+    val primary = getThemePrimary(theme)
+    return lightColorScheme(
+        primary = primary,
+        onPrimary = Color.White,
+        primaryContainer = primary.copy(alpha = 0.15f),
+        onPrimaryContainer = primary,
+        secondary = primary.copy(alpha = 0.6f),
+        onSecondary = Color.White,
+        background = Color.White,
+        onBackground = Color(0xFF0A0A0A),
+        surface = Color(0xFFF8F9FA),
+        onSurface = Color(0xFF0A0A0A),
+        surfaceVariant = Color(0xFFE9ECEF),
+        onSurfaceVariant = Color(0xFF495057),
+        outline = primary.copy(alpha = 0.3f)
+    )
+}
 
 @Composable
 fun TayfNotesTheme(
