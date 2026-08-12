@@ -11,7 +11,8 @@ import com.eldora25.tayfnotes.Screen
 fun BottomNavigationBar(
     currentScreen: Screen,
     onScreenChange: (Screen) -> Unit,
-    onNotesClick: () -> Unit
+    onNotesClick: () -> Unit,
+    onMenuClick: () -> Unit
 ) {
     NavigationBar(
         containerColor = MaterialTheme.colorScheme.surface,
@@ -42,13 +43,16 @@ fun BottomNavigationBar(
             icon = { Icon(Icons.Default.Search, contentDescription = "Ara") },
             label = { Text("Ara") },
             selected = false,
-            onClick = { onScreenChange(Screen.Main) }
+            onClick = { 
+                // Toggle search in main screen if already there, or go to main
+                onScreenChange(Screen.Main)
+            }
         )
         NavigationBarItem(
-            icon = { Icon(Icons.Default.MoreHoriz, contentDescription = "Diğer") },
-            label = { Text("Diğer") },
-            selected = currentScreen is Screen.More || currentScreen is Screen.Settings,
-            onClick = { onScreenChange(Screen.More) }
+            icon = { Icon(Icons.Default.Menu, contentDescription = "Menü") },
+            label = { Text("Menü") },
+            selected = false,
+            onClick = onMenuClick
         )
     }
 }

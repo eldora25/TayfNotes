@@ -54,6 +54,7 @@ fun MainScreen(
     selectedNoteId: String? = null,
     fontSize: Float = 16f,
     fontFamily: String = "Roboto",
+    onMenuClick: () -> Unit = {},
     bottomBar: @Composable () -> Unit = {}
 ) {
     var isSearchActive by remember { mutableStateOf(false) }
@@ -84,7 +85,8 @@ fun MainScreen(
                 onSearchToggle = { isSearchActive = it },
                 showSortMenu = showSortMenu,
                 onSortMenuToggle = { showSortMenu = it },
-                onSortSelected = { sortType = it }
+                onSortSelected = { sortType = it },
+                onMenuClick = onMenuClick
             )
         },
         bottomBar = bottomBar,
@@ -220,7 +222,8 @@ fun MainScreen(
                                     ) {
                                         NoteGridItem(
                                             note = note,
-                                            onClick = { if (isWideScreen) onNoteClick(note) else onEditNote(note) },
+                                            onClick = { onNoteClick(note) },
+                                            onTitleClick = { onEditNote(note) },
                                             elevation = elevation,
                                             modifier = if (note.id == selectedNoteId) {
                                                 Modifier.background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(20.dp))
@@ -293,9 +296,11 @@ fun PremiumTopBar(
     onSearchToggle: (Boolean) -> Unit,
     showSortMenu: Boolean,
     onSortMenuToggle: (Boolean) -> Unit,
-    onSortSelected: (SortType) -> Unit
+    onSortSelected: (SortType) -> Unit,
+    onMenuClick: () -> Unit = {}
 ) {
     if (isSearchActive) {
+        // ... (existing search bar code)
         Surface(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             shape = RoundedCornerShape(16.dp),
@@ -327,6 +332,11 @@ fun PremiumTopBar(
         }
     } else {
         CenterAlignedTopAppBar(
+            navigationIcon = {
+                IconButton(onClick = onMenuClick) {
+                    Icon(Icons.Default.Menu, contentDescription = "Menü")
+                }
+            },
             title = {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("TayfNotes", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)

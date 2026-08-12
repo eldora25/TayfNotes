@@ -21,6 +21,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
@@ -31,6 +33,7 @@ import com.eldora25.tayfnotes.data.repository.NoteRepository
 import com.eldora25.tayfnotes.shared.model.Note
 import com.eldora25.tayfnotes.ui.*
 import com.eldora25.tayfnotes.ui.components.BottomNavigationBar
+import com.eldora25.tayfnotes.ui.components.NavigationDrawerContent
 import com.eldora25.tayfnotes.ui.theme.EditorNeonIcon
 import com.eldora25.tayfnotes.ui.theme.TayfNotesTheme
 import com.eldora25.tayfnotes.ui.viewmodel.NoteViewModel
@@ -39,12 +42,12 @@ import com.eldora25.tayfnotes.util.BackupImportHelper
 import com.eldora25.tayfnotes.util.BackupPackageHelper
 import com.eldora25.tayfnotes.util.BiometricHelper
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.launch
 
 sealed class Screen {
     object Main : Screen()
     object Folders : Screen()
     object Calendar : Screen()
-    object More : Screen()
     object Archive : Screen()
     object Trash : Screen()
     object Settings : Screen()
@@ -52,6 +55,8 @@ sealed class Screen {
     data class EditNote(val note: Note? = null, val initialSketch: Boolean = false) : Screen()
     data class WebClipper(val url: String, val title: String? = null, val content: String? = null) : Screen()
     object InternalBrowser : Screen()
+    data class Placeholder(val title: String) : Screen()
+    data class DetailNote(val note: Note) : Screen()
 }
 
 class MainActivity : FragmentActivity() {
@@ -121,7 +126,47 @@ class MainActivity : FragmentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun MainAppContent() {
+        val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+        val scope = rememberCoroutineScope()
         var currentScreen by remember { mutableStateOf<Screen>(Screen.Main) }
+
+        LaunchedEffect(Unit) {
+            sharedUrlFlow.collect { url ->
+                currentScreen = Screen.WebClipper(url)
+            }
+        }
+
+        ModalNavigationDrawer(
+            drawerState = drawerState,
+            drawerContent = {
+                NavigationDrawerContent(
+                    currentScreen = currentScreen,
+                    onScreenSelected = { screen ->
+                        currentScreen = screen
+                        scope.launch { drawerState.close() }
+                    },
+                    onPlaceholderSelected = { title ->
+                        currentScreen = Screen.Placeholder(title)
+                        scope.launch { drawerState.close() }
+                    }
+                )
+            }
+        ) {
+            ContentArea(
+                currentScreen = currentScreen,
+                onScreenChange = { currentScreen = it },
+                onMenuClick = { scope.launch { drawerState.open() } }
+            )
+        }
+    }
+
+    @OptIn(ExperimentalMaterial3Api::class)
+    @Composable
+    fun ContentArea(
+        currentScreen: Screen,
+        onScreenChange: (Screen) -> Unit,
+        onMenuClick: () -> Unit
+    ) {
         val notes by noteViewModel.notes.collectAsState()
         val archivedNotes by noteViewModel.archivedNotes.collectAsState()
         val trashedNotes by noteViewModel.trashedNotes.collectAsState()
@@ -134,16 +179,12 @@ class MainActivity : FragmentActivity() {
         val activeCloudProvider by noteViewModel.activeCloudProvider.collectAsState()
         val currentFontSize by noteViewModel.currentFontSize.collectAsState()
         val currentFontFamily by noteViewModel.currentFontFamily.collectAsState()
-        
+
         var selectedNoteInMasterDetail by remember { mutableStateOf<Note?>(null) }
         var sortType by remember { mutableStateOf(SortType.DATE_MODIFIED) }
         var showSortMenu by remember { mutableStateOf(false) }
 
-        LaunchedEffect(Unit) {
-            sharedUrlFlow.collect { url ->
-                currentScreen = Screen.WebClipper(url)
-            }
-        }
+        val isWideScreen = LocalConfiguration.current.screenWidthDp > 600
 
         val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
             uri?.let {
@@ -157,20 +198,31 @@ class MainActivity : FragmentActivity() {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             if (currentScreen is Screen.EditNote) {
                 val screen = currentScreen as Screen.EditNote
-                BackHandler { currentScreen = Screen.Main }
+                BackHandler { onScreenChange(Screen.Main) }
                 NoteEditorScreen(
                     note = screen.note,
                     folders = folders,
                     initialSketch = screen.initialSketch,
                     fontSize = currentFontSize,
                     fontFamily = currentFontFamily,
-                    onBack = { currentScreen = Screen.Main },
+                    onBack = { onScreenChange(Screen.Main) },
                     onSave = { noteViewModel.saveNote(it) },
-                    onDelete = { noteViewModel.trashNote(it.id); currentScreen = Screen.Main }
+                    onDelete = { noteViewModel.trashNote(it.id); onScreenChange(Screen.Main) }
+                )
+            } else if (currentScreen is Screen.DetailNote) {
+                val screen = currentScreen as Screen.DetailNote
+                BackHandler { onScreenChange(Screen.Main) }
+                NoteDetailScreen(
+                    note = screen.note,
+                    fontSize = currentFontSize,
+                    fontFamily = currentFontFamily,
+                    onBack = { onScreenChange(Screen.Main) },
+                    onEdit = { onScreenChange(Screen.EditNote(screen.note)) },
+                    onDelete = { noteViewModel.trashNote(screen.note.id) }
                 )
             } else if (currentScreen is Screen.WebClipper) {
                 val screen = currentScreen as Screen.WebClipper
-                BackHandler { currentScreen = Screen.Main }
+                BackHandler { onScreenChange(Screen.Main) }
                 WebClipperScreen(
                     url = screen.url,
                     folders = folders,
@@ -178,52 +230,64 @@ class MainActivity : FragmentActivity() {
                     predefinedContent = screen.content,
                     onSave = { 
                         noteViewModel.saveNote(it)
-                        currentScreen = Screen.Main 
+                        onScreenChange(Screen.Main) 
                     },
-                    onCancel = { currentScreen = Screen.Main }
+                    onCancel = { onScreenChange(Screen.Main) }
                 )
+            } else if (currentScreen is Screen.Placeholder) {
+                val screen = currentScreen as Screen.Placeholder
+                BackHandler { onScreenChange(Screen.Main) }
+                PlaceholderScreen(title = screen.title, onBack = { onScreenChange(Screen.Main) })
             } else if (currentScreen is Screen.InternalBrowser) {
-                BackHandler { currentScreen = Screen.More }
+                BackHandler { onScreenChange(Screen.Main) }
                 InternalWebBrowserScreen(
-                    onBack = { currentScreen = Screen.More },
+                    onBack = { onScreenChange(Screen.Main) },
                     onClipContent = { title, url, text ->
-                        // Dahili tarayıcıdan kırpılan veriyi WebClipperScreen'e pasla
-                        currentScreen = Screen.WebClipper(url, title, text)
+                        onScreenChange(Screen.WebClipper(url, title, text))
                     }
                 )
             } else if (currentScreen is Screen.ThemeSelection) {
-                BackHandler { currentScreen = Screen.More }
+                BackHandler { onScreenChange(Screen.Main) }
                 ThemeSelectionScreen(
                     currentTheme = currentTheme,
                     isDarkMode = isDarkModePref,
                     onThemeSelected = { noteViewModel.setTheme(it) },
                     onDarkModeChanged = { noteViewModel.setDarkMode(it) },
-                    onBack = { currentScreen = Screen.More }
+                    onBack = { onScreenChange(Screen.Main) }
                 )
             } else if (currentScreen == Screen.Main) {
                 MainScreen(
                     notes = notes,
                     searchQuery = searchQuery,
                     onSearchQueryChanged = { noteViewModel.onSearchQueryChanged(it) },
-                    onAddNote = { currentScreen = Screen.EditNote() },
-                    onAddChecklist = { currentScreen = Screen.EditNote(note = Note(id = System.currentTimeMillis().toString(), title = "", content = "", type = com.eldora25.tayfnotes.shared.model.NoteType.CHECKLIST)) },
-                    onAddSketch = { currentScreen = Screen.EditNote(initialSketch = true) },
-                    onEditNote = { currentScreen = Screen.EditNote(it) },
+                    onAddNote = { onScreenChange(Screen.EditNote()) },
+                    onAddChecklist = { onScreenChange(Screen.EditNote(note = Note(id = System.currentTimeMillis().toString(), title = "", content = "", type = com.eldora25.tayfnotes.shared.model.NoteType.CHECKLIST))) },
+                    onAddSketch = { onScreenChange(Screen.EditNote(initialSketch = true)) },
+                    onEditNote = { onScreenChange(Screen.EditNote(it)) },
                     onMoveNote = { f, t -> noteViewModel.updateNotePosition(f, t) },
                     onDeleteNote = { noteViewModel.trashNote(it.id) },
                     onUndoDelete = { noteViewModel.restoreNote(it) },
-                    onNoteClick = { selectedNoteInMasterDetail = it },
+                    onNoteClick = { 
+                        if (isWideScreen) selectedNoteInMasterDetail = it
+                        else onScreenChange(Screen.DetailNote(it))
+                    },
                     selectedNoteId = selectedNoteInMasterDetail?.id,
                     fontSize = currentFontSize,
                     fontFamily = currentFontFamily,
+                    onMenuClick = onMenuClick,
                     bottomBar = {
-                        BottomNavigationBar(currentScreen, { currentScreen = it }, { noteViewModel.onFolderSelected(null) })
+                        BottomNavigationBar(currentScreen, { onScreenChange(it) }, { noteViewModel.onFolderSelected(null) }, onMenuClick)
                     }
                 )
             } else {
                 Scaffold(
                     topBar = {
                         CenterAlignedTopAppBar(
+                            navigationIcon = {
+                                IconButton(onClick = onMenuClick) {
+                                    Icon(Icons.Default.Menu, contentDescription = "Menü")
+                                }
+                            },
                             title = { 
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     Text("TayfNotes", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold)
@@ -242,25 +306,24 @@ class MainActivity : FragmentActivity() {
                         )
                     },
                     bottomBar = {
-                        BottomNavigationBar(currentScreen, { currentScreen = it }, { noteViewModel.onFolderSelected(null) })
+                        BottomNavigationBar(currentScreen, { onScreenChange(it) }, { noteViewModel.onFolderSelected(null) }, onMenuClick)
                     }
                 ) { innerPadding ->
                     Box(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
                         when (currentScreen) {
-                            is Screen.Folders -> FoldersScreen(folders, { noteViewModel.onFolderSelected(it.id); currentScreen = Screen.Main }, { n, c -> noteViewModel.addFolder(n, c) }, { noteViewModel.updateFolder(it) })
-                            is Screen.Calendar -> CalendarScreen(notes, { currentScreen = Screen.EditNote(it) })
-                            is Screen.More -> MoreScreen { currentScreen = it }
-                            is Screen.Archive -> NoteListScreen("Arşiv", archivedNotes, { currentScreen = Screen.More }, { currentScreen = Screen.EditNote(it) })
+                            is Screen.Folders -> FoldersScreen(folders, { noteViewModel.onFolderSelected(it.id); onScreenChange(Screen.Main) }, { n, c -> noteViewModel.addFolder(n, c) }, { noteViewModel.updateFolder(it) })
+                            is Screen.Calendar -> CalendarScreen(notes, { onScreenChange(Screen.EditNote(it)) })
+                            is Screen.Archive -> NoteListScreen("Arşiv", archivedNotes, { onScreenChange(Screen.Main) }, { onScreenChange(Screen.EditNote(it)) })
                             is Screen.Trash -> NoteListScreen(
                                 title = "Çöp", 
                                 notes = trashedNotes, 
-                                onBack = { currentScreen = Screen.More }, 
-                                onEditNote = { currentScreen = Screen.EditNote(it) }, 
+                                onBack = { onScreenChange(Screen.Main) }, 
+                                onEditNote = { onScreenChange(Screen.EditNote(it)) }, 
                                 onRestoreNote = { noteViewModel.restoreNote(it) },
                                 onEmptyTrash = { noteViewModel.emptyTrash() }
                             )
                             is Screen.Settings -> SettingsScreen(
-                                onBack = { currentScreen = Screen.More },
+                                onBack = { onScreenChange(Screen.Main) },
                                 isSyncing = isSyncing,
                                 activeCloudProvider = activeCloudProvider,
                                 onConnectDropbox = { token ->

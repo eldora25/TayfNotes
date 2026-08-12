@@ -30,9 +30,11 @@ import kotlinx.serialization.json.Json
 fun NoteGridItem(
     note: Note,
     onClick: () -> Unit,
+    onTitleClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     elevation: androidx.compose.ui.unit.Dp = 0.dp
 ) {
+    // ...
     val customColor = parseNoteColor(note.colorHex)
     val baseSurface = MaterialTheme.colorScheme.surfaceVariant
     val backgroundColor = if (customColor != Color.Unspecified) {
@@ -79,7 +81,12 @@ fun NoteGridItem(
                         color = contentColor,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier
+                            .weight(1f)
+                            .then(
+                                if (onTitleClick != null) Modifier.clickable { onTitleClick() }
+                                else Modifier
+                            )
                     )
                     if (note.isLocked) {
                         Icon(
