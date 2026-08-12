@@ -88,7 +88,28 @@ fun MainScreen(
                 onMenuClick = onMenuClick
             )
         },
-        bottomBar = bottomBar,
+        floatingActionButton = {
+            Surface(
+                shape = RoundedCornerShape(32.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f),
+                tonalElevation = 8.dp,
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
+                modifier = Modifier
+                    .padding(bottom = 16.dp)
+                    .wrapContentWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    FloatingActionPill(Icons.Default.Add, "Not", MaterialTheme.colorScheme.primary, onAddNote)
+                    FloatingActionPill(Icons.Default.FactCheck, "Yapılacaklar", MaterialTheme.colorScheme.secondary, onAddChecklist)
+                    FloatingActionPill(Icons.Default.Gesture, "Sketch", MaterialTheme.colorScheme.tertiary, onAddSketch)
+                }
+            }
+        },
+        floatingActionButtonPosition = FabPosition.Center,
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
         BoxWithConstraints(
@@ -200,15 +221,7 @@ fun MainScreen(
                 }
             }
 
-            Box(modifier = Modifier.align(Alignment.BottomStart).padding(start = 16.dp, bottom = 24.dp)) {
-                Surface(shape = RoundedCornerShape(32.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f), tonalElevation = 8.dp, border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)), modifier = Modifier.wrapContentWidth()) {
-                    Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-                        FloatingActionPill(Icons.Default.Add, "Not", MaterialTheme.colorScheme.primary, onAddNote)
-                        FloatingActionPill(Icons.Default.FactCheck, "Yapılacaklar", MaterialTheme.colorScheme.secondary, onAddChecklist)
-                        FloatingActionPill(Icons.Default.Gesture, "Sketch", MaterialTheme.colorScheme.tertiary, onAddSketch)
-                    }
-                }
-            }
+            // Removed local action buttons Box as they are now in the FAB
         }
     }
 }

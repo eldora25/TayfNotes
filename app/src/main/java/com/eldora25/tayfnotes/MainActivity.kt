@@ -274,93 +274,78 @@ class MainActivity : FragmentActivity() {
                     selectedNoteId = selectedNoteInMasterDetail?.id,
                     fontSize = currentFontSize,
                     fontFamily = currentFontFamily,
-                    onMenuClick = onMenuClick,
-                    bottomBar = {
-                        BottomNavigationBar(currentScreen, { onScreenChange(it) }, { noteViewModel.onFolderSelected(null) }, onMenuClick)
-                    }
+                    onMenuClick = onMenuClick
                 )
             } else {
-                Scaffold(
-                    topBar = {
-                        CenterAlignedTopAppBar(
-                            navigationIcon = {
-                                IconButton(onClick = onMenuClick) {
-                                    Icon(Icons.Default.Menu, contentDescription = "Menü")
-                                }
-                            },
-                            title = { 
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text("TayfNotes", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold)
-                                    Text("buildv01.${BuildConfig.BUILD_NO} Tayfun YAMAK©", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-                                }
-                            },
-                            actions = {
-                                if (currentScreen == Screen.Folders) {
-                                    IconButton(onClick = { showSortMenu = true }) { Icon(Icons.AutoMirrored.Filled.Sort, null) }
-                                    DropdownMenu(expanded = showSortMenu, onDismissRequest = { showSortMenu = false }) {
-                                        DropdownMenuItem(text = { Text("Alfabetik") }, onClick = { sortType = SortType.ALPHABETICAL; showSortMenu = false })
-                                        DropdownMenuItem(text = { Text("Renge Göre") }, onClick = { sortType = SortType.COLOR; showSortMenu = false })
-                                    }
-                                }
-                            }
+                Box(modifier = Modifier.fillMaxSize()) {
+                    when (currentScreen) {
+                        is Screen.Folders -> FoldersScreen(
+                            folders = folders,
+                            onFolderClick = { noteViewModel.onFolderSelected(it.id); onScreenChange(Screen.Main) },
+                            onAddFolder = { n, c -> noteViewModel.addFolder(n, c) },
+                            onUpdateFolder = { noteViewModel.updateFolder(it) },
+                            onMenuClick = onMenuClick
                         )
-                    },
-                    bottomBar = {
-                        BottomNavigationBar(currentScreen, { onScreenChange(it) }, { noteViewModel.onFolderSelected(null) }, onMenuClick)
-                    }
-                ) { innerPadding ->
-                    Box(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
-                        when (currentScreen) {
-                            is Screen.Folders -> FoldersScreen(folders, { noteViewModel.onFolderSelected(it.id); onScreenChange(Screen.Main) }, { n, c -> noteViewModel.addFolder(n, c) }, { noteViewModel.updateFolder(it) })
-                            is Screen.Calendar -> CalendarScreen(notes, { onScreenChange(Screen.EditNote(it)) })
-                            is Screen.Archive -> NoteListScreen("Arşiv", archivedNotes, { onScreenChange(Screen.Main) }, { onScreenChange(Screen.EditNote(it)) })
-                            is Screen.Trash -> NoteListScreen(
-                                title = "Çöp", 
-                                notes = trashedNotes, 
-                                onBack = { onScreenChange(Screen.Main) }, 
-                                onEditNote = { onScreenChange(Screen.EditNote(it)) }, 
-                                onRestoreNote = { noteViewModel.restoreNote(it) },
-                                onBulkRestore = { noteViewModel.bulkRestoreNotes(it) },
-                                onBulkDelete = { noteViewModel.bulkPermanentlyDeleteNotes(it) },
-                                onEmptyTrash = { noteViewModel.emptyTrash() }
-                            )
-                            is Screen.Settings -> SettingsScreen(
-                                onBack = { onScreenChange(Screen.Main) },
-                                isSyncing = isSyncing,
-                                activeCloudProvider = activeCloudProvider,
-                                onConnectDropbox = { token ->
-                                    noteViewModel.setDropboxToken(token)
-                                    noteViewModel.startDropboxSync(this@MainActivity, token)
-                                    Toast.makeText(this@MainActivity, "Dropbox Bağlandı ve Senkronizasyon Başladı", Toast.LENGTH_SHORT).show()
-                                },
-                                onConnectOneDrive = { token ->
-                                    noteViewModel.setOneDriveToken(token)
-                                    Toast.makeText(this@MainActivity, "OneDrive Bağlandı", Toast.LENGTH_SHORT).show()
-                                },
-                                onDisconnectCloud = { noteViewModel.setCloudProvider(null) },
-                                currentTheme = currentTheme,
-                                onThemeSelected = { noteViewModel.setTheme(it) },
-                                isDarkMode = isDarkModePref,
-                                onDarkModeChanged = { noteViewModel.setDarkMode(it) },
-                                currentFontSize = currentFontSize,
-                                onFontSizeChanged = { noteViewModel.setFontSize(it) },
-                                currentFontFamily = currentFontFamily,
-                                onFontFamilyChanged = { noteViewModel.setFontFamily(it) },
-                                onAuthSuccess = { email ->
-                                    noteViewModel.setCloudProvider("Google Drive")
-                                    noteViewModel.startGoogleDriveSync(this@MainActivity, email)
-                                    Toast.makeText(this@MainActivity, "Bağlandı: $email", Toast.LENGTH_SHORT).show()
-                                },
-                                onAuthError = { errorMsg ->
-                                    Toast.makeText(this@MainActivity, "Hata: $errorMsg", Toast.LENGTH_SHORT).show()
-                                },
-                                isBiometricEnabled = isBiometricEnabled,
-                                onBiometricToggle = { noteViewModel.setBiometricEnabled(it) },
-                                onFullBackupClick = { noteViewModel.exportFullBackup { BackupPackageHelper.shareBackup(this@MainActivity, it) } },
-                                onImportBackupClick = { importLauncher.launch("application/zip") }
-                            )
-                            else -> {}
-                        }
+                        is Screen.Calendar -> CalendarScreen(
+                            notes = notes,
+                            onEditNote = { onScreenChange(Screen.EditNote(it)) },
+                            onMenuClick = onMenuClick
+                        )
+                        is Screen.Archive -> NoteListScreen(
+                            title = "Arşiv",
+                            notes = archivedNotes,
+                            onBack = { onScreenChange(Screen.Main) },
+                            onEditNote = { onScreenChange(Screen.EditNote(it)) },
+                            onMenuClick = onMenuClick
+                        )
+                        is Screen.Trash -> NoteListScreen(
+                            title = "Çöp", 
+                            notes = trashedNotes, 
+                            onBack = { onScreenChange(Screen.Main) }, 
+                            onEditNote = { onScreenChange(Screen.EditNote(it)) }, 
+                            onRestoreNote = { noteViewModel.restoreNote(it) },
+                            onBulkRestore = { noteViewModel.bulkRestoreNotes(it) },
+                            onBulkDelete = { noteViewModel.bulkPermanentlyDeleteNotes(it) },
+                            onEmptyTrash = { noteViewModel.emptyTrash() },
+                            onMenuClick = onMenuClick
+                        )
+                        is Screen.Settings -> SettingsScreen(
+                            onBack = { onScreenChange(Screen.Main) },
+                            isSyncing = isSyncing,
+                            activeCloudProvider = activeCloudProvider,
+                            onConnectDropbox = { token ->
+                                noteViewModel.setDropboxToken(token)
+                                noteViewModel.startDropboxSync(this@MainActivity, token)
+                                Toast.makeText(this@MainActivity, "Dropbox Bağlandı ve Senkronizasyon Başladı", Toast.LENGTH_SHORT).show()
+                            },
+                            onConnectOneDrive = { token ->
+                                noteViewModel.setOneDriveToken(token)
+                                Toast.makeText(this@MainActivity, "OneDrive Bağlandı", Toast.LENGTH_SHORT).show()
+                            },
+                            onDisconnectCloud = { noteViewModel.setCloudProvider(null) },
+                            currentTheme = currentTheme,
+                            onThemeSelected = { noteViewModel.setTheme(it) },
+                            isDarkMode = isDarkModePref,
+                            onDarkModeChanged = { noteViewModel.setDarkMode(it) },
+                            currentFontSize = currentFontSize,
+                            onFontSizeChanged = { noteViewModel.setFontSize(it) },
+                            currentFontFamily = currentFontFamily,
+                            onFontFamilyChanged = { noteViewModel.setFontFamily(it) },
+                            onAuthSuccess = { email ->
+                                noteViewModel.setCloudProvider("Google Drive")
+                                noteViewModel.startGoogleDriveSync(this@MainActivity, email)
+                                Toast.makeText(this@MainActivity, "Bağlandı: $email", Toast.LENGTH_SHORT).show()
+                            },
+                            onAuthError = { errorMsg ->
+                                Toast.makeText(this@MainActivity, "Hata: $errorMsg", Toast.LENGTH_SHORT).show()
+                            },
+                            isBiometricEnabled = isBiometricEnabled,
+                            onBiometricToggle = { noteViewModel.setBiometricEnabled(it) },
+                            onFullBackupClick = { noteViewModel.exportFullBackup { BackupPackageHelper.shareBackup(this@MainActivity, it) } },
+                            onImportBackupClick = { importLauncher.launch("application/zip") },
+                            onMenuClick = onMenuClick
+                        )
+                        else -> {}
                     }
                 }
             }

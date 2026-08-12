@@ -26,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -157,26 +158,26 @@ fun NoteEditorScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { 
-                    Text(
-                        if (note == null) "Yeni Ekle" else "Düzenle",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    ) 
-                },
-                navigationIcon = {
-                    IconButton(onClick = {
-                        saveCurrentNote()
-                        onBack()
-                    }) { 
-                        EditorNeonIcon {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Geri") 
+            if (!isSketchMode) {
+                TopAppBar(
+                    title = { 
+                        Text(
+                            if (note == null) "Yeni Ekle" else "Düzenle",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        ) 
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = {
+                            saveCurrentNote()
+                            onBack()
+                        }) { 
+                            EditorNeonIcon {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Geri") 
+                            }
                         }
-                    }
-                },
-                actions = {
-                    if (!isSketchMode) {
+                    },
+                    actions = {
                         IconButton(onClick = { isSketchMode = true }) {
                             EditorNeonIcon { Icon(Icons.Default.Gesture, contentDescription = "Sketch") }
                         }
@@ -261,170 +262,179 @@ fun NoteEditorScreen(
                                 EditorNeonIcon { Icon(Icons.Default.Delete, contentDescription = "Sil") }
                             }
                         }
-                    } else {
-                        IconButton(onClick = { isSketchMode = false }) {
-                            EditorNeonIcon { Icon(Icons.Default.TextFields, contentDescription = "Metin Modu") }
+                        IconButton(onClick = {
+                            saveCurrentNote()
+                            onBack()
+                        }) {
+                            EditorNeonIcon { Icon(Icons.Default.Check, contentDescription = "Bitti") }
                         }
-                    }
-                    IconButton(onClick = {
-                        saveCurrentNote()
-                        onBack()
-                    }) {
-                        EditorNeonIcon { Icon(Icons.Default.Check, contentDescription = "Bitti") }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = backgroundColor.copy(alpha = 0.9f))
-            )
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = backgroundColor.copy(alpha = 0.9f))
+                )
+            }
         }
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .background(backgroundColor.copy(alpha = 0.1f))
-        ) {
-            if (!isPreviewMode) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(16.dp), 
-                    horizontalArrangement = Arrangement.SpaceBetween, 
-                    verticalAlignment = Alignment.CenterVertically
+        if (isSketchMode) {
+            Row(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+                // Madde 2: Thin vertical bar for title in sketch mode
+                Column(
+                    modifier = Modifier
+                        .width(48.dp)
+                        .fillMaxHeight()
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .padding(vertical = 16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box {
-                            AssistChip(
-                                onClick = { showEmojiMenu = true },
-                                label = { Text(if (emoji.isEmpty()) "Emoji" else emoji) },
-                                leadingIcon = { Icon(Icons.Default.EmojiEmotions, null, modifier = Modifier.size(18.dp)) },
-                                shape = RoundedCornerShape(12.dp)
-                            )
-                            DropdownMenu(expanded = showEmojiMenu, onDismissRequest = { showEmojiMenu = false }) {
-                                val emojis = listOf("📝", "✅", "💡", "📅", "🎨", "🚀", "❤️", "⭐", "🛒", "💻", "🔥", "📌")
-                                Column(modifier = Modifier.padding(8.dp).width(160.dp)) {
-                                    // Split into rows for better display
-                                    emojis.chunked(4).forEach { rowEmojis ->
-                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                                            rowEmojis.forEach { e ->
-                                                IconButton(onClick = { emoji = e; showEmojiMenu = false }) {
-                                                    Text(e, fontSize = 20.sp)
+                    IconButton(onClick = { isSketchMode = false }) {
+                        Icon(Icons.Default.Close, contentDescription = "Sketch Kapat")
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = title.ifEmpty { "Skeç" },
+                        modifier = Modifier.graphicsLayer(rotationZ = -90f),
+                        maxLines = 1,
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                }
+                DrawingCanvas(
+                    modifier = Modifier.fillMaxSize(),
+                    initialData = sketchData,
+                    onDataChanged = { sketchData = it }
+                )
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .background(backgroundColor.copy(alpha = 0.1f))
+                    .verticalScroll(rememberScrollState()) // Madde 1: Scroll for landscape
+            ) {
+                if (!isPreviewMode) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(16.dp), 
+                        horizontalArrangement = Arrangement.SpaceBetween, 
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box {
+                                AssistChip(
+                                    onClick = { showEmojiMenu = true },
+                                    label = { Text(if (emoji.isEmpty()) "Emoji" else emoji) },
+                                    leadingIcon = { Icon(Icons.Default.EmojiEmotions, null, modifier = Modifier.size(18.dp)) },
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                                DropdownMenu(expanded = showEmojiMenu, onDismissRequest = { showEmojiMenu = false }) {
+                                    val emojis = listOf("📝", "✅", "💡", "📅", "🎨", "🚀", "❤️", "⭐", "🛒", "💻", "🔥", "📌")
+                                    Column(modifier = Modifier.padding(8.dp).width(160.dp)) {
+                                        emojis.chunked(4).forEach { rowEmojis ->
+                                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                                                rowEmojis.forEach { e ->
+                                                    IconButton(onClick = { emoji = e; showEmojiMenu = false }) {
+                                                        Text(e, fontSize = 20.sp)
+                                                    }
                                                 }
                                             }
                                         }
-                                    }
-                                    DropdownMenuItem(text = { Text("Emoji Kaldır") }, onClick = { emoji = ""; showEmojiMenu = false })
-                                }
-                            }
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Box {
-                            AssistChip(
-                                onClick = { showFolderMenu = true },
-                                label = { Text(folders.find { it.id == folderId }?.name ?: "Klasör Seç") },
-                                leadingIcon = { Icon(Icons.Default.Folder, contentDescription = null, modifier = Modifier.size(18.dp)) },
-                                shape = RoundedCornerShape(12.dp)
-                            )
-                            DropdownMenu(expanded = showFolderMenu, onDismissRequest = { showFolderMenu = false }) {
-                                DropdownMenuItem(text = { Text("Klasör Yok") }, onClick = { folderId = null; showFolderMenu = false })
-                                folders.forEach { folder ->
-                                    DropdownMenuItem(text = { Text(folder.name) }, onClick = { folderId = folder.id; showFolderMenu = false })
-                                }
-                            }
-                        }
-                    }
-                    ColorSelector(selectedColorHex = colorHex, onColorSelected = { colorHex = it })
-                }
-
-                TextField(
-                    value = title,
-                    onValueChange = { title = it },
-                    placeholder = { Text("Başlık", style = MaterialTheme.typography.headlineSmall.copy(fontSize = (fontSize + 4).sp, fontWeight = FontWeight.Bold)) },
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                    colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent),
-                    textStyle = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold, fontSize = (fontSize + 4).sp)
-                )
-
-                if (isSketchMode) {
-                    TextField(
-                        value = content,
-                        onValueChange = { content = it },
-                        placeholder = { Text("Sketch Üst Notu...", style = MaterialTheme.typography.bodyMedium) },
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-                        colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent)
-                    )
-                    DrawingCanvas(
-                        modifier = Modifier.weight(1f),
-                        initialData = sketchData,
-                        onDataChanged = { sketchData = it }
-                    )
-                } else if (note?.type == NoteType.CHECKLIST || checklistItems.isNotEmpty()) {
-                    TodoEditor(items = checklistItems, onItemsChanged = { checklistItems = it })
-                } else {
-                    if (imageUris.isNotEmpty()) {
-                        LazyRow(modifier = Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            items(imageUris) { uri ->
-                                Box {
-                                    AsyncImage(model = uri, contentDescription = null, modifier = Modifier.size(120.dp).clip(RoundedCornerShape(8.dp)), contentScale = ContentScale.Crop)
-                                    IconButton(onClick = { imageUris = imageUris - uri }, modifier = Modifier.align(Alignment.TopEnd).size(24.dp).background(Color.Black.copy(0.5f), CircleShape)) {
-                                        Icon(Icons.Default.Close, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                                        DropdownMenuItem(text = { Text("Emoji Kaldır") }, onClick = { emoji = ""; showEmojiMenu = false })
                                     }
                                 }
                             }
-                        }
-                    }
-                    TextField(
-                        value = content,
-                        onValueChange = { content = it },
-                        placeholder = { 
-                            Text(
-                                "Notunuzu yazın...", 
-                                style = MaterialTheme.typography.bodyLarge.copy(
-                                    fontSize = fontSize.sp,
-                                    fontFamily = composeFontFamily
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Box {
+                                AssistChip(
+                                    onClick = { showFolderMenu = true },
+                                    label = { Text(folders.find { it.id == folderId }?.name ?: "Klasör Seç") },
+                                    leadingIcon = { Icon(Icons.Default.Folder, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                                    shape = RoundedCornerShape(12.dp)
                                 )
-                            ) 
-                        },
-                        modifier = Modifier.fillMaxSize().weight(1f).padding(16.dp),
+                                DropdownMenu(expanded = showFolderMenu, onDismissRequest = { showFolderMenu = false }) {
+                                    DropdownMenuItem(text = { Text("Klasör Yok") }, onClick = { folderId = null; showFolderMenu = false })
+                                    folders.forEach { folder ->
+                                        DropdownMenuItem(text = { Text(folder.name) }, onClick = { folderId = folder.id; showFolderMenu = false })
+                                    }
+                                }
+                            }
+                        }
+                        ColorSelector(selectedColorHex = colorHex, onColorSelected = { colorHex = it })
+                    }
+
+                    TextField(
+                        value = title,
+                        onValueChange = { title = it },
+                        placeholder = { Text("Başlık", style = MaterialTheme.typography.headlineSmall.copy(fontSize = (fontSize + 4).sp, fontWeight = FontWeight.Bold)) },
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                         colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent),
-                        textStyle = MaterialTheme.typography.bodyLarge.copy(
-                            fontSize = fontSize.sp,
-                            lineHeight = (fontSize * 1.5).sp,
-                            fontFamily = composeFontFamily
-                        )
+                        textStyle = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold, fontSize = (fontSize + 4).sp)
                     )
-                }
-            } else {
-                Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
-                    val displayTitle = (if (emoji.isNotEmpty()) "$emoji " else "") + if (title.isEmpty() && checklistItems.isNotEmpty()) {
-                        checklistItems.firstOrNull()?.text ?: "Başlıksız Not"
-                    } else if (title.isEmpty()) {
-                        "Başlıksız Not"
+
+                    if (note?.type == NoteType.CHECKLIST || checklistItems.isNotEmpty()) {
+                        TodoEditor(items = checklistItems, onItemsChanged = { checklistItems = it })
                     } else {
-                        title
-                    }
-                    
-                    Text(displayTitle, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                    Spacer(modifier = Modifier.height(16.dp))
-                    if (checklistItems.isNotEmpty()) {
-                        checklistItems.forEach { item ->
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Checkbox(checked = item.isChecked, onCheckedChange = null, enabled = false)
-                                Text(
-                                    item.text, 
-                                    style = if (item.isChecked) 
-                                        MaterialTheme.typography.bodyLarge.copy(textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough, fontSize = fontSize.sp, fontFamily = composeFontFamily) 
-                                    else 
-                                        MaterialTheme.typography.bodyLarge.copy(fontSize = fontSize.sp, fontFamily = composeFontFamily)
-                                )
+                        if (imageUris.isNotEmpty()) {
+                            LazyRow(modifier = Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                items(imageUris) { uri ->
+                                    Box {
+                                        AsyncImage(model = uri, contentDescription = null, modifier = Modifier.size(120.dp).clip(RoundedCornerShape(8.dp)), contentScale = ContentScale.Crop)
+                                        IconButton(onClick = { imageUris = imageUris - uri }, modifier = Modifier.align(Alignment.TopEnd).size(24.dp).background(Color.Black.copy(0.5f), CircleShape)) {
+                                            Icon(Icons.Default.Close, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                                        }
+                                    }
+                                }
                             }
                         }
-                    } else {
-                        Text(content, style = MaterialTheme.typography.bodyLarge.copy(fontSize = fontSize.sp, fontFamily = composeFontFamily))
+                        TextField(
+                            value = content,
+                            onValueChange = { content = it },
+                            placeholder = { 
+                                Text(
+                                    "Notunuzu yazın...", 
+                                    style = MaterialTheme.typography.bodyLarge.copy(
+                                        fontSize = fontSize.sp,
+                                        fontFamily = composeFontFamily
+                                    )
+                                ) 
+                            },
+                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                            colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent),
+                            textStyle = MaterialTheme.typography.bodyLarge.copy(
+                                fontSize = fontSize.sp,
+                                lineHeight = (fontSize * 1.5).sp,
+                                fontFamily = composeFontFamily
+                            )
+                        )
                     }
-                    if (sketchData?.isNotEmpty() == true) {
-                        Spacer(modifier = Modifier.height(24.dp))
-                        Text("Çizim İçeriyor (Görüntülemek için Sketch moduna geçin)", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-                    }
-                    imageUris.forEach { uri ->
-                        AsyncImage(model = uri, contentDescription = null, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).clip(RoundedCornerShape(8.dp)), contentScale = ContentScale.FillWidth)
+                } else {
+                    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+                        val displayTitle = (if (emoji.isNotEmpty()) "$emoji " else "") + if (title.isEmpty() && checklistItems.isNotEmpty()) {
+                            checklistItems.firstOrNull()?.text ?: "Başlıksız Not"
+                        } else if (title.isEmpty()) {
+                            "Başlıksız Not"
+                        } else {
+                            title
+                        }
+                        
+                        Text(displayTitle, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        if (checklistItems.isNotEmpty()) {
+                            checklistItems.forEach { item ->
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Checkbox(checked = item.isChecked, onCheckedChange = null, enabled = false)
+                                    Text(
+                                        item.text, 
+                                        style = if (item.isChecked) 
+                                            MaterialTheme.typography.bodyLarge.copy(textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough, fontSize = fontSize.sp, fontFamily = composeFontFamily) 
+                                        else 
+                                            MaterialTheme.typography.bodyLarge.copy(fontSize = fontSize.sp, fontFamily = composeFontFamily)
+                                    )
+                                }
+                            }
+                        } else {
+                            Text(content, style = MaterialTheme.typography.bodyLarge.copy(fontSize = fontSize.sp, fontFamily = composeFontFamily))
+                        }
+                        imageUris.forEach { uri ->
+                            AsyncImage(model = uri, contentDescription = null, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).clip(RoundedCornerShape(8.dp)), contentScale = ContentScale.FillWidth)
+                        }
                     }
                 }
             }

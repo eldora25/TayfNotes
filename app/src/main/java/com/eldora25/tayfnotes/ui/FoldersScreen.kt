@@ -29,6 +29,7 @@ fun FoldersScreen(
     onFolderClick: (Folder) -> Unit,
     onAddFolder: (String, String) -> Unit,
     onUpdateFolder: (Folder) -> Unit,
+    onMenuClick: () -> Unit,
     onMoveFolder: (Int, Int) -> Unit = { _, _ -> }
 ) {
     var showAddDialog by remember { mutableStateOf(false) }
@@ -120,6 +121,11 @@ fun FoldersScreen(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text("Klasörler", style = MaterialTheme.typography.headlineMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) },
+                navigationIcon = {
+                    IconButton(onClick = onMenuClick) {
+                        Icon(Icons.Default.Menu, contentDescription = "Menü")
+                    }
+                },
                 actions = {
                     Box {
                         IconButton(onClick = { showSortMenu = true }) {
@@ -159,7 +165,17 @@ fun FoldersScreen(
                                 .padding(end = 8.dp)
                                 .pointerInput(index) {
                                     detectDragGesturesAfterLongPress(
-                                        onDrag = { _, _ -> },
+                                        onDragStart = { },
+                                        onDrag = { change, dragAmount ->
+                                            change.consume()
+                                            // Simplification: In a real app we'd use a shared reorderState
+                                            // but here we trigger onMoveFolder directly if drag is significant
+                                            if (dragAmount.y > 50f && index < sortedFolders.lastIndex) {
+                                                onMoveFolder(index, index + 1)
+                                            } else if (dragAmount.y < -50f && index > 0) {
+                                                onMoveFolder(index, index - 1)
+                                            }
+                                        },
                                         onDragEnd = { }
                                     )
                                 }

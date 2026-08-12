@@ -50,13 +50,18 @@ fun SettingsScreen(
     isBiometricEnabled: Boolean,
     onBiometricToggle: (Boolean) -> Unit,
     onFullBackupClick: () -> Unit,
-    onImportBackupClick: () -> Unit
+    onImportBackupClick: () -> Unit,
+    onMenuClick: () -> Unit
 ) {
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Ayarlar", fontWeight = FontWeight.ExtraBold) },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null) } },
+                navigationIcon = {
+                    IconButton(onClick = onMenuClick) {
+                        Icon(Icons.Default.Menu, contentDescription = "Menü")
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
         },

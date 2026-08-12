@@ -7,7 +7,6 @@ import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -28,7 +27,8 @@ fun NoteListScreen(
     onRestoreNote: (String) -> Unit = {},
     onBulkRestore: (Set<String>) -> Unit = {},
     onBulkDelete: (Set<String>) -> Unit = {},
-    onEmptyTrash: (() -> Unit)? = null
+    onEmptyTrash: (() -> Unit)? = null,
+    onMenuClick: () -> Unit
 ) {
     var noteToRestore by remember { mutableStateOf<Note?>(null) }
     var selectedIds by remember { mutableStateOf<Set<String>>(emptySet()) }
@@ -47,8 +47,8 @@ fun NoteListScreen(
                             Icon(Icons.Default.Close, contentDescription = "İptal")
                         }
                     } else {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Geri")
+                        IconButton(onClick = onMenuClick) {
+                            Icon(Icons.Default.Menu, contentDescription = "Menü")
                         }
                     }
                 },

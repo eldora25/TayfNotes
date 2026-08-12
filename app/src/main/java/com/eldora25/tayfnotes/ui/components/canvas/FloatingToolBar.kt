@@ -48,6 +48,7 @@ fun FloatingToolBar(
         ) {
             ToolButton(Icons.Default.PanToolAlt, "Seçici", currentTool == ToolType.SELECTOR) { onToolSelected(ToolType.SELECTOR) }
             ToolButton(Icons.Default.Gesture, "Kement", currentTool == ToolType.LASSO) { onToolSelected(ToolType.LASSO) }
+            ToolButton(Icons.Default.BackHand, "El", currentTool == ToolType.PAN) { onToolSelected(ToolType.PAN) }
             
             VerticalDivider()
             
