@@ -9,7 +9,6 @@ import com.google.api.client.http.ByteArrayContent
 import com.google.api.client.http.javanet.NetHttpTransport
 import com.google.api.client.json.gson.GsonFactory
 import com.google.api.services.drive.Drive
-import com.google.api.services.drive.DriveScopes
 import com.eldora25.tayfnotes.shared.model.Note
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -30,7 +29,7 @@ class GoogleDriveSyncWorker(
 
             // 2. Google Drive İstemcisini Hazırla
             val credential = GoogleAccountCredential.usingOAuth2(
-                applicationContext, listOf(DriveScopes.DRIVE_FILE)
+                applicationContext, listOf("https://www.googleapis.com/auth/drive.file")
             ).apply { selectedAccountName = accountEmail }
 
             val driveService = Drive.Builder(

@@ -1,7 +1,6 @@
 package com.eldora25.tayfnotes.ui.components
 
 import android.app.Activity
-import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,7 +18,6 @@ import com.eldora25.tayfnotes.R
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.Scope
-import com.google.api.services.drive.DriveScopes
 
 @Composable
 fun GoogleDriveAuthLauncher(
@@ -34,7 +32,7 @@ fun GoogleDriveAuthLauncher(
     val googleSignInClient = remember(context) {
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestEmail()
-            .requestScopes(Scope(DriveScopes.DRIVE_FILE)) // Uygulama klasörüne erişim izni
+            .requestScopes(Scope("https://www.googleapis.com/auth/drive.file")) // Uygulama klasörüne erişim izni
             .requestIdToken(webClientId)
             .build()
         GoogleSignIn.getClient(context, gso)
