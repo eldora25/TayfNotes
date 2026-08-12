@@ -204,7 +204,7 @@ fun MainScreen(
                 Surface(shape = RoundedCornerShape(32.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f), tonalElevation = 8.dp, border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)), modifier = Modifier.wrapContentWidth()) {
                     Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
                         FloatingActionPill(Icons.Default.Add, "Not", MaterialTheme.colorScheme.primary, onAddNote)
-                        FloatingActionPill(Icons.Default.Checklist, "Liste", MaterialTheme.colorScheme.secondary, onAddChecklist)
+                        FloatingActionPill(Icons.Default.FactCheck, "Yapılacaklar", MaterialTheme.colorScheme.secondary, onAddChecklist)
                         FloatingActionPill(Icons.Default.Gesture, "Sketch", MaterialTheme.colorScheme.tertiary, onAddSketch)
                     }
                 }

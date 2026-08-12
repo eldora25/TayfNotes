@@ -58,10 +58,10 @@ fun NavigationDrawerContent(
                 onClick = { onPlaceholderSelected("Skeçler") }
             )
             DrawerItem(
-                icon = Icons.Default.Checklist,
-                label = "Kontrol Listesi",
+                icon = Icons.Default.FactCheck,
+                label = "Yapılacaklar Listesi",
                 isSelected = false,
-                onClick = { onPlaceholderSelected("Kontrol Listesi") }
+                onClick = { onPlaceholderSelected("Yapılacaklar Listesi") }
             )
             DrawerItem(
                 icon = Icons.Default.Folder,
