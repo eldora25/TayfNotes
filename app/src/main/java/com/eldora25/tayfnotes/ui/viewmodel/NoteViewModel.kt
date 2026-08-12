@@ -81,7 +81,11 @@ class NoteViewModel(
     val currentTheme: StateFlow<TayfTheme> = dataStore.data
         .map { pref -> 
             val themeName = pref[THEME_KEY] ?: TayfTheme.MIDNIGHT.name
-            TayfTheme.valueOf(themeName)
+            try {
+                TayfTheme.valueOf(themeName)
+            } catch (e: Exception) {
+                TayfTheme.MIDNIGHT
+            }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), TayfTheme.MIDNIGHT)
 
     val isDarkMode: StateFlow<Boolean?> = dataStore.data
@@ -359,8 +363,9 @@ class NoteViewModel(
 
     fun bulkPermanentlyDeleteNotes(noteIds: Set<String>) {
         viewModelScope.launch {
+            val all = noteRepository.allNotes.first()
             noteIds.forEach { id ->
-                noteRepository.allNotes.first().find { it.id == id }?.let { noteRepository.delete(it) }
+                all.find { it.id == id }?.let { noteRepository.delete(it) }
             }
             dataStore.edit { pref ->
                 val current = pref[TRASH_IDS_KEY]?.split(",")?.filter { it.isNotEmpty() }?.toMutableSet() ?: mutableSetOf()
