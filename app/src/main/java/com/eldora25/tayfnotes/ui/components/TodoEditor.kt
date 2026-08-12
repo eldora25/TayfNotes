@@ -5,6 +5,8 @@ import android.app.TimePickerDialog
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -87,36 +89,19 @@ fun TodoEditor(
 
         LazyColumn(
             state = listState,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f).fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 100.dp)
         ) {
             itemsIndexed(sortedItems, key = { _, item -> item.id }) { index, item ->
-                val isDragging = reorderState.draggedItemIndex == index
-                val elevation by animateDpAsState(if (isDragging) 12.dp else 0.dp, label = "elevation")
-                
-                // Strike-through and fade animation
-                val alpha by animateFloatAsState(if (item.isChecked) 0.5f else 1f, label = "alpha")
-                
-                TodoItemRow(
-                    modifier = Modifier
-                        .graphicsLayer {
-                            translationY = reorderState.calculateCurrentOffset(index)
-                            scaleX = if (isDragging) 1.05f else 1f
-                            scaleY = if (isDragging) 1.05f else 1f
-                        }
-                        .zIndex(if (isDragging) 1f else 0f)
-                        .shadow(elevation, RoundedCornerShape(12.dp))
-                        .alpha(alpha),
+                // Ana Görev
+                TodoItemRowWithSubtasks(
                     item = item,
                     onToggle = { isChecked ->
                         onItemsChanged(items.map { if (it.id == item.id) it.copy(isChecked = isChecked) else it })
                     },
                     onDelete = { onItemsChanged(items.filter { it.id != item.id }) },
-                    onUpdate = { updated -> onItemsChanged(items.map { if (it.id == updated.id) updated else it }) },
-                    onDragStart = { reorderState.draggedItemIndex = index },
-                    onDrag = { reorderState.draggedItemOffset += it },
-                    onDragEnd = { reorderState.draggedItemIndex = null; reorderState.draggedItemOffset = 0f }
+                    onUpdate = { updated -> onItemsChanged(items.map { if (it.id == updated.id) updated else it }) }
                 )
             }
         }
@@ -124,110 +109,81 @@ fun TodoEditor(
 }
 
 @Composable
-fun TodoItemRow(
+fun TodoItemRowWithSubtasks(
     item: ChecklistItem,
     onToggle: (Boolean) -> Unit,
     onDelete: () -> Unit,
-    onUpdate: (ChecklistItem) -> Unit,
-    onDragStart: () -> Unit,
-    onDrag: (Float) -> Unit,
-    onDragEnd: () -> Unit,
-    modifier: Modifier = Modifier
+    onUpdate: (ChecklistItem) -> Unit
 ) {
-    val context = LocalContext.current
-    var showMenu by remember { mutableStateOf(false) }
-    var showReminderSheet by remember { mutableStateOf(false) }
-    
-    // Microsoft To-Do style line through animation
-    val textDecoration = if (item.isChecked) TextDecoration.LineThrough else null
-    val textColor = if (item.isChecked) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
+    var isExpanded by remember { mutableStateOf(false) }
+    var newSubtaskText by remember { mutableStateOf("") }
 
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surface,
-        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
     ) {
         Row(
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = Icons.Default.DragIndicator,
-                contentDescription = "Sürükle",
-                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
-                modifier = Modifier.pointerInput(Unit) {
-                    detectDragGesturesAfterLongPress(
-                        onDragStart = { onDragStart() },
-                        onDrag = { change, dragAmount -> change.consume(); onDrag(dragAmount.y) },
-                        onDragEnd = { onDragEnd() },
-                        onDragCancel = { onDragEnd() }
-                    )
-                }
+            Checkbox(checked = item.isChecked, onCheckedChange = onToggle)
+            Text(
+                text = item.text,
+                modifier = Modifier.weight(1f).clickable { isExpanded = !isExpanded },
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    textDecoration = if (item.isChecked) TextDecoration.LineThrough else null,
+                    fontWeight = FontWeight.Bold
+                ),
+                color = if (item.isChecked) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
             )
-            
-            Checkbox(
-                checked = item.isChecked,
-                onCheckedChange = onToggle,
-                colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary)
-            )
+            IconButton(onClick = { isExpanded = !isExpanded }) {
+                Icon(if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null)
+            }
+        }
 
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = item.text,
-                    style = MaterialTheme.typography.bodyLarge.copy(
-                        textDecoration = textDecoration,
-                        fontWeight = if (item.isChecked) FontWeight.Normal else FontWeight.SemiBold
-                    ),
-                    color = textColor
-                )
-                
-                if (item.reminderTimestamp != null) {
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
-                        Icon(Icons.Default.NotificationsActive, null, modifier = Modifier.size(12.dp), tint = MaterialTheme.colorScheme.primary)
-                        Spacer(modifier = Modifier.width(4.dp))
-                        val dateText = SimpleDateFormat("dd MMM, HH:mm", Locale.getDefault()).format(Date(item.reminderTimestamp!!))
+        if (isExpanded) {
+            Column(modifier = Modifier.padding(start = 48.dp, end = 16.dp, bottom = 12.dp)) {
+                // Alt Görevler
+                item.subItems.forEach { sub ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(
+                            checked = sub.isChecked,
+                            onCheckedChange = { checked ->
+                                val newSubs = item.subItems.map { if (it.id == sub.id) it.copy(isChecked = checked) else it }
+                                onUpdate(item.copy(subItems = newSubs))
+                            },
+                            modifier = Modifier.scale(0.8f)
+                        )
                         Text(
-                            text = dateText,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary
+                            sub.text,
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                textDecoration = if (sub.isChecked) TextDecoration.LineThrough else null
+                            )
                         )
                     }
                 }
-            }
-
-            IconButton(onClick = { showMenu = true }) {
-                Icon(Icons.Default.MoreVert, contentDescription = "Menü", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-
-            DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
-                DropdownMenuItem(
-                    text = { Text("Anımsatıcı Kur") },
-                    leadingIcon = { Icon(Icons.Default.Alarm, null) },
-                    onClick = {
-                        showMenu = false
-                        showReminderSheet = true
+                
+                // Alt Görev Ekleme
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    TextField(
+                        value = newSubtaskText,
+                        onValueChange = { newSubtaskText = it },
+                        placeholder = { Text("Alt adım ekle...", fontSize = 12.sp) },
+                        modifier = Modifier.weight(1f),
+                        colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent)
+                    )
+                    IconButton(onClick = {
+                        if (newSubtaskText.isNotBlank()) {
+                            onUpdate(item.copy(subItems = item.subItems + ChecklistItem(text = newSubtaskText)))
+                            newSubtaskText = ""
+                        }
+                    }) {
+                        Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
                     }
-                )
-                DropdownMenuItem(
-                    text = { Text("Sil") },
-                    leadingIcon = { Icon(Icons.Default.DeleteOutline, null) },
-                    onClick = { showMenu = false; onDelete() }
-                )
+                }
             }
         }
-    }
-
-    if (showReminderSheet) {
-        PremiumReminderSheet(
-            initialTimestamp = item.reminderTimestamp,
-            initialRepeat = item.reminderRepeat,
-            onDismiss = { showReminderSheet = false },
-            onSave = { timestamp, repeat ->
-                onUpdate(item.copy(reminderTimestamp = timestamp, reminderRepeat = repeat))
-                AlarmHelper.scheduleItemReminder(context, "TODO", item.id, item.text, timestamp)
-                showReminderSheet = false
-            }
-        )
     }
 }

@@ -71,6 +71,7 @@ fun FloatingToolBar(
             VerticalDivider()
             
             ToolButton(Icons.Default.Title, "Yazı", currentTool == ToolType.TEXT) { onToolSelected(ToolType.TEXT) }
+            ToolButton(Icons.Default.Image, "Resim", currentTool == ToolType.IMAGE) { onToolSelected(ToolType.IMAGE) }
         }
     }
 }

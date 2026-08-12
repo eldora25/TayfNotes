@@ -68,7 +68,25 @@ data class DrawText(
     val fontFamily: String = "Default"
 ) : DrawObject()
 
-enum class ToolType { PEN, MARKER, PENCIL, HIGHLIGHTER, BRUSH, PIXEL_ERASER, OBJECT_ERASER, SHAPE, SELECTOR, LASSO, PAINT_BUCKET, PAN, TEXT }
+@Serializable
+data class DrawImage(
+    override val id: String,
+    override val colorHex: String = "#000000",
+    override val strokeWidth: Float = 0f,
+    override val toolType: ToolType = ToolType.IMAGE,
+    override val alpha: Float = 1f,
+    override val offsetX: Float = 0f,
+    override val offsetY: Float = 0f,
+    override val scale: Float = 1f,
+    override val rotation: Float = 0f,
+    override val zIndex: Int = 0,
+    override val points: List<Point> = emptyList(),
+    val imageUri: String,
+    val width: Float,
+    val height: Float
+) : DrawObject()
+
+enum class ToolType { PEN, MARKER, PENCIL, HIGHLIGHTER, BRUSH, PIXEL_ERASER, OBJECT_ERASER, SHAPE, SELECTOR, LASSO, PAINT_BUCKET, PAN, TEXT, IMAGE }
 enum class BooleanOperation { INTERSECT, DIFFERENCE, UNION }
 enum class ShapeType {
     SQUARE, RECTANGLE, CIRCLE, ELLIPSE, EQUILATERAL_TRIANGLE, RIGHT_TRIANGLE,

@@ -13,6 +13,10 @@ fun getObjectBounds(obj: DrawObject): Rect {
         return Rect(obj.offsetX, obj.offsetY, obj.offsetX + size * obj.text.length * 0.6f, obj.offsetY + size)
     }
     
+    if (obj is DrawImage) {
+        return Rect(obj.offsetX, obj.offsetY, obj.offsetX + obj.width * obj.scale, obj.offsetY + obj.height * obj.scale)
+    }
+    
     if (obj.points.isEmpty() && obj is DrawShape && obj.shapeType != ShapeType.INTERSECTION) return Rect.Zero
     
     var minX = Float.MAX_VALUE
@@ -74,7 +78,8 @@ fun extractPathFromDrawObject(obj: DrawObject): Path {
             }
         }
         is DrawPath -> createSmoothPath(obj.points)
-        is DrawText -> Path() // Text has no path for boolean ops usually
+        is DrawText -> Path() 
+        is DrawImage -> Path()
     }
     
     val matrix = Matrix()

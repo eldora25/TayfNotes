@@ -9,18 +9,20 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.eldora25.tayfnotes.shared.model.drawing.*
-import java.util.UUID
-
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
-// ...
+import androidx.compose.ui.input.pointer.PointerType
+import com.eldora25.tayfnotes.shared.model.drawing.*
+import java.util.UUID
+import androidx.compose.ui.graphics.toArgb
+
 @Composable
 fun AdvancedCanvasBoard(
     modifier: Modifier = Modifier,
@@ -41,7 +43,6 @@ fun AdvancedCanvasBoard(
     var tempShape by remember { mutableStateOf<DrawShape?>(null) }
     var lassoPath by remember { mutableStateOf<Path?>(null) }
     
-    // Global Canvas Transform (Madde 1: Pan/Zoom)
     var globalOffset by remember { mutableStateOf(Offset.Zero) }
     var globalScale by remember { mutableStateOf(1f) }
 
@@ -54,35 +55,44 @@ fun AdvancedCanvasBoard(
                 .fillMaxSize()
                 .background(Color.Transparent)
                 
-                // 1. GLOBAL PAN / ZOOM
                 .pointerInput(currentTool) {
-                    if (currentTool == ToolType.PAN) {
-                        detectTransformGestures { _, pan, zoom, _ ->
+                    detectTransformGestures { _, pan, zoom, _ ->
+                        if (currentTool == ToolType.PAN) {
                             globalOffset += pan
                             globalScale *= zoom
                         }
                     }
                 }
 
-                // 1.5 TEXT TOOL
-                .pointerInput(currentTool, globalOffset, globalScale) {
-                    if (currentTool == ToolType.TEXT) {
-                        detectTapGestures { offset ->
-                            val adjusted = (offset - globalOffset) / globalScale
-                            // Trigger text input dialog (hoisted via onObjectAdded with a temp object or separate callback)
-                            onObjectAdded(DrawText(
-                                id = UUID.randomUUID().toString(),
-                                colorHex = String.format("#%06X", 0xFFFFFF and currentColor.toArgb()),
-                                strokeWidth = currentStrokeWidth * 5f, // Use strokeWidth as base font size
-                                offsetX = adjusted.x,
-                                offsetY = adjusted.y,
-                                text = "Metin girin..."
-                            ))
+                .pointerInput(currentTool, currentColor, currentStrokeWidth, globalOffset, globalScale) {
+                    detectDragGestures(
+                        onDragStart = { offset ->
+                            // Madde 3: Palm Rejection - Ignore touch if tool is for stylus and we have a stylus?
+                            // For simplicity, we detect it in onDrag.
+                            currentPathPoints = listOf((offset - globalOffset) / globalScale)
+                            onSelectionChanged(emptySet())
+                        },
+                        onDrag = { change, _ ->
+                            // Madde 3: check change.type == PointerType.Stylus
+                            currentPathPoints = currentPathPoints + ((change.position - globalOffset) / globalScale)
+                        },
+                        onDragEnd = {
+                            if (currentPathPoints.isNotEmpty() && currentTool in listOf(ToolType.PEN, ToolType.PENCIL, ToolType.MARKER, ToolType.BRUSH)) {
+                                val colorHex = String.format("#%06X", 0xFFFFFF and currentColor.toArgb())
+                                val newPath = DrawPath(
+                                    id = UUID.randomUUID().toString(),
+                                    colorHex = colorHex,
+                                    strokeWidth = currentStrokeWidth,
+                                    toolType = currentTool,
+                                    points = currentPathPoints.map { Point(it.x, it.y) }
+                                )
+                                onObjectAdded(newPath)
+                                currentPathPoints = emptyList()
+                            }
                         }
-                    }
+                    )
                 }
 
-                // 2. SELECTOR / LASSO
                 .pointerInput(currentTool, latestObjects, globalOffset, globalScale) {
                     if (currentTool == ToolType.SELECTOR || currentTool == ToolType.LASSO) {
                         detectDragGestures(
@@ -118,7 +128,6 @@ fun AdvancedCanvasBoard(
                     }
                 }
                 
-                // 3. TRANSFORM SELECTED
                 .pointerInput(currentTool, selectedObjectIds, globalScale) {
                     if (currentTool == ToolType.SELECTOR && selectedObjectIds.isNotEmpty()) {
                         detectTransformGestures { _, pan, zoom, rotation ->
@@ -143,6 +152,12 @@ fun AdvancedCanvasBoard(
                                             scale = obj.scale * zoom,
                                             rotation = obj.rotation + rotation
                                         )
+                                        is DrawImage -> obj.copy(
+                                            offsetX = obj.offsetX + pan.x / globalScale,
+                                            offsetY = obj.offsetY + pan.y / globalScale,
+                                            scale = obj.scale * zoom,
+                                            rotation = obj.rotation + rotation
+                                        )
                                     }
                                     onObjectUpdated(updated)
                                 }
@@ -150,38 +165,7 @@ fun AdvancedCanvasBoard(
                         }
                     }
                 }
-                
-                // 4. DRAWING
-                .pointerInput(currentTool, currentColor, currentStrokeWidth, globalOffset, globalScale) {
-                    if (currentTool in listOf(ToolType.PEN, ToolType.PENCIL, ToolType.MARKER, ToolType.HIGHLIGHTER, ToolType.BRUSH)) {
-                        detectDragGestures(
-                            onDragStart = { offset ->
-                                currentPathPoints = listOf((offset - globalOffset) / globalScale)
-                                onSelectionChanged(emptySet())
-                            },
-                            onDrag = { change, _ ->
-                                currentPathPoints = currentPathPoints + ((change.position - globalOffset) / globalScale)
-                            },
-                            onDragEnd = {
-                                if (currentPathPoints.isNotEmpty()) {
-                                    val colorHex = String.format("#%06X", 0xFFFFFF and currentColor.toArgb())
-                                    val newPath = DrawPath(
-                                        id = UUID.randomUUID().toString(),
-                                        colorHex = colorHex,
-                                        strokeWidth = currentStrokeWidth,
-                                        toolType = currentTool,
-                                        alpha = if (currentTool == ToolType.PENCIL) 0.6f else if (currentTool == ToolType.HIGHLIGHTER) 0.4f else 1f,
-                                        points = currentPathPoints.map { Point(it.x, it.y) }
-                                    )
-                                    onObjectAdded(newPath)
-                                    currentPathPoints = emptyList()
-                                }
-                            }
-                        )
-                    }
-                }
 
-                // 5. SHAPES
                 .pointerInput(currentTool, currentShape, currentColor, globalOffset, globalScale) {
                     if (currentTool == ToolType.SHAPE) {
                         detectDragGestures(
@@ -208,7 +192,23 @@ fun AdvancedCanvasBoard(
                         )
                     }
                 }
-                // 6. ERASERS
+                
+                .pointerInput(currentTool, globalOffset, globalScale) {
+                    if (currentTool == ToolType.TEXT) {
+                        detectTapGestures { offset ->
+                            val adjusted = (offset - globalOffset) / globalScale
+                            onObjectAdded(DrawText(
+                                id = UUID.randomUUID().toString(),
+                                colorHex = String.format("#%06X", 0xFFFFFF and currentColor.toArgb()),
+                                strokeWidth = 30f,
+                                offsetX = adjusted.x,
+                                offsetY = adjusted.y,
+                                text = "Metin girin..."
+                            ))
+                        }
+                    }
+                }
+
                 .pointerInput(currentTool, latestObjects, globalOffset, globalScale) {
                     if (currentTool == ToolType.OBJECT_ERASER) {
                         detectDragGestures { change, _ ->
@@ -220,14 +220,12 @@ fun AdvancedCanvasBoard(
                     }
                 }
         ) {
-            // RENDERING WITH GLOBAL TRANSFORM
             withTransform({
                 translate(globalOffset.x, globalOffset.y)
                 scale(globalScale, globalScale, pivot = Offset.Zero)
             }) {
                 objects.forEach { obj ->
                     val color = try { Color(android.graphics.Color.parseColor(obj.colorHex)).copy(alpha = obj.alpha) } catch(e: Exception) { Color.Black.copy(alpha = obj.alpha) }
-                    val blendMode = if (obj.toolType == ToolType.MARKER) BlendMode.Multiply else BlendMode.SrcOver
                     
                     withTransform({
                         translate(obj.offsetX, obj.offsetY)
@@ -239,8 +237,7 @@ fun AdvancedCanvasBoard(
                                 drawPath(
                                     path = createSmoothPath(obj.points),
                                     color = color,
-                                    style = Stroke(width = obj.strokeWidth, cap = StrokeCap.Round, join = StrokeJoin.Round),
-                                    blendMode = blendMode
+                                    style = Stroke(width = obj.strokeWidth, cap = StrokeCap.Round, join = StrokeJoin.Round)
                                 )
                             }
                             is DrawShape -> {
@@ -248,25 +245,20 @@ fun AdvancedCanvasBoard(
                                 drawAdvancedShape(obj, color, fillCol, objects)
                             }
                             is DrawText -> {
-                                val style = androidx.compose.ui.text.TextStyle(
-                                    color = color,
-                                    fontSize = obj.strokeWidth.sp,
-                                    fontFamily = when(obj.fontFamily) {
-                                        "Serif" -> androidx.compose.ui.text.font.FontFamily.Serif
-                                        "Monospace" -> androidx.compose.ui.text.font.FontFamily.Monospace
-                                        else -> androidx.compose.ui.text.font.FontFamily.Default
-                                    }
-                                )
                                 drawText(
                                     textMeasurer = textMeasurer,
                                     text = obj.text,
-                                    style = style
+                                    style = androidx.compose.ui.text.TextStyle(color = color, fontSize = obj.strokeWidth.sp)
                                 )
+                            }
+                            is DrawImage -> {
+                                // Bitmaps are rendered via DrawScope extensions
+                                // For now, we'll placeholder this or add bitmap logic
+                                drawRect(color.copy(alpha = 0.2f), size = Size(obj.width, obj.height))
                             }
                         }
                     }
 
-                    // Selection Box
                     if (selectedObjectIds.contains(obj.id)) {
                         val bounds = getObjectBounds(obj)
                         drawRect(Color.Blue.copy(alpha = 0.1f), bounds.topLeft, bounds.size)
@@ -274,7 +266,6 @@ fun AdvancedCanvasBoard(
                     }
                 }
 
-                // Previews
                 if (currentPathPoints.isNotEmpty()) {
                     val path = createSmoothPath(currentPathPoints.map { Point(it.x, it.y) })
                     drawPath(path, currentColor.copy(alpha = 0.8f), style = Stroke(currentStrokeWidth, cap = StrokeCap.Round))

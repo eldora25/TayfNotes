@@ -399,7 +399,7 @@ fun NoteEditorScreen(
                                 )
                             ) 
                         },
-                        modifier = Modifier.fillMaxSize().weight(1f).padding(16.dp),
+                        modifier = Modifier.fillMaxWidth().weight(1f).padding(16.dp),
                         colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent),
                         textStyle = MaterialTheme.typography.bodyLarge.copy(
                             fontSize = fontSize.sp,

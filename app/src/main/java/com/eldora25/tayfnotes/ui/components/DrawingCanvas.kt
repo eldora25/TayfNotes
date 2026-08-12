@@ -115,6 +115,7 @@ fun DrawingCanvas(
                         is DrawPath -> obj.copy(colorHex = hex, strokeWidth = currentStrokeWidth)
                         is DrawShape -> obj.copy(colorHex = hex, strokeWidth = currentStrokeWidth)
                         is DrawText -> obj.copy(colorHex = hex, strokeWidth = currentStrokeWidth * 5f)
+                        is DrawImage -> obj.copy(scale = obj.scale) 
                     }
                 } else obj
             }
@@ -208,7 +209,9 @@ fun DrawingCanvas(
                 FloatingToolBar(
                     currentTool = currentTool,
                     onToolSelected = { 
-                        if (it == ToolType.SHAPE) showShapePicker = true
+                        if (it == ToolType.IMAGE) {
+                            // Gallery launcher logic
+                        } else if (it == ToolType.SHAPE) showShapePicker = true
                         else if (it == currentTool) showSettings = !showSettings
                         else {
                             currentTool = it
