@@ -209,6 +209,7 @@ class MainActivity : FragmentActivity() {
                     onEditNote = { currentScreen = Screen.EditNote(it) },
                     onMoveNote = { f, t -> noteViewModel.updateNotePosition(f, t) },
                     onDeleteNote = { noteViewModel.trashNote(it.id) },
+                    onUndoDelete = { noteViewModel.restoreNote(it) },
                     onNoteClick = { selectedNoteInMasterDetail = it },
                     selectedNoteId = selectedNoteInMasterDetail?.id,
                     bottomBar = {
@@ -246,7 +247,14 @@ class MainActivity : FragmentActivity() {
                             is Screen.Calendar -> CalendarScreen(notes, { currentScreen = Screen.EditNote(it) })
                             is Screen.More -> MoreScreen { currentScreen = it }
                             is Screen.Archive -> NoteListScreen("Arşiv", archivedNotes, { currentScreen = Screen.More }, { currentScreen = Screen.EditNote(it) })
-                            is Screen.Trash -> NoteListScreen("Çöp", trashedNotes, { currentScreen = Screen.More }, { currentScreen = Screen.EditNote(it) }, { noteViewModel.emptyTrash() })
+                            is Screen.Trash -> NoteListScreen(
+                                title = "Çöp", 
+                                notes = trashedNotes, 
+                                onBack = { currentScreen = Screen.More }, 
+                                onEditNote = { currentScreen = Screen.EditNote(it) }, 
+                                onRestoreNote = { noteViewModel.restoreNote(it) },
+                                onEmptyTrash = { noteViewModel.emptyTrash() }
+                            )
                             is Screen.Settings -> SettingsScreen(
                                 onBack = { currentScreen = Screen.More },
                                 isSyncing = isSyncing,

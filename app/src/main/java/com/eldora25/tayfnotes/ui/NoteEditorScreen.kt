@@ -1,7 +1,11 @@
 package com.eldora25.tayfnotes.ui
 
+import android.app.AlarmManager
 import android.app.DatePickerDialog
+import android.app.PendingIntent
 import android.app.TimePickerDialog
+import android.content.Context
+import android.content.Intent
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -29,6 +33,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.eldora25.tayfnotes.receiver.ReminderReceiver
 import com.eldora25.tayfnotes.shared.model.ChecklistItem
 import com.eldora25.tayfnotes.shared.model.Folder
 import com.eldora25.tayfnotes.shared.model.Note
@@ -94,27 +99,24 @@ fun NoteEditorScreen(
         uri?.let { imageUris = imageUris + it.toString() }
     }
 
-    // Auto-save logic
-    LaunchedEffect(title, content, colorHex, reminderTimestamp, folderId, imageUris, audioPath, checklistItems, sketchData) {
-        if (title.isNotEmpty() || content.isNotEmpty() || imageUris.isNotEmpty() || audioPath != null || checklistItems.isNotEmpty() || sketchData != null) {
-            delay(1500) // Debounce save
+    val saveCurrentNote = {
+        var finalContent = content
+        if (checklistItems.isNotEmpty()) {
+            finalContent = Json.encodeToString(checklistItems)
+        }
+
+        var finalTitle = title
+        if (finalTitle.isEmpty()) {
+            val textForTitle = if (checklistItems.isNotEmpty()) {
+                checklistItems.firstOrNull()?.text ?: ""
+            } else content
             
-            var finalContent = content
-            if (checklistItems.isNotEmpty()) {
-                finalContent = Json.encodeToString(checklistItems)
+            if (textForTitle.isNotEmpty()) {
+                finalTitle = textForTitle.trim().split("\\s+".toRegex()).take(5).joinToString(" ")
             }
+        }
 
-            var finalTitle = title
-            if (finalTitle.isEmpty()) {
-                val textForTitle = if (checklistItems.isNotEmpty()) {
-                    checklistItems.firstOrNull()?.text ?: ""
-                } else content
-                
-                if (textForTitle.isNotEmpty()) {
-                    finalTitle = textForTitle.trim().split("\\s+".toRegex()).take(5).joinToString(" ")
-                }
-            }
-
+        if (finalTitle.isNotEmpty() || finalContent.isNotEmpty() || imageUris.isNotEmpty() || audioPath != null || checklistItems.isNotEmpty() || sketchData != null) {
             val finalNote = Note(
                 id = noteId,
                 title = finalTitle,
@@ -132,6 +134,14 @@ fun NoteEditorScreen(
         }
     }
 
+    // Auto-save logic
+    LaunchedEffect(title, content, colorHex, reminderTimestamp, folderId, imageUris, audioPath, checklistItems, sketchData) {
+        if (title.isNotEmpty() || content.isNotEmpty() || imageUris.isNotEmpty() || audioPath != null || checklistItems.isNotEmpty() || sketchData != null) {
+            delay(1000) // Debounce save
+            saveCurrentNote()
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -143,7 +153,10 @@ fun NoteEditorScreen(
                     ) 
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBack) { 
+                    IconButton(onClick = {
+                        saveCurrentNote()
+                        onBack()
+                    }) { 
                         EditorNeonIcon {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Geri") 
                         }
@@ -202,6 +215,7 @@ fun NoteEditorScreen(
                                         { _, hourOfDay, minute ->
                                             calendar.set(year, month, dayOfMonth, hourOfDay, minute)
                                             reminderTimestamp = calendar.timeInMillis
+                                            scheduleAlarm(context, calendar.timeInMillis, title.ifEmpty { "Hatırlatıcı" })
                                             Toast.makeText(context, "Hatırlatıcı ayarlandı!", Toast.LENGTH_SHORT).show()
                                         },
                                         calendar.get(Calendar.HOUR_OF_DAY),
@@ -238,7 +252,10 @@ fun NoteEditorScreen(
                             EditorNeonIcon { Icon(Icons.Default.TextFields, contentDescription = "Metin Modu") }
                         }
                     }
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = {
+                        saveCurrentNote()
+                        onBack()
+                    }) {
                         EditorNeonIcon { Icon(Icons.Default.Check, contentDescription = "Bitti") }
                     }
                 },
@@ -370,5 +387,28 @@ fun NoteEditorScreen(
                 TextButton(onClick = { showDeleteDialog = false }) { Text("Vazgeç") }
             }
         )
+    }
+}
+
+private fun scheduleAlarm(context: Context, timestamp: Long, noteTitle: String) {
+    val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+    val intent = Intent(context, ReminderReceiver::class.java).apply {
+        putExtra("TITLE", noteTitle)
+    }
+    val pendingIntent = PendingIntent.getBroadcast(
+        context,
+        System.currentTimeMillis().toInt(),
+        intent,
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+    )
+    
+    try {
+        alarmManager.setExactAndAllowWhileIdle(
+            AlarmManager.RTC_WAKEUP,
+            timestamp,
+            pendingIntent
+        )
+    } catch (e: SecurityException) {
+        // Android 13+ permission handling
     }
 }

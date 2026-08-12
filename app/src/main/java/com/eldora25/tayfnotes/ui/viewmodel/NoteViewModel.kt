@@ -328,6 +328,16 @@ class NoteViewModel(
         }
     }
 
+    fun restoreNote(noteId: String) {
+        viewModelScope.launch {
+            dataStore.edit { pref ->
+                val current = pref[TRASH_IDS_KEY]?.split(",")?.filter { it.isNotEmpty() }?.toMutableSet() ?: mutableSetOf()
+                current.remove(noteId)
+                pref[TRASH_IDS_KEY] = current.joinToString(",")
+            }
+        }
+    }
+
     fun emptyTrash() {
         viewModelScope.launch {
             val currentTrash = trashIds.value

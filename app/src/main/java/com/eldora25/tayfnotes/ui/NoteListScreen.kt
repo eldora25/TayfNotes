@@ -8,7 +8,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -23,8 +23,11 @@ fun NoteListScreen(
     notes: List<Note>,
     onBack: () -> Unit,
     onEditNote: (Note) -> Unit,
+    onRestoreNote: (String) -> Unit = {}, // Add this
     onEmptyTrash: (() -> Unit)? = null
 ) {
+    var noteToRestore by remember { mutableStateOf<Note?>(null) } // Add this
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -57,9 +60,32 @@ fun NoteListScreen(
                 verticalItemSpacing = 8.dp
             ) {
                 items(notes) { note ->
-                    NoteGridItem(note = note, onClick = { onEditNote(note) })
+                    NoteGridItem(
+                        note = note, 
+                        onClick = { 
+                            if (onEmptyTrash != null) noteToRestore = note
+                            else onEditNote(note)
+                        }
+                    )
                 }
             }
         }
+    }
+
+    noteToRestore?.let { note ->
+        AlertDialog(
+            onDismissRequest = { noteToRestore = null },
+            title = { Text("Notu Geri Yükle") },
+            text = { Text("Bu notu çöp kutusundan geri yüklemek istiyor musunuz?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    onRestoreNote(note.id)
+                    noteToRestore = null
+                }) { Text("Geri Yükle") }
+            },
+            dismissButton = {
+                TextButton(onClick = { noteToRestore = null }) { Text("İptal") }
+            }
+        )
     }
 }

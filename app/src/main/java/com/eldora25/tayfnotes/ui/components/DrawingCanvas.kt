@@ -16,6 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
@@ -77,13 +78,26 @@ fun DrawingCanvas(
     }
     
     // Tools State
-    var currentColor by remember { mutableStateOf(Color.Black) }
-    var currentFillColor by remember { mutableStateOf(Color.Transparent) }
+    var toolColors by remember { 
+        mutableStateOf(
+            mapOf(
+                ToolType.PEN to Color.Black,
+                ToolType.PENCIL to Color.DarkGray,
+                ToolType.MARKER to Color.Red,
+                ToolType.HIGHLIGHTER to Color.Yellow,
+                ToolType.SHAPE to Color.Blue
+            )
+        ) 
+    }
+    
     var currentStrokeWidth by remember { mutableStateOf(10f) }
     var currentTool by remember { mutableStateOf(ToolType.PEN) }
     var currentShape by remember { mutableStateOf(ShapeType.RECTANGLE) }
     var isFillEnabled by remember { mutableStateOf(false) }
+    var currentFillColor by remember { mutableStateOf(Color.Transparent) }
     
+    val currentColor = toolColors[currentTool] ?: Color.Black
+
     // UI State
     var showSettings by remember { mutableStateOf(false) }
     var showShapePicker by remember { mutableStateOf(false) }
@@ -129,7 +143,9 @@ fun DrawingCanvas(
             if (showSettings) {
                 CanvasSettingsPopup(
                     activeColor = currentColor,
-                    onColorSelected = { currentColor = it },
+                    onColorSelected = { 
+                        toolColors = toolColors.toMutableMap().apply { put(currentTool, it) }
+                    },
                     activeStrokeWidth = currentStrokeWidth,
                     onStrokeWidthChanged = { currentStrokeWidth = it }
                 )

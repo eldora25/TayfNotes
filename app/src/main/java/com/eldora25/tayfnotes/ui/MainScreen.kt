@@ -33,6 +33,7 @@ import com.eldora25.tayfnotes.BuildConfig
 import com.eldora25.tayfnotes.shared.model.Note
 import com.eldora25.tayfnotes.ui.components.NoteGridItem
 import com.eldora25.tayfnotes.ui.components.rememberReorderState
+import kotlinx.coroutines.launch
 
 enum class SortType { DATE_MODIFIED, DATE_CREATED, ALPHABETICAL, COLOR, MANUAL }
 
@@ -48,6 +49,7 @@ fun MainScreen(
     onEditNote: (Note) -> Unit,
     onMoveNote: (Int, Int) -> Unit,
     onDeleteNote: (Note) -> Unit = {},
+    onUndoDelete: (String) -> Unit = {}, // Add this
     onNoteClick: (Note) -> Unit = {},
     selectedNoteId: String? = null,
     bottomBar: @Composable () -> Unit = {}
@@ -58,10 +60,9 @@ fun MainScreen(
     
     val listState = rememberLazyListState()
     val reorderState = rememberReorderState(listState)
-    val isFabExpanded by remember {
-        derivedStateOf { listState.firstVisibleItemIndex == 0 }
-    }
-
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    
     val sortedNotes = remember(notes, sortType) {
         when (sortType) {
             SortType.DATE_MODIFIED -> notes.sortedByDescending { it.lastModified }
@@ -85,17 +86,7 @@ fun MainScreen(
             )
         },
         bottomBar = bottomBar,
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = onAddNote,
-                expanded = isFabExpanded,
-                icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                text = { Text("Yeni Not") },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-                shape = RoundedCornerShape(50)
-            )
-        }
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
         BoxWithConstraints(
             modifier = Modifier
@@ -134,6 +125,16 @@ fun MainScreen(
                                     confirmValueChange = { dismissValue ->
                                         if (dismissValue == SwipeToDismissBoxValue.EndToStart) {
                                             onDeleteNote(note)
+                                            scope.launch {
+                                                val result = snackbarHostState.showSnackbar(
+                                                    message = "Not çöpe taşındı",
+                                                    actionLabel = "Geri Al",
+                                                    duration = SnackbarDuration.Short
+                                                )
+                                                if (result == SnackbarResult.ActionPerformed) {
+                                                    onUndoDelete(note.id)
+                                                }
+                                            }
                                             true
                                         } else {
                                             false
@@ -269,6 +270,7 @@ fun MainScreen(
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        FloatingActionPill(icon = Icons.Default.Add, label = "Not", color = MaterialTheme.colorScheme.primary, onClick = onAddNote)
                         FloatingActionPill(icon = Icons.Default.Checklist, label = "Liste", color = MaterialTheme.colorScheme.secondary, onClick = onAddChecklist)
                         FloatingActionPill(icon = Icons.Default.Gesture, label = "Sketch", color = MaterialTheme.colorScheme.tertiary, onClick = onAddSketch)
                     }
