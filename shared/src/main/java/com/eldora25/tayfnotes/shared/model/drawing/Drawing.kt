@@ -12,6 +12,7 @@ sealed class DrawObject {
     abstract val offsetX: Float
     abstract val offsetY: Float
     abstract val scale: Float
+    abstract val rotation: Float
     abstract val zIndex: Int
     abstract val points: List<Point>
 }
@@ -26,6 +27,7 @@ data class DrawPath(
     override val offsetX: Float = 0f,
     override val offsetY: Float = 0f,
     override val scale: Float = 1f,
+    override val rotation: Float = 0f,
     override val zIndex: Int = 0,
     override val points: List<Point>
 ) : DrawObject()
@@ -40,6 +42,7 @@ data class DrawShape(
     override val offsetX: Float = 0f,
     override val offsetY: Float = 0f,
     override val scale: Float = 1f,
+    override val rotation: Float = 0f,
     override val zIndex: Int = 0,
     override val points: List<Point>,
     val shapeType: ShapeType,
@@ -48,7 +51,7 @@ data class DrawShape(
     val pathData: String? = null
 ) : DrawObject()
 
-enum class ToolType { PEN, MARKER, PENCIL, HIGHLIGHTER, PIXEL_ERASER, OBJECT_ERASER, SHAPE, SELECTOR, PAINT_BUCKET }
+enum class ToolType { PEN, MARKER, PENCIL, HIGHLIGHTER, BRUSH, PIXEL_ERASER, OBJECT_ERASER, SHAPE, SELECTOR, LASSO, PAINT_BUCKET }
 enum class BooleanOperation { INTERSECT, DIFFERENCE, UNION }
 enum class ShapeType {
     SQUARE, RECTANGLE, CIRCLE, ELLIPSE, EQUILATERAL_TRIANGLE, RIGHT_TRIANGLE,

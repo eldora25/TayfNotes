@@ -16,7 +16,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
@@ -25,15 +24,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.eldora25.tayfnotes.shared.model.drawing.*
-import com.eldora25.tayfnotes.ui.components.canvas.AdvancedCanvasBoard
-import com.eldora25.tayfnotes.ui.components.canvas.CanvasSettingsPopup
-import com.eldora25.tayfnotes.ui.components.canvas.FloatingToolBar
-import com.eldora25.tayfnotes.ui.components.canvas.ShapeSelectionBottomSheet
+import com.eldora25.tayfnotes.ui.components.canvas.*
 import com.eldora25.tayfnotes.ui.theme.EditorNeonIcon
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlin.math.roundToInt
 
+import androidx.compose.ui.graphics.toArgb
+// ...
 @Composable
 fun DrawingCanvas(
     modifier: Modifier = Modifier,
@@ -47,6 +45,8 @@ fun DrawingCanvas(
             } else emptyList()
         )
     }
+
+    var selectedObjectIds by remember { mutableStateOf<Set<String>>(emptySet()) }
 
     // Undo/Redo Stacks
     var undoStack by remember { mutableStateOf<List<List<DrawObject>>>(emptyList()) }
@@ -85,7 +85,8 @@ fun DrawingCanvas(
                 ToolType.PENCIL to Color.DarkGray,
                 ToolType.MARKER to Color.Red,
                 ToolType.HIGHLIGHTER to Color.Yellow,
-                ToolType.SHAPE to Color.Blue
+                ToolType.SHAPE to Color.Blue,
+                ToolType.BRUSH to Color.Green
             )
         ) 
     }
@@ -98,7 +99,27 @@ fun DrawingCanvas(
     
     val currentColor = toolColors[currentTool] ?: Color.Black
 
+    // Apply settings to selected objects
+    LaunchedEffect(currentColor, currentStrokeWidth) {
+        if ((currentTool == ToolType.SELECTOR || currentTool == ToolType.LASSO) && selectedObjectIds.isNotEmpty()) {
+            val hex = String.format("#%06X", 0xFFFFFF and currentColor.toArgb())
+            val newObjects = objects.map { obj ->
+                if (selectedObjectIds.contains(obj.id)) {
+                    when (obj) {
+                        is DrawPath -> obj.copy(colorHex = hex, strokeWidth = currentStrokeWidth)
+                        is DrawShape -> obj.copy(colorHex = hex, strokeWidth = currentStrokeWidth)
+                    }
+                } else obj
+            }
+            if (newObjects != objects) {
+                objects = newObjects
+                onDataChanged(Json.encodeToString(objects))
+            }
+        }
+    }
+
     // UI State
+    var showColorPicker by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
     var showShapePicker by remember { mutableStateOf(false) }
 
@@ -112,15 +133,14 @@ fun DrawingCanvas(
             isFillEnabled = isFillEnabled,
             currentFillColor = currentFillColor,
             objects = objects,
+            selectedObjectIds = selectedObjectIds,
+            onSelectionChanged = { selectedObjectIds = it },
             onObjectAdded = { newObj ->
                 saveStateForUndo(objects)
                 objects = objects + newObj
                 onDataChanged(Json.encodeToString(objects))
             },
             onObjectUpdated = { updatedObj ->
-                // Don't save state for every small update (like drag)
-                // objects = objects.map { if (it.id == updatedObj.id) updatedObj else it }
-                
                 val index = objects.indexOfFirst { it.id == updatedObj.id }
                 if (index != -1) {
                     val newList = objects.toMutableList()
@@ -136,6 +156,16 @@ fun DrawingCanvas(
             }
         )
 
+        if (showColorPicker) {
+            PremiumColorPicker(
+                selectedColor = currentColor,
+                onColorSelected = { selected ->
+                    toolColors = toolColors.toMutableMap().apply { put(currentTool, selected) }
+                },
+                onDismiss = { showColorPicker = false }
+            )
+        }
+
         Column(
             modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally
@@ -143,9 +173,7 @@ fun DrawingCanvas(
             if (showSettings) {
                 CanvasSettingsPopup(
                     activeColor = currentColor,
-                    onColorSelected = { 
-                        toolColors = toolColors.toMutableMap().apply { put(currentTool, it) }
-                    },
+                    onColorSelected = { showColorPicker = true },
                     activeStrokeWidth = currentStrokeWidth,
                     onStrokeWidthChanged = { currentStrokeWidth = it }
                 )
@@ -182,12 +210,5 @@ fun DrawingCanvas(
                 currentTool = ToolType.SHAPE
             }
         )
-    }
-}
-
-@Composable
-private fun ToolIcon(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, isSelected: Boolean, onClick: () -> Unit) {
-    IconButton(onClick = onClick) {
-        Icon(icon, contentDescription = label, tint = if (isSelected) Color(0xFFFFD700) else Color.White)
     }
 }

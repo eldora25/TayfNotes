@@ -6,7 +6,9 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -31,7 +33,7 @@ fun FloatingToolBar(
 ) {
     Surface(
         modifier = modifier
-            .padding(16.dp)
+            .padding(8.dp)
             .shadow(
                 elevation = 16.dp, 
                 shape = RoundedCornerShape(32.dp),
@@ -39,14 +41,14 @@ fun FloatingToolBar(
                 spotColor = MaterialTheme.colorScheme.primary
             ),
         shape = RoundedCornerShape(32.dp),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
         border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.15f))
     ) {
         Row(
             modifier = Modifier
-                .padding(horizontal = 12.dp, vertical = 8.dp)
-                .wrapContentWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                .padding(horizontal = 8.dp, vertical = 6.dp)
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             ToolButton(
@@ -55,14 +57,17 @@ fun FloatingToolBar(
                 onClick = { onToolSelected(ToolType.SELECTOR) }
             )
             ToolButton(
+                icon = Icons.Default.Gesture,
+                isSelected = currentTool == ToolType.LASSO,
+                onClick = { onToolSelected(ToolType.LASSO) }
+            )
+            
+            VerticalDivider()
+
+            ToolButton(
                 icon = Icons.Default.Edit,
                 isSelected = currentTool == ToolType.PEN,
                 onClick = { onToolSelected(ToolType.PEN) }
-            )
-            ToolButton(
-                icon = Icons.Default.Brush,
-                isSelected = currentTool == ToolType.MARKER,
-                onClick = { onToolSelected(ToolType.MARKER) }
             )
             ToolButton(
                 icon = Icons.Default.HistoryEdu,
@@ -70,12 +75,22 @@ fun FloatingToolBar(
                 onClick = { onToolSelected(ToolType.PENCIL) }
             )
             ToolButton(
+                icon = Icons.Default.Brush,
+                isSelected = currentTool == ToolType.BRUSH,
+                onClick = { onToolSelected(ToolType.BRUSH) }
+            )
+            ToolButton(
+                icon = Icons.Default.BorderColor,
+                isSelected = currentTool == ToolType.MARKER,
+                onClick = { onToolSelected(ToolType.MARKER) }
+            )
+            ToolButton(
                 icon = Icons.Default.Highlight,
                 isSelected = currentTool == ToolType.HIGHLIGHTER,
                 onClick = { onToolSelected(ToolType.HIGHLIGHTER) }
             )
             
-            Box(modifier = Modifier.height(24.dp).width(1.dp).background(Color.Gray.copy(alpha = 0.3f)))
+            VerticalDivider()
             
             ToolButton(
                 icon = Icons.Default.Category,
@@ -87,6 +102,9 @@ fun FloatingToolBar(
                 isSelected = currentTool == ToolType.PAINT_BUCKET,
                 onClick = { onToolSelected(ToolType.PAINT_BUCKET) }
             )
+            
+            VerticalDivider()
+
             ToolButton(
                 icon = Icons.Default.AutoFixNormal,
                 isSelected = currentTool == ToolType.OBJECT_ERASER,
@@ -99,6 +117,11 @@ fun FloatingToolBar(
             )
         }
     }
+}
+
+@Composable
+private fun VerticalDivider() {
+    Box(modifier = Modifier.height(24.dp).width(1.dp).background(Color.Gray.copy(alpha = 0.3f)))
 }
 
 @Composable
