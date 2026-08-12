@@ -4,6 +4,7 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.eldora25.tayfnotes.shared.model.Note
 import com.eldora25.tayfnotes.shared.model.NoteType
+import com.eldora25.tayfnotes.shared.model.RepeatInterval
 
 @Entity(tableName = "notes")
 data class NoteEntity(
@@ -12,6 +13,7 @@ data class NoteEntity(
     val title: String,
     val content: String,
     val colorHex: String,
+    val emoji: String? = null,
     val type: String,
     val tags: String,
     val sourceUrl: String? = null,
@@ -22,6 +24,7 @@ data class NoteEntity(
     val createdAt: Long,
     val lastModified: Long,
     val reminderTimestamp: Long?,
+    val reminderRepeat: String? = null,
     val isLocked: Boolean,
     val position: Int = 0
 ) {
@@ -30,6 +33,7 @@ data class NoteEntity(
         title = title,
         content = content,
         colorHex = colorHex,
+        emoji = emoji,
         type = NoteType.valueOf(type),
         tags = if (tags.isEmpty()) emptyList() else tags.split(","),
         sourceUrl = sourceUrl,
@@ -40,6 +44,7 @@ data class NoteEntity(
         createdAt = createdAt,
         lastModified = lastModified,
         reminderTimestamp = reminderTimestamp,
+        reminderRepeat = reminderRepeat?.let { RepeatInterval.valueOf(it) },
         isLocked = isLocked,
         position = position
     )
@@ -50,6 +55,7 @@ data class NoteEntity(
             title = note.title,
             content = note.content,
             colorHex = note.colorHex,
+            emoji = note.emoji,
             type = note.type.name,
             tags = note.tags.joinToString(","),
             sourceUrl = note.sourceUrl,
@@ -60,6 +66,7 @@ data class NoteEntity(
             createdAt = note.createdAt,
             lastModified = note.lastModified,
             reminderTimestamp = note.reminderTimestamp,
+            reminderRepeat = note.reminderRepeat?.name,
             isLocked = note.isLocked,
             position = note.position
         )

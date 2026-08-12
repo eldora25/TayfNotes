@@ -89,7 +89,7 @@ fun DetailPane(
                 .verticalScroll(rememberScrollState())
         ) {
             Text(
-                text = note.title.ifEmpty { "Başlıksız Not" },
+                text = (if (!note.emoji.isNullOrEmpty()) "${note.emoji} " else "") + note.title.ifEmpty { "Başlıksız Not" },
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.ExtraBold,
                 color = MaterialTheme.colorScheme.onBackground

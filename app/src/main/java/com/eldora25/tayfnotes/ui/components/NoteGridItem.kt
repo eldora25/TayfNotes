@@ -73,7 +73,7 @@ fun NoteGridItem(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = note.title.ifEmpty { "Başlıksız Not" },
+                        text = (if (!note.emoji.isNullOrEmpty()) "${note.emoji} " else "") + note.title.ifEmpty { "Başlıksız Not" },
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 0.4.sp

@@ -49,7 +49,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
 import java.text.SimpleDateFormat
-import java.util.Calendar
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,6 +76,7 @@ fun NoteEditorScreen(
     }
     
     var title by remember { mutableStateOf(note?.title ?: "") }
+    var emoji by remember { mutableStateOf(note?.emoji ?: "") }
     var content by remember { mutableStateOf(note?.content ?: "") }
     var colorHex by remember { mutableStateOf(note?.colorHex ?: "#FFFFFF") }
     var reminderTimestamp by remember { mutableStateOf(note?.reminderTimestamp) }
@@ -95,6 +96,7 @@ fun NoteEditorScreen(
     var isSketchMode by remember { mutableStateOf(initialSketch || (sketchData != null)) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showFolderMenu by remember { mutableStateOf(false) }
+    var showEmojiMenu by remember { mutableStateOf(false) }
     
     val recorder = remember { AudioRecorder(context) }
     var isRecording by remember { mutableStateOf(false) }
@@ -132,6 +134,7 @@ fun NoteEditorScreen(
                 title = finalTitle,
                 content = finalContent,
                 colorHex = colorHex,
+                emoji = if (emoji.isEmpty()) null else emoji,
                 type = if (checklistItems.isNotEmpty()) NoteType.CHECKLIST else NoteType.TEXT,
                 reminderTimestamp = reminderTimestamp,
                 folderId = folderId,
@@ -145,8 +148,8 @@ fun NoteEditorScreen(
     }
 
     // Auto-save logic
-    LaunchedEffect(title, content, colorHex, reminderTimestamp, folderId, imageUris, audioPath, checklistItems, sketchData) {
-        if (title.isNotEmpty() || content.isNotEmpty() || imageUris.isNotEmpty() || audioPath != null || checklistItems.isNotEmpty() || sketchData != null) {
+    LaunchedEffect(title, content, colorHex, reminderTimestamp, folderId, imageUris, audioPath, checklistItems, sketchData, emoji) {
+        if (title.isNotEmpty() || content.isNotEmpty() || imageUris.isNotEmpty() || audioPath != null || checklistItems.isNotEmpty() || sketchData != null || emoji.isNotEmpty()) {
             delay(1000) // Debounce save
             saveCurrentNote()
         }
@@ -208,7 +211,8 @@ fun NoteEditorScreen(
                                 id = noteId,
                                 title = title,
                                 content = if (checklistItems.isNotEmpty()) Json.encodeToString(checklistItems) else content,
-                                colorHex = colorHex
+                                colorHex = colorHex,
+                                emoji = emoji
                             )
                             FileExportHelper.exportNoteToTxt(context, currentNote)
                         }) {
@@ -280,17 +284,38 @@ fun NoteEditorScreen(
                 .background(backgroundColor.copy(alpha = 0.1f))
         ) {
             if (!isPreviewMode) {
-                Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Box {
-                        AssistChip(
-                            onClick = { showFolderMenu = true },
-                            label = { Text(folders.find { it.id == folderId }?.name ?: "Klasör Seç") },
-                            leadingIcon = { Icon(Icons.Default.Folder, contentDescription = null, modifier = Modifier.size(18.dp)) }
-                        )
-                        DropdownMenu(expanded = showFolderMenu, onDismissRequest = { showFolderMenu = false }) {
-                            DropdownMenuItem(text = { Text("Klasör Yok") }, onClick = { folderId = null; showFolderMenu = false })
-                            folders.forEach { folder ->
-                                DropdownMenuItem(text = { Text(folder.name) }, onClick = { folderId = folder.id; showFolderMenu = false })
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp), 
+                    horizontalArrangement = Arrangement.SpaceBetween, 
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box {
+                            AssistChip(
+                                onClick = { showEmojiMenu = true },
+                                label = { Text(if (emoji.isEmpty()) "Emoji" else emoji) },
+                                leadingIcon = { Icon(Icons.Default.EmojiEmotions, null, modifier = Modifier.size(18.dp)) }
+                            )
+                            DropdownMenu(expanded = showEmojiMenu, onDismissRequest = { showEmojiMenu = false }) {
+                                val emojiList = listOf("📝", "✅", "💡", "📅", "🎨", "🚀", "❤️", "⭐", "🛒", "💻")
+                                emojiList.forEach { e ->
+                                    DropdownMenuItem(text = { Text(e) }, onClick = { emoji = e; showEmojiMenu = false })
+                                }
+                                DropdownMenuItem(text = { Text("Temizle") }, onClick = { emoji = ""; showEmojiMenu = false })
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Box {
+                            AssistChip(
+                                onClick = { showFolderMenu = true },
+                                label = { Text(folders.find { it.id == folderId }?.name ?: "Klasör Seç") },
+                                leadingIcon = { Icon(Icons.Default.Folder, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                            )
+                            DropdownMenu(expanded = showFolderMenu, onDismissRequest = { showFolderMenu = false }) {
+                                DropdownMenuItem(text = { Text("Klasör Yok") }, onClick = { folderId = null; showFolderMenu = false })
+                                folders.forEach { folder ->
+                                    DropdownMenuItem(text = { Text(folder.name) }, onClick = { folderId = folder.id; showFolderMenu = false })
+                                }
                             }
                         }
                     }
@@ -307,7 +332,6 @@ fun NoteEditorScreen(
                 )
 
                 if (isSketchMode) {
-                    // Madde 10: Extra note field for sketch
                     TextField(
                         value = content,
                         onValueChange = { content = it },
@@ -358,7 +382,7 @@ fun NoteEditorScreen(
                 }
             } else {
                 Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
-                    val displayTitle = if (title.isEmpty() && checklistItems.isNotEmpty()) {
+                    val displayTitle = (if (emoji.isNotEmpty()) "$emoji " else "") + if (title.isEmpty() && checklistItems.isNotEmpty()) {
                         checklistItems.firstOrNull()?.text ?: "Başlıksız Not"
                     } else if (title.isEmpty()) {
                         "Başlıksız Not"

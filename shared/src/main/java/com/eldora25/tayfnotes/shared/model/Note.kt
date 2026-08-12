@@ -11,6 +11,7 @@ data class Note(
     val title: String,
     val content: String,
     val colorHex: String = "#FFFFFF",
+    val emoji: String? = null,
     val type: NoteType = NoteType.TEXT,
     val tags: List<String> = emptyList(),
     val sourceUrl: String? = null,
@@ -21,12 +22,17 @@ data class Note(
     val createdAt: Long = System.currentTimeMillis(),
     val lastModified: Long = System.currentTimeMillis(),
     val reminderTimestamp: Long? = null,
+    val reminderRepeat: RepeatInterval? = null,
     val isLocked: Boolean = false,
-    val position: Int = 0 // Madde 2: For manual reordering
+    val position: Int = 0 
 )
 
 enum class NoteType {
     TEXT, CHECKLIST
+}
+
+enum class RepeatInterval {
+    NONE, DAILY, WEEKLY, MONTHLY
 }
 
 @Serializable
@@ -35,9 +41,9 @@ data class Folder(
     val name: String,
     val colorHex: String = "#757575",
     val noteCount: Int = 0,
-    val createdAt: Long = System.currentTimeMillis(), // Madde 5
-    val lastModified: Long = System.currentTimeMillis(), // Madde 5
-    val position: Int = 0 // Madde 3
+    val createdAt: Long = System.currentTimeMillis(),
+    val lastModified: Long = System.currentTimeMillis(),
+    val position: Int = 0 
 )
 
 /**
@@ -49,5 +55,7 @@ data class ChecklistItem(
     val text: String,
     val isChecked: Boolean = false,
     val subItems: List<ChecklistItem> = emptyList(),
-    val position: Int = 0
+    val position: Int = 0,
+    val reminderTimestamp: Long? = null,
+    val reminderRepeat: RepeatInterval? = null
 )

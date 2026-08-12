@@ -43,6 +43,7 @@
         </activity>
 
         <receiver android:name=".receiver.ReminderReceiver" android:exported="false" />
+        <receiver android:name=".receiver.NotificationActionReceiver" android:exported="false" />
 
         <activity
             android:name="com.dropbox.core.android.AuthActivity"

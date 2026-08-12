@@ -11,10 +11,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.eldora25.tayfnotes.shared.model.ChecklistItem
 import com.eldora25.tayfnotes.shared.model.Note
+import com.eldora25.tayfnotes.shared.model.NoteType
 import com.eldora25.tayfnotes.ui.components.NoteGridItem
+import kotlinx.serialization.json.Json
 import java.text.SimpleDateFormat
 import java.util.*
+
+data class CalendarItem(
+    val timestamp: Long,
+    val note: Note,
+    val checklistItem: ChecklistItem? = null
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -22,14 +31,30 @@ fun CalendarScreen(
     notes: List<Note>,
     onEditNote: (Note) -> Unit
 ) {
-    val notesWithReminders = remember(notes) {
-        notes.filter { it.reminderTimestamp != null }.sortedBy { it.reminderTimestamp }
+    val calendarItems = remember(notes) {
+        val items = mutableListOf<CalendarItem>()
+        notes.forEach { note ->
+            if (note.reminderTimestamp != null) {
+                items.add(CalendarItem(note.reminderTimestamp!!, note))
+            }
+            if (note.type == NoteType.CHECKLIST) {
+                try {
+                    val checklist = Json.decodeFromString<List<ChecklistItem>>(note.content)
+                    checklist.forEach { item ->
+                        if (item.reminderTimestamp != null) {
+                            items.add(CalendarItem(item.reminderTimestamp!!, note, item))
+                        }
+                    }
+                } catch (e: Exception) { }
+            }
+        }
+        items.sortedBy { it.timestamp }
     }
 
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Takvim", style = MaterialTheme.typography.headlineMedium) }
+                title = { Text("Takvim & Hatırlatıcılar") }
             )
         }
     ) { paddingValues ->
@@ -38,7 +63,6 @@ fun CalendarScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Summary Header (Image 9 style)
             Surface(
                 color = MaterialTheme.colorScheme.surfaceVariant,
                 modifier = Modifier.fillMaxWidth()
@@ -52,28 +76,45 @@ fun CalendarScreen(
                 }
             }
 
-            if (notesWithReminders.isEmpty()) {
+            if (calendarItems.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Hatırlatıcısı olan not bulunamadı.", color = Color.Gray)
+                    Text("Yaklaşan hatırlatıcı bulunmuyor.", color = Color.Gray)
                 }
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(notesWithReminders) { note ->
-                        val dateStr = SimpleDateFormat("dd MMM, HH:mm", Locale("tr"))
-                            .format(Date(note.reminderTimestamp!!))
+                    items(calendarItems) { item ->
+                        val dateStr = SimpleDateFormat("dd MMMM, HH:mm", Locale("tr")).format(Date(item.timestamp))
                         
-                        Column {
-                            Text(
-                                text = dateStr,
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(bottom = 4.dp)
-                            )
-                            NoteGridItem(note = note, onClick = { onEditNote(note) })
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            elevation = CardDefaults.cardElevation(2.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Text(text = dateStr, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = if (item.checklistItem != null) "Görev: ${item.checklistItem.text}" else "Not: ${item.note.title}",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "Dosya: ${item.note.title}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color.Gray
+                                )
+                                Button(
+                                    onClick = { onEditNote(item.note) },
+                                    modifier = Modifier.align(Alignment.End),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+                                ) {
+                                    Text("Görüntüle")
+                                }
+                            }
                         }
                     }
                 }
