@@ -23,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -35,6 +36,7 @@ import com.eldora25.tayfnotes.shared.model.Note
 import com.eldora25.tayfnotes.shared.model.NoteType
 import com.eldora25.tayfnotes.ui.components.ColorSelector
 import com.eldora25.tayfnotes.ui.components.DrawingCanvas
+import com.eldora25.tayfnotes.ui.components.RichTextToolbar
 import com.eldora25.tayfnotes.ui.components.TodoEditor
 import com.eldora25.tayfnotes.ui.theme.EditorNeonIcon
 import com.eldora25.tayfnotes.ui.theme.TayfFonts
@@ -63,7 +65,10 @@ fun NoteEditorScreen(
 
     var currentNoteFontFamily by remember { mutableStateOf(note?.fontFamily ?: fontFamily) }
     var currentNoteFontSize by remember { mutableStateOf(note?.fontSize ?: fontSize) }
+    var currentNoteFontColor by remember { mutableStateOf(note?.fontColorHex ?: "#000000") }
+    
     val noteFontFamily = TayfFonts[currentNoteFontFamily] ?: androidx.compose.ui.text.font.FontFamily.Default
+    val noteFontColor = try { Color(android.graphics.Color.parseColor(currentNoteFontColor)) } catch(e: Exception) { MaterialTheme.colorScheme.onSurface }
     
     var title by remember { mutableStateOf(note?.title ?: "") }
     var emoji by remember { mutableStateOf(note?.emoji ?: "") }
@@ -137,14 +142,15 @@ fun NoteEditorScreen(
                 sketchData = sketchData,
                 lastModified = System.currentTimeMillis(),
                 fontFamily = currentNoteFontFamily,
-                fontSize = currentNoteFontSize
+                fontSize = currentNoteFontSize,
+                fontColorHex = currentNoteFontColor
             )
             onSave(finalNote)
         }
     }
 
     // Auto-save logic
-    LaunchedEffect(title, content, colorHex, reminderTimestamp, folderId, imageUris, audioPath, checklistItems, sketchData, emoji, currentNoteFontFamily, currentNoteFontSize) {
+    LaunchedEffect(title, content, colorHex, reminderTimestamp, folderId, imageUris, audioPath, checklistItems, sketchData, emoji, currentNoteFontFamily, currentNoteFontSize, currentNoteFontColor) {
         if (title.isNotEmpty() || content.isNotEmpty() || imageUris.isNotEmpty() || audioPath != null || checklistItems.isNotEmpty() || sketchData != null || emoji.isNotEmpty()) {
             delay(2000) // Debounce save
             saveCurrentNote()
@@ -371,42 +377,57 @@ fun NoteEditorScreen(
                         onDataChanged = { sketchData = it }
                     )
                 } else {
-                    // Regular Note with Full Scroll
-                    Column(modifier = Modifier.fillMaxSize().verticalScroll(scrollState)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(16.dp), 
-                            horizontalArrangement = Arrangement.SpaceBetween, 
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box {
-                                    AssistChip(
-                                        onClick = { showEmojiMenu = true },
-                                        label = { Text(if (emoji.isEmpty()) "Emoji" else emoji) },
-                                        leadingIcon = { Icon(Icons.Default.EmojiEmotions, null, modifier = Modifier.size(18.dp)) },
-                                        shape = RoundedCornerShape(12.dp)
-                                    )
-                                    if (showEmojiMenu) {
-                                        androidx.compose.ui.window.Dialog(onDismissRequest = { showEmojiMenu = false }) {
-                                            Surface(
-                                                shape = RoundedCornerShape(24.dp),
-                                                color = MaterialTheme.colorScheme.surface,
-                                                shadowElevation = 8.dp,
-                                                modifier = Modifier.widthIn(max = 280.dp)
-                                            ) {
-                                                Column(modifier = Modifier.padding(16.dp)) {
-                                                    Text("Emoji Seç", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 12.dp))
-                                                    val emojiList = listOf("📝", "✅", "💡", "📅", "🎨", "🚀", "❤️", "⭐", "🛒", "💻", "🔥", "📌", "🌈", "⚙️", "📚", "🏠", "🍕", "🎭", "🏃", "🎧")
-                                                    emojiList.chunked(5).forEach { row ->
-                                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                                                            row.forEach { e ->
-                                                                Text(
-                                                                    text = e,
-                                                                    fontSize = 28.sp,
-                                                                    modifier = Modifier
-                                                                        .clickable { emoji = e; showEmojiMenu = false }
-                                                                        .padding(8.dp)
-                                                                    )
+                    // Regular Note with Sticky Toolbar
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        if (checklistItems.isEmpty() && note?.type != NoteType.CHECKLIST) {
+                            RichTextToolbar(
+                                currentFontFamily = currentNoteFontFamily,
+                                onFontFamilyChange = { currentNoteFontFamily = it },
+                                currentFontSize = currentNoteFontSize,
+                                onFontSizeChange = { currentNoteFontSize = it },
+                                currentTextColor = try { Color(android.graphics.Color.parseColor(currentNoteFontColor)) } catch(e: Exception) { Color.Black },
+                                onTextColorChange = { color -> 
+                                    currentNoteFontColor = String.format("#%06X", 0xFFFFFF and color.toArgb())
+                                }
+                            )
+                        }
+
+                        Column(modifier = Modifier.fillMaxSize().verticalScroll(scrollState)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(16.dp), 
+                                horizontalArrangement = Arrangement.SpaceBetween, 
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Box {
+                                        AssistChip(
+                                            onClick = { showEmojiMenu = true },
+                                            label = { Text(if (emoji.isEmpty()) "Emoji" else emoji) },
+                                            leadingIcon = { Icon(Icons.Default.EmojiEmotions, null, modifier = Modifier.size(18.dp)) },
+                                            shape = RoundedCornerShape(12.dp)
+                                        )
+                                        if (showEmojiMenu) {
+                                            androidx.compose.ui.window.Dialog(onDismissRequest = { showEmojiMenu = false }) {
+                                                Surface(
+                                                    shape = RoundedCornerShape(24.dp),
+                                                    color = MaterialTheme.colorScheme.surface,
+                                                    shadowElevation = 8.dp,
+                                                    modifier = Modifier.widthIn(max = 280.dp)
+                                                ) {
+                                                    Column(modifier = Modifier.padding(16.dp)) {
+                                                        Text("Emoji Seç", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 12.dp))
+                                                        val emojiList = listOf("📝", "✅", "💡", "📅", "🎨", "🚀", "❤️", "⭐", "🛒", "💻", "🔥", "📌", "🌈", "⚙️", "📚", "🏠", "🍕", "🎭", "🏃", "🎧")
+                                                        emojiList.chunked(5).forEach { row ->
+                                                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                                                                row.forEach { e ->
+                                                                    Text(
+                                                                        text = e,
+                                                                        fontSize = 28.sp,
+                                                                        modifier = Modifier
+                                                                            .clickable { emoji = e; showEmojiMenu = false }
+                                                                            .padding(8.dp)
+                                                                        )
+                                                                }
                                                             }
                                                         }
                                                     }
@@ -414,91 +435,57 @@ fun NoteEditorScreen(
                                             }
                                         }
                                     }
-                                }
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Box {
-                                    AssistChip(
-                                        onClick = { showFolderMenu = true },
-                                        label = { Text(folders.find { it.id == folderId }?.name ?: "Klasör Seç") },
-                                        leadingIcon = { Icon(Icons.Default.Folder, null, modifier = Modifier.size(18.dp)) },
-                                        shape = RoundedCornerShape(12.dp)
-                                    )
-                                    DropdownMenu(expanded = showFolderMenu, onDismissRequest = { showFolderMenu = false }) {
-                                        folders.forEach { folder -> DropdownMenuItem(text = { Text(folder.name) }, onClick = { folderId = folder.id; showFolderMenu = false }) }
-                                    }
-                                }
-                            }
-                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-                                var showFontMenu by remember { mutableStateOf(false) }
-                                Box(modifier = Modifier.weight(0.4f)) {
-                                    IconButton(onClick = { showFontMenu = true }) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Icon(Icons.Default.FontDownload, "Font Seç", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
-                                            Spacer(Modifier.width(4.dp))
-                                            Text(currentNoteFontFamily, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-                                        }
-                                    }
-                                    DropdownMenu(expanded = showFontMenu, onDismissRequest = { showFontMenu = false }) {
-                                        TayfFonts.keys.forEach { fontName ->
-                                            DropdownMenuItem(
-                                                text = { Text(fontName, fontFamily = TayfFonts[fontName]) },
-                                                onClick = { currentNoteFontFamily = fontName; showFontMenu = false }
-                                            )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Box {
+                                        AssistChip(
+                                            onClick = { showFolderMenu = true },
+                                            label = { Text(folders.find { it.id == folderId }?.name ?: "Klasör Seç") },
+                                            leadingIcon = { Icon(Icons.Default.Folder, null, modifier = Modifier.size(18.dp)) },
+                                            shape = RoundedCornerShape(12.dp)
+                                        )
+                                        DropdownMenu(expanded = showFolderMenu, onDismissRequest = { showFolderMenu = false }) {
+                                            folders.forEach { folder -> DropdownMenuItem(text = { Text(folder.name) }, onClick = { folderId = folder.id; showFolderMenu = false }) }
                                         }
                                     }
                                 }
-                                
-                                // Font Size Slider (8-50)
-                                Row(modifier = Modifier.weight(0.6f), verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.FormatSize, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
-                                    Slider(
-                                        value = currentNoteFontSize,
-                                        onValueChange = { currentNoteFontSize = it },
-                                        valueRange = 8f..50f,
-                                        modifier = Modifier.weight(1f).padding(horizontal = 4.dp)
-                                    )
-                                    Text("${currentNoteFontSize.toInt()}px", style = MaterialTheme.typography.labelSmall)
-                                }
-                                
                                 ColorSelector(selectedColorHex = colorHex, onColorSelected = { colorHex = it })
                             }
-                        }
 
-                        TextField(
-                            value = title,
-                            onValueChange = { title = it },
-                            placeholder = { Text("Başlık", style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold)) },
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                            colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent),
-                            textStyle = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold)
-                        )
+                            TextField(
+                                value = title,
+                                onValueChange = { title = it },
+                                placeholder = { Text("Başlık", style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold)) },
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                                colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent),
+                                textStyle = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold)
+                            )
 
-                        if (checklistItems.isNotEmpty() || note?.type == NoteType.CHECKLIST) {
-                            TodoEditor(items = checklistItems, onItemsChanged = { checklistItems = it })
-                        } else {
-                            if (imageUris.isNotEmpty()) {
-                                LazyRow(modifier = Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    items(imageUris) { uri ->
-                                        Box {
-                                            AsyncImage(model = uri, contentDescription = null, modifier = Modifier.size(120.dp).clip(RoundedCornerShape(8.dp)), contentScale = ContentScale.Crop)
-                                            IconButton(onClick = { imageUris = imageUris - uri }, modifier = Modifier.align(Alignment.TopEnd).size(24.dp).background(Color.Black.copy(0.5f), CircleShape)) {
-                                                Icon(Icons.Default.Close, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                            if (checklistItems.isNotEmpty() || note?.type == NoteType.CHECKLIST) {
+                                TodoEditor(items = checklistItems, onItemsChanged = { checklistItems = it })
+                            } else {
+                                if (imageUris.isNotEmpty()) {
+                                    LazyRow(modifier = Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        items(imageUris) { uri ->
+                                            Box {
+                                                AsyncImage(model = uri, contentDescription = null, modifier = Modifier.size(120.dp).clip(RoundedCornerShape(8.dp)), contentScale = ContentScale.Crop)
+                                                IconButton(onClick = { imageUris = imageUris - uri }, modifier = Modifier.align(Alignment.TopEnd).size(24.dp).background(Color.Black.copy(0.5f), CircleShape)) {
+                                                    Icon(Icons.Default.Close, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                                                }
                                             }
                                         }
                                     }
                                 }
+                                TextField(
+                                    value = content,
+                                    onValueChange = { content = it },
+                                    placeholder = { Text("Notunuzu yazın...", style = MaterialTheme.typography.bodyLarge.copy(fontSize = currentNoteFontSize.sp, fontFamily = noteFontFamily, color = noteFontColor)) },
+                                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                    colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent),
+                                    textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = currentNoteFontSize.sp, lineHeight = (currentNoteFontSize * 1.5).sp, fontFamily = noteFontFamily, color = noteFontColor)
+                                )
                             }
-                            // Rich Text support could be added here using a custom TextField or BasicTextField
-                            TextField(
-                                value = content,
-                                onValueChange = { content = it },
-                                placeholder = { Text("Notunuzu yazın...", style = MaterialTheme.typography.bodyLarge.copy(fontSize = currentNoteFontSize.sp, fontFamily = noteFontFamily)) },
-                                modifier = Modifier.fillMaxWidth().padding(16.dp),
-                                colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent),
-                                textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = currentNoteFontSize.sp, lineHeight = (currentNoteFontSize * 1.5).sp, fontFamily = noteFontFamily)
-                            )
+                            Spacer(modifier = Modifier.height(200.dp))
                         }
-                        Spacer(modifier = Modifier.height(200.dp)) // Extra space for keyboard/scrolling
                     }
                 }
             } else {
@@ -514,7 +501,7 @@ fun NoteEditorScreen(
                             }
                         }
                     } else {
-                        Text(content, style = MaterialTheme.typography.bodyLarge.copy(fontSize = currentNoteFontSize.sp, fontFamily = noteFontFamily))
+                        Text(content, style = MaterialTheme.typography.bodyLarge.copy(fontSize = currentNoteFontSize.sp, fontFamily = noteFontFamily, color = noteFontColor))
                     }
                     imageUris.forEach { uri ->
                         AsyncImage(model = uri, contentDescription = null, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).clip(RoundedCornerShape(8.dp)), contentScale = ContentScale.FillWidth)

@@ -164,34 +164,50 @@ fun FontSettingsSection(
 
     Column {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            // Font Family Selection
+            // 2. INTEGRATED FONT LIST (System + Premium)
             Box(modifier = Modifier.weight(1f)) {
-                OutlinedButton(onClick = { showFontMenu = true }, modifier = Modifier.fillMaxWidth()) { 
-                    Text(currentFontFamily, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) 
+                OutlinedButton(
+                    onClick = { showFontMenu = true }, 
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                ) { 
+                    Text(
+                        text = currentFontFamily, 
+                        maxLines = 1, 
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        fontFamily = TayfFonts[currentFontFamily]
+                    ) 
                 }
                 DropdownMenu(
                     expanded = showFontMenu, 
                     onDismissRequest = { showFontMenu = false },
-                    modifier = Modifier.heightIn(max = 350.dp)
+                    modifier = Modifier.heightIn(max = 400.dp)
                 ) {
                     fontNames.forEach { fontName -> 
                         DropdownMenuItem(
-                            text = { Text(fontName, fontFamily = TayfFonts[fontName]) }, 
+                            text = { 
+                                Text(
+                                    text = fontName, 
+                                    fontFamily = TayfFonts[fontName],
+                                    fontSize = 18.sp
+                                ) 
+                            }, 
                             onClick = { onFontFamilyChanged(fontName); showFontMenu = false }
                         ) 
                     }
                 }
             }
             
-            // Font Size Display
+            // Font Size Badge
             Surface(
                 color = MaterialTheme.colorScheme.primaryContainer,
                 shape = RoundedCornerShape(8.dp)
             ) {
                 Text(
-                    "${currentFontSize.toInt()} sp", 
+                    text = "${currentFontSize.toInt()} sp", 
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                     style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             }
@@ -199,26 +215,30 @@ fun FontSettingsSection(
 
         Spacer(modifier = Modifier.height(16.dp))
         
-        // Font Size Slider (8-50)
+        // 3. EXPANDED FONT SIZE RANGE (8-50)
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Default.FormatSize, null, tint = MaterialTheme.colorScheme.primary)
+            Icon(Icons.Default.FormatSize, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
             Slider(
                 value = currentFontSize,
                 onValueChange = onFontSizeChanged,
                 valueRange = 8f..50f,
-                modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
+                modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
+                colors = SliderDefaults.colors(
+                    thumbColor = MaterialTheme.colorScheme.primary,
+                    activeTrackColor = MaterialTheme.colorScheme.primary
+                )
             )
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
         Surface(
-            modifier = Modifier.fillMaxWidth().height(120.dp),
+            modifier = Modifier.fillMaxWidth().height(130.dp),
             shape = RoundedCornerShape(16.dp),
             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
             border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
         ) {
-            Box(contentAlignment = Alignment.Center) {
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(8.dp)) {
                 Text(
                     text = "Görünüm Önizleme\nBu metin nasıl görünüyor?",
                     fontSize = currentFontSize.sp,

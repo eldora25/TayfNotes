@@ -1,8 +1,8 @@
 package com.eldora25.tayfnotes
 
+import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
-import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
@@ -28,6 +28,8 @@ import com.eldora25.tayfnotes.ui.theme.TayfNotesTheme
 import com.eldora25.tayfnotes.ui.theme.TayfTheme
 import com.eldora25.tayfnotes.ui.viewmodel.NoteViewModel
 import com.eldora25.tayfnotes.ui.viewmodel.NoteViewModelFactory
+import com.eldora25.tayfnotes.ui.viewmodel.WebClipperViewModel
+import com.eldora25.tayfnotes.ui.viewmodel.WebClipperViewModelFactory
 import com.eldora25.tayfnotes.util.BackupPackageHelper
 import com.eldora25.tayfnotes.util.BiometricHelper
 import kotlinx.coroutines.launch
@@ -41,9 +43,17 @@ class MainActivity : FragmentActivity() {
         NoteViewModelFactory(application, noteRepository, folderRepository)
     }
 
+    private val webClipperViewModel: WebClipperViewModel by viewModels {
+        WebClipperViewModelFactory(noteRepository, folderRepository)
+    }
+
+    private var initialScreen: Screen = Screen.Main
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        
+        handleIntent(intent)
         
         setContent {
             val context = LocalContext.current
@@ -52,7 +62,6 @@ class MainActivity : FragmentActivity() {
             val isBiometricEnabled by noteViewModel.isBiometricEnabled.collectAsState()
             val currentFontFamily by noteViewModel.currentFontFamily.collectAsState()
             
-            // Auto-lock logic restored but with safe defaults
             var isAuthenticated by rememberSaveable(isBiometricEnabled) { 
                 val isAvailable = BiometricHelper.isBiometricAvailable(context)
                 mutableStateOf(!isBiometricEnabled || !isAvailable) 
@@ -86,6 +95,16 @@ class MainActivity : FragmentActivity() {
         }
     }
 
+    private fun handleIntent(intent: Intent?) {
+        if (intent?.action == Intent.ACTION_SEND && intent.type == "text/plain") {
+            val sharedText = intent.getStringExtra(Intent.EXTRA_TEXT)
+            if (sharedText != null) {
+                val url = sharedText.split(" ", "\n").find { it.startsWith("http") } ?: sharedText
+                initialScreen = Screen.WebClipper(url)
+            }
+        }
+    }
+
     @Composable
     fun LockedScreen(onAuthenticate: () -> Unit) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -112,7 +131,7 @@ class MainActivity : FragmentActivity() {
     fun MainAppContent() {
         val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
         val scope = rememberCoroutineScope()
-        var currentScreen by remember { mutableStateOf<Screen>(Screen.Main) }
+        var currentScreen by remember { mutableStateOf(initialScreen) }
 
         ModalNavigationDrawer(
             drawerState = drawerState,
@@ -272,22 +291,20 @@ class MainActivity : FragmentActivity() {
                     PlaceholderScreen(title = screen.title, onBack = { onScreenChange(Screen.Main) })
                 }
                 is Screen.Info -> InfoScreen(onMenuClick = onMenuClick)
-                is Screen.InternalBrowser -> InternalWebBrowserScreen(
-                    onBack = { onScreenChange(Screen.Main) },
-                    onClipContent = { title, url, text ->
-                        onScreenChange(Screen.WebClipper(url, title, text))
-                    }
+                is Screen.InternalBrowser -> TayfNotesBrowserScreen(
+                    viewModel = webClipperViewModel,
+                    onBack = { onScreenChange(Screen.Main) }
                 )
                 is Screen.WebClipper -> {
                     val screen = currentScreen as Screen.WebClipper
-                    WebClipperScreen(
-                        url = screen.url,
-                        folders = folders,
-                        onSave = { noteViewModel.saveNote(it); onScreenChange(Screen.Main) },
-                        onCancel = { onScreenChange(Screen.Main) },
-                        predefinedTitle = screen.title,
-                        predefinedContent = screen.content
-                    )
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        com.eldora25.tayfnotes.ui.components.WebClipperPanel(
+                            url = screen.url,
+                            initialMode = "Article",
+                            viewModel = webClipperViewModel,
+                            onDismiss = { onScreenChange(Screen.Main) }
+                        )
+                    }
                 }
                 else -> { /* Unknown */ }
             }

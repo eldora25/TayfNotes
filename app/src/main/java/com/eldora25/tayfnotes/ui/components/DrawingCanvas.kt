@@ -24,6 +24,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -229,8 +230,8 @@ fun DrawingCanvas(
         // Dialogs
         if (showTextInputDialog) {
             var selectedFont by remember { mutableStateOf(currentSettings.fontFamily) }
-            var selectedSize by remember { mutableStateOf(currentSettings.strokeWidth * 2) } // Text size usually larger
-            val fonts = TayfFonts.keys.toList()
+            var selectedSize by remember { mutableStateOf(currentSettings.strokeWidth * 2) } 
+            val fontNames = TayfFonts.keys.toList()
 
             AlertDialog(
                 onDismissRequest = { showTextInputDialog = false },
@@ -241,41 +242,47 @@ fun DrawingCanvas(
                             value = tempTextValue,
                             onValueChange = { tempTextValue = it },
                             placeholder = { Text("Buraya yazın...") },
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent
+                            )
                         )
                         Spacer(Modifier.height(12.dp))
                         
                         // Font Preview
                         Surface(
-                            modifier = Modifier.fillMaxWidth().height(60.dp),
+                            modifier = Modifier.fillMaxWidth().height(80.dp),
                             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                            shape = RoundedCornerShape(8.dp)
+                            shape = RoundedCornerShape(12.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
                         ) {
-                            Box(contentAlignment = Alignment.Center) {
+                            Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(8.dp)) {
                                 Text(
-                                    text = if (tempTextValue.isEmpty()) "Font Önizleme" else tempTextValue,
+                                    text = if (tempTextValue.isEmpty()) "Metin Önizleme" else tempTextValue,
                                     fontFamily = TayfFonts[selectedFont],
                                     fontSize = selectedSize.sp,
-                                    color = Color(android.graphics.Color.parseColor(currentSettings.colorHex))
+                                    color = Color(android.graphics.Color.parseColor(currentSettings.colorHex)),
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
                                 )
                             }
                         }
                         
                         Spacer(Modifier.height(16.dp))
-                        Text("Boyut: ${selectedSize.toInt()} sp", style = MaterialTheme.typography.labelMedium)
+                        Text("Boyut: ${selectedSize.toInt()} sp", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                         Slider(
                             value = selectedSize,
                             onValueChange = { selectedSize = it },
-                            valueRange = 8f..100f, // Expanded range for canvas text
+                            valueRange = 8f..150f, // Even wider for Canvas
                             modifier = Modifier.fillMaxWidth()
                         )
                         
                         Spacer(Modifier.height(8.dp))
-                        Text("Font Seçimi", style = MaterialTheme.typography.labelMedium)
-                        Box(modifier = Modifier.height(150.dp)) {
+                        Text("Yazı Tipi Seçimi", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                        Box(modifier = Modifier.height(200.dp)) {
                              androidx.compose.foundation.lazy.LazyColumn {
-                                 items(fonts.size) { index ->
-                                     val font = fonts[index]
+                                 items(fontNames.size) { index ->
+                                     val font = fontNames[index]
                                      Row(
                                          modifier = Modifier
                                              .fillMaxWidth()
@@ -289,7 +296,7 @@ fun DrawingCanvas(
                                          Text(
                                              text = font, 
                                              fontFamily = TayfFonts[font],
-                                             style = MaterialTheme.typography.bodyLarge
+                                             fontSize = 18.sp
                                          )
                                      }
                                  }
@@ -311,7 +318,7 @@ fun DrawingCanvas(
                             objects = objects + newText
                             onDataChanged(Json.encodeToString(objects))
                             
-                            // Update tool settings
+                            // Update tool settings (keep it consistent)
                             toolSettingsMap = toolSettingsMap.toMutableMap().apply {
                                 put(ToolType.TEXT, currentSettings.copy(fontFamily = selectedFont, strokeWidth = selectedSize / 2))
                             }
@@ -319,7 +326,7 @@ fun DrawingCanvas(
                             tempTextValue = ""
                         }
                         showTextInputDialog = false
-                    }) { Text("Ekle") }
+                    }) { Text("Kanvasa Ekle") }
                 },
                 dismissButton = { TextButton(onClick = { showTextInputDialog = false }) { Text("İptal") } }
             )

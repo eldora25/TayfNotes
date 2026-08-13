@@ -47,16 +47,17 @@ fun NoteGridItem(
     
     // Madde 3: Enhanced Selection Visuals
     val selectionBorder = if (isSelected) {
-        androidx.compose.foundation.BorderStroke(2.5.dp, MaterialTheme.colorScheme.primary)
+        androidx.compose.foundation.BorderStroke(3.dp, MaterialTheme.colorScheme.primary)
     } else {
         androidx.compose.foundation.BorderStroke(1.dp, accentColor.copy(alpha = 0.2f))
     }
     
-    val targetElevation = if (isSelected) 12.dp else elevation
+    val targetElevation = if (isSelected) 16.dp else elevation
 
     Card(
         modifier = modifier
             .fillMaxWidth()
+            .padding(if (isSelected) 2.dp else 0.dp) // Pop-out effect
             .clickable { onClick() },
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = backgroundColor),

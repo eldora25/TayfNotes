@@ -27,11 +27,12 @@ data class Note(
     val isArchived: Boolean = false,
     val position: Int = 0,
     val fontFamily: String? = null,
-    val fontSize: Float? = null
+    val fontSize: Float? = null,
+    val fontColorHex: String? = null
 )
 
 enum class NoteType {
-    TEXT, CHECKLIST, SKETCH
+    TEXT, CHECKLIST, SKETCH, WEB_CLIP
 }
 
 enum class RepeatInterval {

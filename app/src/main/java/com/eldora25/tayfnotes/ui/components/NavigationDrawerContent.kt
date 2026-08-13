@@ -117,8 +117,8 @@ fun NavigationDrawerContent(
             DrawerItem(
                 icon = Icons.Default.ContentCut,
                 label = "TayfNotes Web Clipper",
-                isSelected = false,
-                onClick = { onPlaceholderSelected("Web Clipper") }
+                isSelected = currentScreen is Screen.InternalBrowser,
+                onClick = { onScreenSelected(Screen.InternalBrowser) }
             )
 
             Spacer(modifier = Modifier.height(8.dp))

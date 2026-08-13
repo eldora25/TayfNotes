@@ -8,7 +8,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.eldora25.tayfnotes.R
 
-// Local Premium Font Families
+// 1. REAL FONT CONNECTIONS (Referencing res/font/*.ttf)
 val Alkatra = FontFamily(
     Font(R.font.alkatra_regular, FontWeight.Normal),
     Font(R.font.alkatra_medium, FontWeight.Medium),
@@ -16,10 +16,13 @@ val Alkatra = FontFamily(
 )
 
 val Poppins = FontFamily(
+    Font(R.font.poppins_thin, FontWeight.Thin),
+    Font(R.font.poppins_light, FontWeight.Light),
     Font(R.font.poppins_regular, FontWeight.Normal),
     Font(R.font.poppins_medium, FontWeight.Medium),
     Font(R.font.poppins_semibold, FontWeight.SemiBold),
-    Font(R.font.poppins_bold, FontWeight.Bold)
+    Font(R.font.poppins_bold, FontWeight.Bold),
+    Font(R.font.poppins_black, FontWeight.Black)
 )
 
 val NotoSerif = FontFamily(
@@ -56,9 +59,9 @@ val PlaywriteDE = FontFamily(Font(R.font.playwritedesasguides_regular, FontWeigh
 val Quicksand = FontFamily(Font(R.font.quicksand_variablefont_wght, FontWeight.Normal))
 val Honk = FontFamily(Font(R.font.honk_regular_variablefont_morfshln, FontWeight.Normal))
 
-// Comprehensive Font Map for UI Selection
+// 2. COMBINED FONT LIST (System + Premium)
 val TayfFonts = mapOf(
-    "Default" to FontFamily.Default,
+    "Varsayılan" to FontFamily.Default,
     "Sans Serif" to FontFamily.SansSerif,
     "Serif" to FontFamily.Serif,
     "Monospace" to FontFamily.Monospace,
@@ -83,7 +86,7 @@ val TayfFonts = mapOf(
     "Honk" to Honk
 )
 
-val InterFont = Poppins // Using Poppins as default "modern" font
+val InterFont = Poppins
 
 val Typography = Typography(
     headlineLarge = TextStyle(
