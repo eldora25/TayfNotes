@@ -284,6 +284,8 @@ fun NoteEditorScreen(
             )
         }
     ) { paddingValues ->
+        val scrollState = rememberScrollState()
+        
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -291,122 +293,141 @@ fun NoteEditorScreen(
                 .background(backgroundColor.copy(alpha = 0.1f))
         ) {
             if (!isPreviewMode) {
-                // Header fields (Title, Emoji, Folder)
-                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(16.dp), 
-                        horizontalArrangement = Arrangement.SpaceBetween, 
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box {
-                                AssistChip(
-                                    onClick = { showEmojiMenu = true },
-                                    label = { Text(if (emoji.isEmpty()) "Emoji" else emoji) },
-                                    leadingIcon = { Icon(Icons.Default.EmojiEmotions, null, modifier = Modifier.size(18.dp)) },
-                                    shape = RoundedCornerShape(12.dp)
-                                )
-                                // Fixed Emoji Picker
-                                DropdownMenu(
-                                    expanded = showEmojiMenu, 
-                                    onDismissRequest = { showEmojiMenu = false },
-                                    modifier = Modifier.heightIn(max = 400.dp).width(200.dp)
-                                ) {
-                                    val emojiList = listOf("📝", "✅", "💡", "📅", "🎨", "🚀", "❤️", "⭐", "🛒", "💻", "🔥", "📌", "🌈", "⚙️")
-                                    Column(modifier = Modifier.padding(8.dp)) {
-                                        emojiList.chunked(4).forEach { row ->
-                                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                                                row.forEach { e ->
-                                                    Text(
-                                                        text = e, 
-                                                        fontSize = 24.sp, 
-                                                        modifier = Modifier.clickable { emoji = e; showEmojiMenu = false }.padding(8.dp)
-                                                    )
-                                                }
+                if (isSketchMode) {
+                    // Header for Sketch
+                    Column {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(16.dp), 
+                            horizontalArrangement = Arrangement.SpaceBetween, 
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box {
+                                    AssistChip(
+                                        onClick = { showEmojiMenu = true },
+                                        label = { Text(if (emoji.isEmpty()) "Emoji" else emoji) },
+                                        leadingIcon = { Icon(Icons.Default.EmojiEmotions, null, modifier = Modifier.size(18.dp)) },
+                                        shape = RoundedCornerShape(12.dp)
+                                    )
+                                    DropdownMenu(expanded = showEmojiMenu, onDismissRequest = { showEmojiMenu = false }) {
+                                        val emojiList = listOf("📝", "✅", "💡", "📅", "🎨", "🚀", "❤️", "⭐", "🛒", "💻", "🔥", "📌", "🌈", "⚙️")
+                                        Column(modifier = Modifier.padding(8.dp)) {
+                                            emojiList.chunked(4).forEach { row ->
+                                                Row { row.forEach { e -> Text(e, fontSize = 24.sp, modifier = Modifier.clickable { emoji = e; showEmojiMenu = false }.padding(8.dp)) } }
                                             }
                                         }
-                                        DropdownMenuItem(text = { Text("Emoji Kaldır") }, onClick = { emoji = ""; showEmojiMenu = false })
                                     }
                                 }
-                            }
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Box {
-                                AssistChip(
-                                    onClick = { showFolderMenu = true },
-                                    label = { Text(folders.find { it.id == folderId }?.name ?: "Klasör Seç") },
-                                    leadingIcon = { Icon(Icons.Default.Folder, contentDescription = null, modifier = Modifier.size(18.dp)) },
-                                    shape = RoundedCornerShape(12.dp)
-                                )
-                                DropdownMenu(expanded = showFolderMenu, onDismissRequest = { showFolderMenu = false }) {
-                                    DropdownMenuItem(text = { Text("Klasör Yok") }, onClick = { folderId = null; showFolderMenu = false })
-                                    folders.forEach { folder ->
-                                        DropdownMenuItem(text = { Text(folder.name) }, onClick = { folderId = folder.id; showFolderMenu = false })
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Box {
+                                    AssistChip(
+                                        onClick = { showFolderMenu = true },
+                                        label = { Text(folders.find { it.id == folderId }?.name ?: "Klasör Seç") },
+                                        leadingIcon = { Icon(Icons.Default.Folder, null, modifier = Modifier.size(18.dp)) },
+                                        shape = RoundedCornerShape(12.dp)
+                                    )
+                                    DropdownMenu(expanded = showFolderMenu, onDismissRequest = { showFolderMenu = false }) {
+                                        folders.forEach { folder -> DropdownMenuItem(text = { Text(folder.name) }, onClick = { folderId = folder.id; showFolderMenu = false }) }
                                     }
                                 }
                             }
                         }
-                        ColorSelector(selectedColorHex = colorHex, onColorSelected = { colorHex = it })
+                        TextField(
+                            value = title,
+                            onValueChange = { title = it },
+                            placeholder = { Text("Başlık", style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold)) },
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                            colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent)
+                        )
+                        TextField(
+                            value = content,
+                            onValueChange = { content = it },
+                            placeholder = { Text("Sketch Alt Notu...", style = MaterialTheme.typography.bodyMedium) },
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                            colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent)
+                        )
                     }
-
-                    TextField(
-                        value = title,
-                        onValueChange = { title = it },
-                        placeholder = { Text("Başlık", style = MaterialTheme.typography.headlineSmall.copy(fontSize = (fontSize + 4).sp, fontWeight = FontWeight.Bold)) },
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                        colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent),
-                        textStyle = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold, fontSize = (fontSize + 4).sp)
-                    )
-                }
-
-                if (isSketchMode) {
-                    // Sketch mode specific note field
-                    TextField(
-                        value = content,
-                        onValueChange = { content = it },
-                        placeholder = { Text("Sketch Alt Notu...", style = MaterialTheme.typography.bodyMedium) },
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-                        colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent)
-                    )
                     DrawingCanvas(
                         modifier = Modifier.weight(1f),
                         initialData = sketchData,
                         onDataChanged = { sketchData = it }
                     )
-                } else if (note?.type == NoteType.CHECKLIST || checklistItems.isNotEmpty()) {
-                    TodoEditor(items = checklistItems, onItemsChanged = { checklistItems = it })
                 } else {
-                    if (imageUris.isNotEmpty()) {
-                        LazyRow(modifier = Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            items(imageUris) { uri ->
+                    // Regular Note with Full Scroll
+                    Column(modifier = Modifier.fillMaxSize().verticalScroll(scrollState)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(16.dp), 
+                            horizontalArrangement = Arrangement.SpaceBetween, 
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
                                 Box {
-                                    AsyncImage(model = uri, contentDescription = null, modifier = Modifier.size(120.dp).clip(RoundedCornerShape(8.dp)), contentScale = ContentScale.Crop)
-                                    IconButton(onClick = { imageUris = imageUris - uri }, modifier = Modifier.align(Alignment.TopEnd).size(24.dp).background(Color.Black.copy(0.5f), CircleShape)) {
-                                        Icon(Icons.Default.Close, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                                    AssistChip(
+                                        onClick = { showEmojiMenu = true },
+                                        label = { Text(if (emoji.isEmpty()) "Emoji" else emoji) },
+                                        leadingIcon = { Icon(Icons.Default.EmojiEmotions, null, modifier = Modifier.size(18.dp)) },
+                                        shape = RoundedCornerShape(12.dp)
+                                    )
+                                    DropdownMenu(expanded = showEmojiMenu, onDismissRequest = { showEmojiMenu = false }) {
+                                        val emojiList = listOf("📝", "✅", "💡", "📅", "🎨", "🚀", "❤️", "⭐", "🛒", "💻", "🔥", "📌", "🌈", "⚙️")
+                                        Column(modifier = Modifier.padding(8.dp)) {
+                                            emojiList.chunked(4).forEach { row ->
+                                                Row { row.forEach { e -> Text(e, fontSize = 24.sp, modifier = Modifier.clickable { emoji = e; showEmojiMenu = false }.padding(8.dp)) } }
+                                            }
+                                        }
+                                    }
+                                }
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Box {
+                                    AssistChip(
+                                        onClick = { showFolderMenu = true },
+                                        label = { Text(folders.find { it.id == folderId }?.name ?: "Klasör Seç") },
+                                        leadingIcon = { Icon(Icons.Default.Folder, null, modifier = Modifier.size(18.dp)) },
+                                        shape = RoundedCornerShape(12.dp)
+                                    )
+                                    DropdownMenu(expanded = showFolderMenu, onDismissRequest = { showFolderMenu = false }) {
+                                        folders.forEach { folder -> DropdownMenuItem(text = { Text(folder.name) }, onClick = { folderId = folder.id; showFolderMenu = false }) }
                                     }
                                 }
                             }
+                            ColorSelector(selectedColorHex = colorHex, onColorSelected = { colorHex = it })
                         }
-                    }
-                    TextField(
-                        value = content,
-                        onValueChange = { content = it },
-                        placeholder = { 
-                            Text(
-                                "Notunuzu yazın...", 
-                                style = MaterialTheme.typography.bodyLarge.copy(
-                                    fontSize = fontSize.sp,
-                                    fontFamily = composeFontFamily
-                                )
-                            ) 
-                        },
-                        modifier = Modifier.fillMaxWidth().weight(1f).padding(16.dp),
-                        colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent),
-                        textStyle = MaterialTheme.typography.bodyLarge.copy(
-                            fontSize = fontSize.sp,
-                            lineHeight = (fontSize * 1.5).sp,
-                            fontFamily = composeFontFamily
+
+                        TextField(
+                            value = title,
+                            onValueChange = { title = it },
+                            placeholder = { Text("Başlık", style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold)) },
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                            colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent),
+                            textStyle = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold)
                         )
-                    )
+
+                        if (checklistItems.isNotEmpty() || note?.type == NoteType.CHECKLIST) {
+                            TodoEditor(items = checklistItems, onItemsChanged = { checklistItems = it })
+                        } else {
+                            if (imageUris.isNotEmpty()) {
+                                LazyRow(modifier = Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    items(imageUris) { uri ->
+                                        Box {
+                                            AsyncImage(model = uri, contentDescription = null, modifier = Modifier.size(120.dp).clip(RoundedCornerShape(8.dp)), contentScale = ContentScale.Crop)
+                                            IconButton(onClick = { imageUris = imageUris - uri }, modifier = Modifier.align(Alignment.TopEnd).size(24.dp).background(Color.Black.copy(0.5f), CircleShape)) {
+                                                Icon(Icons.Default.Close, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            TextField(
+                                value = content,
+                                onValueChange = { content = it },
+                                placeholder = { Text("Notunuzu yazın...", style = MaterialTheme.typography.bodyLarge.copy(fontSize = fontSize.sp, fontFamily = composeFontFamily)) },
+                                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent),
+                                textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = fontSize.sp, lineHeight = (fontSize * 1.5).sp, fontFamily = composeFontFamily)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(200.dp)) // Extra space for keyboard/scrolling
+                    }
                 }
             } else {
                 Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
@@ -417,17 +438,11 @@ fun NoteEditorScreen(
                         checklistItems.forEach { item ->
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Checkbox(checked = item.isChecked, onCheckedChange = null, enabled = false)
-                                Text(
-                                    item.text, 
-                                    style = if (item.isChecked) 
-                                        MaterialTheme.typography.bodyLarge.copy(textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough, fontSize = fontSize.sp, fontFamily = composeFontFamily) 
-                                    else 
-                                        MaterialTheme.typography.bodyLarge.copy(fontSize = fontSize.sp, fontFamily = composeFontFamily)
-                                )
+                                Text(item.text, style = if (item.isChecked) MaterialTheme.typography.bodyLarge.copy(textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough) else MaterialTheme.typography.bodyLarge)
                             }
                         }
                     } else {
-                        Text(content, style = MaterialTheme.typography.bodyLarge.copy(fontSize = fontSize.sp, fontFamily = composeFontFamily))
+                        Text(content, style = MaterialTheme.typography.bodyLarge.copy(fontSize = fontSize.sp))
                     }
                     imageUris.forEach { uri ->
                         AsyncImage(model = uri, contentDescription = null, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).clip(RoundedCornerShape(8.dp)), contentScale = ContentScale.FillWidth)
