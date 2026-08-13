@@ -131,7 +131,9 @@ class MainActivity : FragmentActivity() {
     fun MainAppContent() {
         val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
         val scope = rememberCoroutineScope()
-        var currentScreen by remember { mutableStateOf(initialScreen) }
+        
+        // Fix: Navigation state preserved across configuration changes
+        var currentScreen by rememberSaveable(saver = ScreenSaver) { mutableStateOf(initialScreen) }
 
         ModalNavigationDrawer(
             drawerState = drawerState,
@@ -156,6 +158,36 @@ class MainActivity : FragmentActivity() {
             )
         }
     }
+
+    // Custom Saver for Screen sealed class to handle configuration changes
+    private val ScreenSaver = androidx.compose.runtime.saveable.Saver<MutableState<Screen>, String>(
+        save = { 
+            val screen = it.value
+            when (screen) {
+                is Screen.Main -> "Main"
+                is Screen.InternalBrowser -> "Browser"
+                is Screen.Folders -> "Folders"
+                is Screen.Settings -> "Settings"
+                is Screen.Archive -> "Archive"
+                is Screen.Trash -> "Trash"
+                is Screen.WebClipper -> "Clipper|${screen.url}"
+                else -> "Main"
+            }
+        },
+        restore = { 
+            val screen = when {
+                it == "Main" -> Screen.Main
+                it == "Browser" -> Screen.InternalBrowser
+                it == "Folders" -> Screen.Folders
+                it == "Settings" -> Screen.Settings
+                it == "Archive" -> Screen.Archive
+                it == "Trash" -> Screen.Trash
+                it.startsWith("Clipper|") -> Screen.WebClipper(it.substringAfter("|"))
+                else -> Screen.Main
+            }
+            mutableStateOf(screen)
+        }
+    )
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable

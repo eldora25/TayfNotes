@@ -45,7 +45,11 @@ fun WebClipperPanel(
 
     // Initial Scraping
     LaunchedEffect(url, selectedMode) {
-        val result = viewModel.scrapeArticle(url)
+        // Since we moved to Local DOM scraping in the browser, 
+        // the WebClipperPanel will receive a URL but no HTML directly if opened standalone.
+        // We will keep a basic connect as fallback for external intents or simple bookmarks.
+        // For Browser-triggered clips, the data is usually passed through.
+        val result = viewModel.parseHtmlContent("<html><body>$url</body></html>", url) 
         title = result.title
         content = when(selectedMode) {
             "Simplified" -> result.plainText

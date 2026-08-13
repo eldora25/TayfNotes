@@ -1,6 +1,8 @@
 package com.eldora25.tayfnotes.ui
 
 import android.annotation.SuppressLint
+import android.os.Bundle
+import android.view.MotionEvent
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.background
@@ -15,6 +17,7 @@ import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -30,7 +33,7 @@ import com.eldora25.tayfnotes.ui.components.WebClipperPanel
 import com.eldora25.tayfnotes.ui.viewmodel.WebClipperViewModel
 import kotlinx.coroutines.launch
 
-@SuppressLint("SetJavaScriptEnabled")
+@SuppressLint("SetJavaScriptEnabled", "ClickableViewAccessibility")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TayfNotesBrowserScreen(
@@ -40,17 +43,15 @@ fun TayfNotesBrowserScreen(
     val scope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
     
-    var webViewRef by remember { mutableStateOf<WebView?>(null) }
-    var currentUrl by remember { mutableStateOf("https://www.google.com") }
-    var urlInput by remember { mutableStateOf(currentUrl) }
+    // UI State saved across configuration changes
+    var currentUrl by rememberSaveable { mutableStateOf("https://www.google.com") }
+    var urlInput by rememberSaveable { mutableStateOf(currentUrl) }
     var isLoading by remember { mutableStateOf(false) }
+    var showClipper by rememberSaveable { mutableStateOf(false) }
+    var readerModeHtml by rememberSaveable { mutableStateOf<String?>(null) }
     
-    var showClipper by remember { mutableStateOf(false) }
-    var clipperMode by remember { mutableStateOf("Article") }
-    
-    // Reader Mode State
-    var readerModeHtml by remember { mutableStateOf<String?>(null) }
-
+    val webViewState = remember { Bundle() }
+    var webViewRef by remember { mutableStateOf<WebView?>(null) }
     val sheetState = rememberModalBottomSheetState()
 
     Scaffold(
@@ -58,18 +59,13 @@ fun TayfNotesBrowserScreen(
             Column(modifier = Modifier.background(MaterialTheme.colorScheme.surfaceVariant)) {
                 // Header
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
                         text = "TayfNotes Dahili Tarayıcı V.01.${BuildConfig.BUILD_NO}",
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                     )
                     IconButton(onClick = onBack, modifier = Modifier.size(24.dp)) {
                         Icon(Icons.Default.Close, contentDescription = "Kapat")
@@ -77,37 +73,27 @@ fun TayfNotesBrowserScreen(
                 }
 
                 // Browser Controls
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { 
                         readerModeHtml = null
                         urlInput = "https://www.google.com"
                         currentUrl = urlInput 
-                    }) {
-                        Icon(Icons.Default.Home, contentDescription = "Home")
-                    }
+                    }) { Icon(Icons.Default.Home, contentDescription = "Home") }
+                    
                     IconButton(onClick = { 
-                        if (readerModeHtml != null) {
-                            readerModeHtml = null
-                        } else {
-                            webViewRef?.goBack() 
-                        }
+                        if (readerModeHtml != null) readerModeHtml = null else webViewRef?.goBack() 
                     }, enabled = readerModeHtml != null || webViewRef?.canGoBack() == true) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Geri", modifier = Modifier.size(20.dp))
                     }
+                    
                     IconButton(onClick = { webViewRef?.goForward() }, enabled = webViewRef?.canGoForward() == true) {
                         Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "İleri", modifier = Modifier.size(20.dp))
                     }
+                    
                     IconButton(onClick = { 
                         if (readerModeHtml != null) readerModeHtml = null
                         webViewRef?.reload() 
-                    }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Yenile")
-                    }
+                    }) { Icon(Icons.Default.Refresh, contentDescription = "Yenile") }
                     
                     OutlinedTextField(
                         value = urlInput,
@@ -134,42 +120,38 @@ fun TayfNotesBrowserScreen(
                 }
 
                 // Premium Action Buttons
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
+                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
                     PremiumButton("Tam Sayfa", Icons.Default.Fullscreen, isSelected = readerModeHtml == null) {
                         readerModeHtml = null
-                        webViewRef?.loadUrl(currentUrl)
                     }
-                    PremiumButton("Makale", Icons.AutoMirrored.Filled.Article) {
-                        scope.launch {
-                            isLoading = true
-                            val result = viewModel.scrapeArticle(currentUrl)
-                            readerModeHtml = viewModel.wrapInReaderTheme(result.title, result.content)
-                            isLoading = false
+                    PremiumButton("Makale", Icons.AutoMirrored.Filled.Article, isSelected = readerModeHtml != null) {
+                        webViewRef?.evaluateJavascript("(function() { return document.documentElement.outerHTML; })();") { html ->
+                            scope.launch {
+                                isLoading = true
+                                val unescapedHtml = html.removePrefix("\"").removeSuffix("\"").replace("\\u003C", "<").replace("\\\"", "\"").replace("\\\\", "\\")
+                                val result = viewModel.parseHtmlContent(unescapedHtml, currentUrl)
+                                readerModeHtml = viewModel.wrapInReaderTheme(result.title, result.content)
+                                isLoading = false
+                            }
                         }
                     }
                     PremiumButton("Basitleştir", Icons.Default.TextFields) {
-                        scope.launch {
-                            isLoading = true
-                            val result = viewModel.scrapeArticle(currentUrl)
-                            val plainHtml = "<p>${result.plainText.replace("\n", "<br>")}</p>"
-                            readerModeHtml = viewModel.wrapInReaderTheme(result.title, plainHtml)
-                            isLoading = false
+                        webViewRef?.evaluateJavascript("(function() { return document.documentElement.outerHTML; })();") { html ->
+                            scope.launch {
+                                isLoading = true
+                                val unescapedHtml = html.removePrefix("\"").removeSuffix("\"").replace("\\u003C", "<").replace("\\\"", "\"")
+                                val result = viewModel.parseHtmlContent(unescapedHtml, currentUrl)
+                                val plainHtml = "<p>${result.plainText.replace("\n", "<br>")}</p>"
+                                readerModeHtml = viewModel.wrapInReaderTheme(result.title, plainHtml)
+                                isLoading = false
+                            }
                         }
                     }
                     PremiumButton("Kırp (Clipper)", Icons.Default.ContentCut, isMain = true) {
-                        clipperMode = "Article"
                         showClipper = true
                     }
                 }
-                
-                if (isLoading) {
-                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                }
+                if (isLoading) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
         }
     ) { paddingValues ->
@@ -179,22 +161,28 @@ fun TayfNotesBrowserScreen(
                     WebView(context).apply {
                         settings.javaScriptEnabled = true
                         settings.domStorageEnabled = true
-                        settings.userAgentString = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+                        settings.loadWithOverviewMode = true
+                        settings.useWideViewPort = true
+                        settings.builtInZoomControls = true
+                        settings.displayZoomControls = false
+                        
                         webViewClient = object : WebViewClient() {
                             override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
                                 if (readerModeHtml == null) isLoading = true
-                                url?.let { if (readerModeHtml == null) urlInput = it }
                             }
                             override fun onPageFinished(view: WebView?, url: String?) {
                                 isLoading = false
-                                url?.let { 
-                                    if (readerModeHtml == null) {
-                                        urlInput = it
-                                        currentUrl = it
-                                    }
-                                }
+                                url?.let { if (readerModeHtml == null) { urlInput = it; currentUrl = it } }
                             }
                         }
+                        
+                        // Prevent Navigation Drawer from intercepting touch events
+                        setOnTouchListener { v, event ->
+                            v.parent.requestDisallowInterceptTouchEvent(true)
+                            false
+                        }
+
+                        if (!webViewState.isEmpty) restoreState(webViewState)
                     }
                 },
                 update = { view ->
@@ -206,7 +194,8 @@ fun TayfNotesBrowserScreen(
                         view.loadUrl(currentUrl)
                     }
                 },
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
+                onRelease = { it.saveState(webViewState) }
             )
         }
 
@@ -214,12 +203,11 @@ fun TayfNotesBrowserScreen(
             ModalBottomSheet(
                 onDismissRequest = { showClipper = false },
                 sheetState = sheetState,
-                dragHandle = { BottomSheetDefaults.DragHandle() },
                 containerColor = MaterialTheme.colorScheme.surface
             ) {
                 WebClipperPanel(
                     url = currentUrl,
-                    initialMode = clipperMode,
+                    initialMode = "Article",
                     viewModel = viewModel,
                     onDismiss = { showClipper = false }
                 )
@@ -229,32 +217,13 @@ fun TayfNotesBrowserScreen(
 }
 
 @Composable
-fun PremiumButton(
-    text: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    isMain: Boolean = false,
-    isSelected: Boolean = false,
-    onClick: () -> Unit
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.padding(4.dp)
-    ) {
+fun PremiumButton(text: String, icon: androidx.compose.ui.graphics.vector.ImageVector, isMain: Boolean = false, isSelected: Boolean = false, onClick: () -> Unit) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(4.dp)) {
         FilledTonalIconButton(
             onClick = onClick,
             modifier = Modifier.size(if (isMain) 56.dp else 48.dp),
-            colors = if (isSelected || isMain) IconButtonDefaults.filledTonalIconButtonColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-            ) else IconButtonDefaults.filledTonalIconButtonColors()
-        ) {
-            Icon(icon, contentDescription = text, modifier = Modifier.size(if (isMain) 28.dp else 24.dp))
-        }
-        Text(
-            text = text, 
-            fontSize = 10.sp, 
-            fontWeight = if (isMain || isSelected) FontWeight.Bold else FontWeight.Normal,
-            color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Unspecified
-        )
+            colors = if (isSelected || isMain) IconButtonDefaults.filledTonalIconButtonColors(containerColor = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer) else IconButtonDefaults.filledTonalIconButtonColors()
+        ) { Icon(icon, contentDescription = text, modifier = Modifier.size(if (isMain) 28.dp else 24.dp)) }
+        Text(text, fontSize = 10.sp, fontWeight = if (isMain || isSelected) FontWeight.Bold else FontWeight.Normal, color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Unspecified)
     }
 }

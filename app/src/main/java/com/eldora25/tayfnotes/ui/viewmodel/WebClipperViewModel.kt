@@ -25,9 +25,6 @@ class WebClipperViewModel(
     private val _folders = MutableStateFlow<List<Folder>>(emptyList())
     val folders: StateFlow<List<Folder>> = _folders.asStateFlow()
 
-    private val userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-    private val referrer = "http://www.google.com"
-
     init {
         viewModelScope.launch {
             folderRepository.allFolders.collect {
@@ -36,37 +33,31 @@ class WebClipperViewModel(
         }
     }
 
-    suspend fun scrapeArticle(url: String): ScrapedContent = withContext(Dispatchers.IO) {
+    /**
+     * Parses HTML content locally using Jsoup. 
+     * No network request is made here to avoid 403 Forbidden errors.
+     */
+    suspend fun parseHtmlContent(html: String, url: String): ScrapedContent = withContext(Dispatchers.IO) {
         try {
-            val doc = Jsoup.connect(url)
-                .userAgent(userAgent)
-                .referrer(referrer)
-                .timeout(10000)
-                .get()
-            
+            val doc = Jsoup.parse(html, url)
             val title = doc.title()
             
-            // Modern Readability approach: Extract main content
             val articleElement = doc.select("article").firstOrNull() 
                 ?: doc.select("main").firstOrNull()
                 ?: doc.select(".post-content, .entry-content, .article-body, #content, .content").firstOrNull()
                 ?: doc.body()
 
-            // Clone to avoid modifying the original if needed, but here we just want cleaned output
             val cleanElement = articleElement?.clone()
             cleanElement?.select("script, style, nav, footer, header, aside, .ads, .sidebar, .menu, .nav")?.remove()
 
-            val htmlContent = cleanElement?.outerHtml() ?: ""
-            val textContent = cleanElement?.text() ?: ""
-
             ScrapedContent(
                 title = title,
-                content = htmlContent,
-                plainText = textContent,
+                content = cleanElement?.outerHtml() ?: "",
+                plainText = cleanElement?.text() ?: "",
                 url = url
             )
         } catch (e: Exception) {
-            ScrapedContent(title = "Hata", content = "İçerik alınamadı: ${e.message}", url = url)
+            ScrapedContent(title = "Hata", content = "İçerik işlenemedi: ${e.message}", url = url)
         }
     }
 
@@ -76,17 +67,10 @@ class WebClipperViewModel(
             <head>
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <style>
-                    body { 
-                        font-family: -apple-system, sans-serif; 
-                        line-height: 1.6; 
-                        padding: 20px; 
-                        color: #333; 
-                        background-color: #f9f9f9;
-                    }
+                    body { font-family: -apple-system, sans-serif; line-height: 1.6; padding: 20px; color: #333; background-color: #f9f9f9; }
                     h1 { border-bottom: 2px solid #eee; padding-bottom: 10px; color: #1a1a1a; }
                     img { max-width: 100%; height: auto; border-radius: 8px; }
                     pre { background: #eee; padding: 10px; overflow-x: auto; }
-                    blockquote { border-left: 4px solid #ccc; padding-left: 15px; margin-left: 0; font-style: italic; }
                 </style>
             </head>
             <body>
