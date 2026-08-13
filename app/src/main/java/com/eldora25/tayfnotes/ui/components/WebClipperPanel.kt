@@ -20,7 +20,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.eldora25.tayfnotes.shared.model.Folder
-import com.eldora25.tayfnotes.shared.model.NoteType
 import com.eldora25.tayfnotes.ui.viewmodel.WebClipperViewModel
 import kotlinx.coroutines.launch
 
@@ -31,6 +30,7 @@ fun WebClipperPanel(
     initialMode: String,
     viewModel: WebClipperViewModel,
     capturedRawData: String? = null,
+    bookmarkDataJson: String? = null,
     onDismiss: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
@@ -43,9 +43,17 @@ fun WebClipperPanel(
     
     val folders by viewModel.folders.collectAsState()
 
+    // UI State for active cards
+    val isArticleSelected = selectedMode == "Article"
+    val isFullPageSelected = selectedMode == "FullPage"
+    val isSimplifiedSelected = selectedMode == "Simplified"
+    val isBookmarkSelected = selectedMode == "Bookmark"
+
     // Title initialization
-    LaunchedEffect(url, capturedRawData) {
-        if (capturedRawData != null && initialMode != "Simplified") {
+    LaunchedEffect(url, capturedRawData, bookmarkDataJson) {
+        if (isBookmarkSelected && bookmarkDataJson != null) {
+            title = "Yer İmi Kaydı"
+        } else if (capturedRawData != null && !isSimplifiedSelected) {
             val doc = org.jsoup.Jsoup.parse(capturedRawData, url)
             title = doc.title().ifEmpty { "Web İçeriği" }
         } else {
@@ -63,10 +71,10 @@ fun WebClipperPanel(
         Spacer(modifier = Modifier.height(8.dp))
         
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            ModeCard("Makale", Icons.AutoMirrored.Filled.Article, selectedMode == "Article") { selectedMode = "Article" }
-            ModeCard("Basit", Icons.Default.TextFields, selectedMode == "Simplified") { selectedMode = "Simplified" }
-            ModeCard("Tam Sayfa", Icons.Default.Fullscreen, selectedMode == "FullPage") { selectedMode = "FullPage" }
-            ModeCard("Yer İzi", Icons.Default.Bookmark, selectedMode == "Bookmark") { selectedMode = "Bookmark" }
+            ModeCard("Makale", Icons.AutoMirrored.Filled.Article, isArticleSelected) { selectedMode = "Article" }
+            ModeCard("Basit", Icons.Default.TextFields, isSimplifiedSelected) { selectedMode = "Simplified" }
+            ModeCard("Tam Sayfa", Icons.Default.Fullscreen, isFullPageSelected) { selectedMode = "FullPage" }
+            ModeCard("Yer İzi", Icons.Default.Bookmark, isBookmarkSelected) { selectedMode = "Bookmark" }
         }
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -135,14 +143,15 @@ fun WebClipperPanel(
                         folderId = selectedFolder?.id,
                         tags = tagsInput.split(",").map { it.trim() }.filter { it.isNotEmpty() },
                         userDescription = description,
-                        providedTitle = title
+                        providedTitle = title,
+                        bookmarkJson = bookmarkDataJson
                     )
                     isSaving = false
                     onDismiss()
                 }
             },
             modifier = Modifier.fillMaxWidth(),
-            enabled = !isSaving && capturedRawData != null,
+            enabled = !isSaving && (capturedRawData != null || bookmarkDataJson != null),
             shape = RoundedCornerShape(12.dp)
         ) {
             if (isSaving) {

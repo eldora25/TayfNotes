@@ -6,7 +6,9 @@ import android.content.res.Configuration
 import android.os.Bundle
 import android.util.AttributeSet
 import android.view.MotionEvent
+import android.view.View
 import android.webkit.JavascriptInterface
+import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.compose.BackHandler
@@ -46,11 +48,16 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
-// Renamed and ensured @JavascriptInterface for robust large data transfer
-class HTMLOUT(private val onHtml: (String) -> Unit) {
+// Class must be outside the composable and use @JavascriptInterface
+class HTMLOUT(private val onHtml: (String) -> Unit, private val onBookmark: (String) -> Unit) {
     @JavascriptInterface
     fun processHTML(html: String) {
         onHtml(html)
+    }
+
+    @JavascriptInterface
+    fun processBookmark(json: String) {
+        onBookmark(json)
     }
 }
 
@@ -73,17 +80,24 @@ fun TayfNotesBrowserScreen(
     var isLoading by remember { mutableStateOf(false) }
     var showClipper by rememberSaveable { mutableStateOf(false) }
     
-    // Active State Management for UI highlighting
-    var activeMode by rememberSaveable { mutableStateOf("TamPage") } // default
+    // Active State Management
+    var activeMode by rememberSaveable { mutableStateOf("FullPage") } 
     var readerModeHtml by rememberSaveable { mutableStateOf<String?>(null) }
+    
     var capturedData by remember { mutableStateOf<String?>(null) }
+    var bookmarkJson by remember { mutableStateOf<String?>(null) }
 
     val webViewState = remember { Bundle() }
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
     val sheetState = rememberModalBottomSheetState()
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
 
-    val htmlInterface = remember { HTMLOUT { capturedData = it } }
+    val jsInterface = remember { 
+        HTMLOUT(
+            onHtml = { capturedData = it },
+            onBookmark = { bookmarkJson = it }
+        ) 
+    }
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -166,16 +180,13 @@ fun TayfNotesBrowserScreen(
                             }
                             PremiumButton("Makale", Icons.AutoMirrored.Filled.Article, isSelected = activeMode == "Article") {
                                 activeMode = "Article"
-                                webViewRef?.loadUrl("javascript:window.HTMLOUT.processHTML('<html>'+document.getElementsByTagName('html')[0].innerHTML+'</html>');")
+                                webViewRef?.loadUrl("javascript:window.HTMLOUT.processHTML('<html>'+document.documentElement.innerHTML+'</html>');")
                                 scope.launch {
                                     isLoading = true
                                     delay(600)
                                     capturedData?.let { html ->
-                                        // Process raw HTML into Article view locally
-                                        val doc = org.jsoup.Jsoup.parse(html, currentUrl)
-                                        val content = doc.select("article, main, .content, #content").firstOrNull() ?: doc.body()
-                                        content.select("script, style, nav, footer, header").remove()
-                                        readerModeHtml = viewModel.wrapInReaderTheme(doc.title(), content.outerHtml())
+                                        val result = viewModel.parseAndCleanHtml(html, currentUrl)
+                                        readerModeHtml = viewModel.wrapInReaderTheme(result.title, result.content)
                                     }
                                     isLoading = false
                                 }
@@ -187,14 +198,35 @@ fun TayfNotesBrowserScreen(
                                     readerModeHtml = viewModel.wrapInReaderTheme("Okuma Modu", "<p>${plain.replace("\n", "<br>")}</p>")
                                 }
                             }
+                            PremiumButton("Yer İzi", Icons.Default.Bookmark, isSelected = activeMode == "Bookmark") {
+                                activeMode = "Bookmark"
+                                readerModeHtml = null
+                            }
+                            
                             PremiumButton("Kırp (Clipper)", Icons.Default.ContentCut, isMain = true) {
-                                // Trigger full capture before showing panel
-                                if (activeMode == "Simplified") {
-                                    webViewRef?.evaluateJavascript("(function() { return document.body.innerText; })();") { capturedData = viewModel.unescapeHtml(it); showClipper = true }
-                                } else {
-                                    webViewRef?.loadUrl("javascript:window.HTMLOUT.processHTML('<html>'+document.getElementsByTagName('html')[0].innerHTML+'</html>');")
-                                    scope.launch { delay(500); showClipper = true }
+                                when (activeMode) {
+                                    "Bookmark" -> {
+                                        val js = """
+                                            (function() {
+                                                var data = {
+                                                    title: document.title,
+                                                    description: document.querySelector('meta[name="description"]')?.content || "",
+                                                    imageUrl: document.querySelector('meta[property="og:image"]')?.content || "",
+                                                    url: window.location.href
+                                                };
+                                                window.HTMLOUT.processBookmark(JSON.stringify(data));
+                                            })();
+                                        """.trimIndent()
+                                        webViewRef?.loadUrl("javascript:$js")
+                                    }
+                                    "Simplified" -> {
+                                        webViewRef?.evaluateJavascript("(function() { return document.body.innerText; })();") { capturedData = viewModel.unescapeHtml(it) }
+                                    }
+                                    else -> {
+                                        webViewRef?.loadUrl("javascript:window.HTMLOUT.processHTML('<html>'+document.documentElement.innerHTML+'</html>');")
+                                    }
                                 }
+                                scope.launch { delay(700); showClipper = true }
                             }
                         }
                         if (isLoading) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
@@ -212,7 +244,7 @@ fun TayfNotesBrowserScreen(
                         settings.loadWithOverviewMode = true
                         settings.useWideViewPort = true
                         
-                        addJavascriptInterface(htmlInterface, "HTMLOUT")
+                        addJavascriptInterface(jsInterface, "HTMLOUT")
 
                         webViewClient = object : WebViewClient() {
                             override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
@@ -221,6 +253,14 @@ fun TayfNotesBrowserScreen(
                             override fun onPageFinished(view: WebView?, url: String?) {
                                 isLoading = false
                                 url?.let { if (readerModeHtml == null) { urlInput = it; currentUrl = it } }
+                            }
+                            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                                val url = request?.url?.toString()
+                                if (url != null && url != currentUrl) {
+                                    view?.loadUrl(url)
+                                    return true
+                                }
+                                return false
                             }
                         }
                         
@@ -263,6 +303,7 @@ fun TayfNotesBrowserScreen(
                     initialMode = activeMode,
                     viewModel = viewModel,
                     capturedRawData = capturedData,
+                    bookmarkDataJson = bookmarkJson,
                     onDismiss = { showClipper = false }
                 )
             }

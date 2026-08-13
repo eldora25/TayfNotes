@@ -16,12 +16,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.PathOperation
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -35,8 +31,6 @@ import com.eldora25.tayfnotes.shared.model.ChecklistItem
 import com.eldora25.tayfnotes.shared.model.Note
 import com.eldora25.tayfnotes.shared.model.NoteType
 import com.eldora25.tayfnotes.shared.model.drawing.*
-import com.eldora25.tayfnotes.ui.components.canvas.calculateAdvancedShapePath
-import com.eldora25.tayfnotes.ui.components.canvas.calculateIntersectionPath
 import com.eldora25.tayfnotes.ui.components.canvas.drawAdvancedShape
 import com.eldora25.tayfnotes.ui.components.canvas.createSmoothPath
 import com.eldora25.tayfnotes.util.SketchExportHelper
@@ -49,9 +43,12 @@ import androidx.compose.material.icons.filled.Share
 import java.text.SimpleDateFormat
 import java.util.*
 
+import androidx.compose.foundation.clickable
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.viewinterop.AndroidView
+import com.eldora25.tayfnotes.ui.viewmodel.BookmarkData
 
 @Composable
 fun DetailPane(
@@ -139,13 +136,12 @@ fun DetailPane(
                     }
                 }
             } else if (note.type == NoteType.WEB_CLIP) {
-                // If content contains HTML tags, render with WebView. 
-                // Article/Full Page clips are wrapped in <html> tags by saveClip.
-                val isHtml = note.content.trim().startsWith("<!DOCTYPE", ignoreCase = true) || 
-                             note.content.contains("<html>", ignoreCase = true) ||
-                             (note.content.contains("<") && note.content.contains(">"))
-
-                if (isHtml) {
+                val bookmarkData = try { Json.decodeFromString<BookmarkData>(note.content) } catch (_: Exception) { null }
+                
+                if (bookmarkData != null) {
+                    BookmarkCard(bookmarkData)
+                } else {
+                    // It's HTML content (Article or Full Page)
                     Surface(
                         modifier = Modifier.fillMaxWidth().height(600.dp),
                         shape = RoundedCornerShape(12.dp),
@@ -159,24 +155,13 @@ fun DetailPane(
                                     settings.loadWithOverviewMode = true
                                     settings.useWideViewPort = true
                                     webViewClient = WebViewClient()
-                                    // Use loadDataWithBaseURL to render images and relative links correctly
+                                    // CRITICAL: use note.sourceUrl as baseUrl for images
                                     loadDataWithBaseURL(note.sourceUrl, note.content, "text/html", "UTF-8", null)
                                 }
                             },
                             modifier = Modifier.fillMaxSize()
                         )
                     }
-                } else {
-                    // "Basit" mode (Simplified) is plain text, render with Text()
-                    Text(
-                        text = note.content,
-                        style = MaterialTheme.typography.bodyLarge.copy(
-                            fontSize = fontSize.sp,
-                            lineHeight = (fontSize * 1.5).sp,
-                            fontFamily = composeFontFamily
-                        ),
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
                 }
             } else {
                 Text(
@@ -253,6 +238,39 @@ fun DetailPane(
                 contentColor = MaterialTheme.colorScheme.onPrimary
             ) {
                 Icon(Icons.Default.Edit, contentDescription = "Düzenle")
+            }
+        }
+    }
+}
+
+@Composable
+fun BookmarkCard(data: BookmarkData) {
+    val uriHandler = LocalUriHandler.current
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 12.dp)
+            .clickable { uriHandler.openUri(data.url) },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+    ) {
+        Column {
+            if (!data.imageUrl.isNullOrEmpty()) {
+                AsyncImage(
+                    model = data.imageUrl,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxWidth().height(180.dp),
+                    contentScale = ContentScale.Crop
+                )
+            }
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(data.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 2)
+                if (data.description.isNotEmpty()) {
+                    Spacer(Modifier.height(4.dp))
+                    Text(data.description, style = MaterialTheme.typography.bodySmall, color = Color.Gray, maxLines = 3)
+                }
+                Spacer(Modifier.height(8.dp))
+                Text(data.url, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, maxLines = 1)
             }
         }
     }

@@ -17,6 +17,16 @@ import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
 import org.jsoup.safety.Safelist
 import java.util.UUID
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+
+@Serializable
+data class BookmarkData(
+    val title: String,
+    val description: String,
+    val imageUrl: String?,
+    val url: String
+)
 
 class WebClipperViewModel(
     private val noteRepository: NoteRepository,
@@ -50,6 +60,32 @@ class WebClipperViewModel(
     }
 
     /**
+     * Helper to parse and clean HTML for LIVE PREVIEW (Reader Mode)
+     */
+    suspend fun parseAndCleanHtml(html: String, url: String): ScrapedContent = withContext(Dispatchers.IO) {
+        try {
+            val doc = Jsoup.parse(html, url)
+            val contentElement = doc.select("article, main, .post-content, .entry-content, .article-body, #content").firstOrNull() ?: doc.body()
+            
+            contentElement.select("script, style, nav, footer, header, aside, .ads, .sidebar, .menu, .nav, .share, .cite, button, form").remove()
+
+            val cleanedHtml = Jsoup.clean(contentElement.outerHtml(), url, Safelist.relaxed()
+                .addAttributes("img", "src", "alt", "width", "height")
+                .addTags("h1", "h2", "h3", "h4", "h5", "h6", "p", "br", "ul", "ol", "li", "b", "i", "strong", "em", "img", "blockquote", "code", "pre")
+            )
+
+            ScrapedContent(
+                title = doc.title().ifEmpty { "Web İçeriği" },
+                content = cleanedHtml,
+                plainText = contentElement.text(),
+                url = url
+            )
+        } catch (e: Exception) {
+            ScrapedContent(title = "Hata", content = "İçerik işlenemedi", url = url)
+        }
+    }
+
+    /**
      * Internal processor for different clip modes to ensure NO overlap in logic.
      */
     suspend fun processAndSave(
@@ -59,38 +95,30 @@ class WebClipperViewModel(
         folderId: String?,
         tags: List<String>,
         userDescription: String,
-        providedTitle: String? = null
+        providedTitle: String? = null,
+        bookmarkJson: String? = null
     ) = withContext(Dispatchers.IO) {
-        val doc = if (mode != "Simplified") Jsoup.parse(rawData, url) else null
+        val doc = if (mode == "Article" || mode == "FullPage") Jsoup.parse(rawData, url) else null
         val pageTitle = providedTitle ?: doc?.title() ?: url
 
         val (finalContent, finalType) = when (mode) {
+            "Bookmark" -> {
+                Pair(bookmarkJson ?: "", NoteType.WEB_CLIP)
+            }
             "FullPage" -> {
-                // Keep everything but wrap in standard mobile scaling if missing
                 Pair(rawData, NoteType.WEB_CLIP)
             }
             "Article" -> {
-                val contentElement = doc?.select("article")?.firstOrNull() 
-                    ?: doc?.select("main")?.firstOrNull()
-                    ?: doc?.select(".post-content, .entry-content, .article-body, #content")?.firstOrNull()
-                    ?: doc?.body()
-
-                contentElement?.select("script, style, nav, footer, header, aside, .ads, .sidebar, .menu, .nav, .share, .cite, button, form")?.remove()
-                
-                val cleanedHtml = Jsoup.clean(contentElement?.outerHtml() ?: "", url, Safelist.relaxed()
-                    .addAttributes("img", "src", "alt", "width", "height")
-                    .addTags("h1", "h2", "h3", "h4", "h5", "h6", "p", "br", "ul", "ol", "li", "b", "i", "strong", "em", "img", "blockquote", "code", "pre")
-                )
-                Pair(wrapInReaderTheme(pageTitle, cleanedHtml), NoteType.WEB_CLIP)
+                val scraped = parseAndCleanHtml(rawData, url)
+                Pair(wrapInReaderTheme(pageTitle, scraped.content), NoteType.WEB_CLIP)
             }
             "Simplified" -> {
-                // Pure plain text mode
                 Pair(rawData, NoteType.TEXT) 
             }
             else -> Pair(rawData, NoteType.TEXT)
         }
 
-        val noteContent = if (userDescription.isNotEmpty()) "$userDescription\n\n$finalContent" else finalContent
+        val noteContent = if (userDescription.isNotEmpty() && mode != "Bookmark") "$userDescription\n\n$finalContent" else finalContent
         
         val note = Note(
             id = UUID.randomUUID().toString(),
@@ -128,20 +156,6 @@ class WebClipperViewModel(
             </body>
             </html>
         """.trimIndent()
-    }
-
-    // Keep legacy support for external calls if needed
-    suspend fun saveClip(title: String, content: String, url: String, folderId: String?, tags: List<String>, description: String, type: NoteType) {
-        val note = Note(
-            id = UUID.randomUUID().toString(),
-            title = title,
-            content = if (description.isNotEmpty()) "$description\n\n$content" else content,
-            type = type,
-            sourceUrl = url,
-            folderId = folderId,
-            tags = tags
-        )
-        noteRepository.insert(note)
     }
 }
 
