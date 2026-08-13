@@ -2,44 +2,85 @@ package com.eldora25.tayfnotes.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.googlefonts.Font
-import androidx.compose.ui.text.googlefonts.GoogleFont
 import androidx.compose.ui.unit.sp
 import com.eldora25.tayfnotes.R
 
-val fontProvider = GoogleFont.Provider(
-    providerAuthority = "com.google.android.gms.fonts",
-    providerPackage = "com.google.android.gms",
-    certificates = R.array.com_google_android_gms_fonts_certs
+// Local Premium Font Families
+val Alkatra = FontFamily(
+    Font(R.font.alkatra_regular, FontWeight.Normal),
+    Font(R.font.alkatra_medium, FontWeight.Medium),
+    Font(R.font.alkatra_bold, FontWeight.Bold)
 )
 
-// Premium Font Altyapısı - 20 Font
+val Poppins = FontFamily(
+    Font(R.font.poppins_regular, FontWeight.Normal),
+    Font(R.font.poppins_medium, FontWeight.Medium),
+    Font(R.font.poppins_semibold, FontWeight.SemiBold),
+    Font(R.font.poppins_bold, FontWeight.Bold)
+)
+
+val NotoSerif = FontFamily(
+    Font(R.font.notoserif_regular, FontWeight.Normal),
+    Font(R.font.notoserif_medium, FontWeight.Medium),
+    Font(R.font.notoserif_semibold, FontWeight.SemiBold),
+    Font(R.font.notoserif_bold, FontWeight.Bold)
+)
+
+val DynaPuff = FontFamily(
+    Font(R.font.dynapuff_regular, FontWeight.Normal),
+    Font(R.font.dynapuff_medium, FontWeight.Medium),
+    Font(R.font.dynapuff_semibold, FontWeight.SemiBold),
+    Font(R.font.dynapuff_bold, FontWeight.Bold)
+)
+
+val ComicRelief = FontFamily(
+    Font(R.font.comicrelief_regular, FontWeight.Normal),
+    Font(R.font.comicrelief_bold, FontWeight.Bold)
+)
+
+val AlfaSlabOne = FontFamily(Font(R.font.alfaslabone_regular, FontWeight.Normal))
+val Ballet = FontFamily(Font(R.font.ballet_regular_variablefont_opsz, FontWeight.Normal))
+val Borel = FontFamily(Font(R.font.borel_regular, FontWeight.Normal))
+val Ruthie = FontFamily(Font(R.font.ruthie_regular, FontWeight.Normal))
+val Sekuya = FontFamily(Font(R.font.sekuya_regular, FontWeight.Normal))
+val Sriracha = FontFamily(Font(R.font.sriracha_regular, FontWeight.Normal))
+val Romanesco = FontFamily(Font(R.font.romanesco_regular, FontWeight.Normal))
+val FleurDeLeah = FontFamily(Font(R.font.fleurdeleah_regular, FontWeight.Normal))
+val KaushanScript = FontFamily(Font(R.font.kaushanscript_regular, FontWeight.Normal))
+val LavishlyYours = FontFamily(Font(R.font.lavishlyyours_regular, FontWeight.Normal))
+val PlaywriteDK = FontFamily(Font(R.font.playwritedkuloopet_regular, FontWeight.Normal))
+val PlaywriteDE = FontFamily(Font(R.font.playwritedesasguides_regular, FontWeight.Normal))
+val Quicksand = FontFamily(Font(R.font.quicksand_variablefont_wght, FontWeight.Normal))
+val Honk = FontFamily(Font(R.font.honk_regular_variablefont_morfshln, FontWeight.Normal))
+
+// Comprehensive Font Map for UI Selection
 val TayfFonts = mapOf(
     "Default" to FontFamily.Default,
-    "Inter" to FontFamily(Font(googleFont = GoogleFont("Inter"), fontProvider = fontProvider)),
-    "Roboto" to FontFamily(Font(googleFont = GoogleFont("Roboto"), fontProvider = fontProvider)),
-    "Playfair" to FontFamily(Font(googleFont = GoogleFont("Playfair Display"), fontProvider = fontProvider)),
-    "Montserrat" to FontFamily(Font(googleFont = GoogleFont("Montserrat"), fontProvider = fontProvider)),
-    "Lora" to FontFamily(Font(googleFont = GoogleFont("Lora"), fontProvider = fontProvider)),
-    "Merriweather" to FontFamily(Font(googleFont = GoogleFont("Merriweather"), fontProvider = fontProvider)),
-    "Oswald" to FontFamily(Font(googleFont = GoogleFont("Oswald"), fontProvider = fontProvider)),
-    "Poppins" to FontFamily(Font(googleFont = GoogleFont("Poppins"), fontProvider = fontProvider)),
-    "Dancing Script" to FontFamily(Font(googleFont = GoogleFont("Dancing Script"), fontProvider = fontProvider)),
-    "Pacifico" to FontFamily(Font(googleFont = GoogleFont("Pacifico"), fontProvider = fontProvider)),
-    "Caveat" to FontFamily(Font(googleFont = GoogleFont("Caveat"), fontProvider = fontProvider)),
-    "Abril Fatface" to FontFamily(Font(googleFont = GoogleFont("Abril Fatface"), fontProvider = fontProvider)),
-    "Lobster" to FontFamily(Font(googleFont = GoogleFont("Lobster"), fontProvider = fontProvider)),
-    "Ubuntu" to FontFamily(Font(googleFont = GoogleFont("Ubuntu"), fontProvider = fontProvider)),
-    "Quicksand" to FontFamily(Font(googleFont = GoogleFont("Quicksand"), fontProvider = fontProvider)),
-    "Titillium Web" to FontFamily(Font(googleFont = GoogleFont("Titillium Web"), fontProvider = fontProvider)),
-    "Comfortaa" to FontFamily(Font(googleFont = GoogleFont("Comfortaa"), fontProvider = fontProvider)),
-    "Zilla Slab" to FontFamily(Font(googleFont = GoogleFont("Zilla Slab"), fontProvider = fontProvider)),
-    "Cinzel" to FontFamily(Font(googleFont = GoogleFont("Cinzel"), fontProvider = fontProvider))
+    "Alkatra" to Alkatra,
+    "Poppins" to Poppins,
+    "Noto Serif" to NotoSerif,
+    "DynaPuff" to DynaPuff,
+    "Comic Relief" to ComicRelief,
+    "Alfa Slab" to AlfaSlabOne,
+    "Ballet" to Ballet,
+    "Borel" to Borel,
+    "Ruthie" to Ruthie,
+    "Sekuya" to Sekuya,
+    "Sriracha" to Sriracha,
+    "Romanesco" to Romanesco,
+    "Fleur De Leah" to FleurDeLeah,
+    "Kaushan" to KaushanScript,
+    "Lavishly" to LavishlyYours,
+    "Playwrite DK" to PlaywriteDK,
+    "Playwrite DE" to PlaywriteDE,
+    "Quicksand" to Quicksand,
+    "Honk" to Honk
 )
 
-val InterFont = TayfFonts["Inter"] ?: FontFamily.Default
+val InterFont = Poppins // Using Poppins as default "modern" font
 
 val Typography = Typography(
     headlineLarge = TextStyle(

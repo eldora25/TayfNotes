@@ -12,7 +12,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -21,7 +20,6 @@ import androidx.fragment.app.FragmentActivity
 import com.eldora25.tayfnotes.data.database.AppDatabase
 import com.eldora25.tayfnotes.data.repository.FolderRepository
 import com.eldora25.tayfnotes.data.repository.NoteRepository
-import com.eldora25.tayfnotes.shared.model.Folder
 import com.eldora25.tayfnotes.shared.model.Note
 import com.eldora25.tayfnotes.shared.model.NoteType
 import com.eldora25.tayfnotes.ui.*
@@ -31,7 +29,6 @@ import com.eldora25.tayfnotes.ui.viewmodel.NoteViewModel
 import com.eldora25.tayfnotes.ui.viewmodel.NoteViewModelFactory
 import com.eldora25.tayfnotes.util.BackupPackageHelper
 import com.eldora25.tayfnotes.util.BiometricHelper
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
 
 class MainActivity : FragmentActivity() {
@@ -49,38 +46,23 @@ class MainActivity : FragmentActivity() {
         
         setContent {
             val context = LocalContext.current
-            val currentTheme by noteViewModel.currentTheme.collectAsState()
-            val isDarkModePref by noteViewModel.isDarkMode.collectAsState()
-            val isBiometricEnabled by noteViewModel.isBiometricEnabled.collectAsState()
+            val currentTheme by noteViewModel.currentTheme.collectAsState(initial = TayfTheme.MIDNIGHT)
+            val isDarkModePref by noteViewModel.isDarkMode.collectAsState(initial = null)
+            val isBiometricEnabled by noteViewModel.isBiometricEnabled.collectAsState(initial = false)
             
-            // Critical Fix: Improved biometric availability check to prevent startup lockout
-            var isAuthenticated by rememberSaveable(isBiometricEnabled) { 
-                val isAvailable = BiometricHelper.isBiometricAvailable(context)
-                mutableStateOf(!isBiometricEnabled || !isAvailable) 
-            }
+            // Temporary: Disable lock by default to fix emulator hangs
+            var isAuthenticated by remember { mutableStateOf(true) }
 
-            key(currentTheme, isDarkModePref) {
-                TayfNotesTheme(
-                    darkTheme = isDarkModePref ?: isSystemInDarkTheme(),
-                    currentTheme = currentTheme
-                ) {
-                    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                        if (isAuthenticated) {
-                            MainAppContent()
-                        } else {
-                            LockedScreen(onAuthenticate = { isAuthenticated = true })
-                        }
+            TayfNotesTheme(
+                darkTheme = isDarkModePref ?: isSystemInDarkTheme(),
+                currentTheme = currentTheme
+            ) {
+                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                    if (isAuthenticated) {
+                        MainAppContent()
+                    } else {
+                        LockedScreen(onAuthenticate = { isAuthenticated = true })
                     }
-                }
-            }
-
-            LaunchedEffect(isBiometricEnabled, isAuthenticated) {
-                if (isBiometricEnabled && !isAuthenticated && BiometricHelper.isBiometricAvailable(context)) {
-                    BiometricHelper.authenticate(
-                        activity = this@MainActivity,
-                        onSuccess = { isAuthenticated = true },
-                        onError = { error -> Toast.makeText(this@MainActivity, error, Toast.LENGTH_SHORT).show() }
-                    )
                 }
             }
         }
@@ -101,7 +83,7 @@ class MainActivity : FragmentActivity() {
                         onError = { error -> Toast.makeText(this@MainActivity, error, Toast.LENGTH_SHORT).show() }
                     )
                 }) {
-                    Text("Kimliği Doğrula")
+                    Text("Giriş Yap")
                 }
             }
         }

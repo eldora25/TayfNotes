@@ -86,23 +86,23 @@ class NoteViewModel(
             } catch (e: Exception) {
                 TayfTheme.MIDNIGHT
             }
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), TayfTheme.MIDNIGHT)
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, TayfTheme.MIDNIGHT)
 
     val isDarkMode: StateFlow<Boolean?> = dataStore.data
         .map { pref -> pref[DARK_MODE_KEY] }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     val isBiometricEnabled: StateFlow<Boolean> = dataStore.data
         .map { pref -> pref[BIOMETRIC_KEY] ?: false }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     val currentFontSize: StateFlow<Float> = dataStore.data
         .map { pref -> pref[FONT_SIZE_KEY] ?: 16f }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 16f)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, 16f)
 
     val currentFontFamily: StateFlow<String> = dataStore.data
         .map { pref -> pref[FONT_FAMILY_KEY] ?: "Roboto" }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "Roboto")
+        .stateIn(viewModelScope, SharingStarted.Eagerly, "Roboto")
 
     val activeCloudProvider: StateFlow<String?> = dataStore.data
         .map { pref -> pref[CLOUD_PROVIDER_KEY] }

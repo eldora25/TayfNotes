@@ -242,9 +242,27 @@ fun DrawingCanvas(
                             placeholder = { Text("Buraya yazın...") },
                             modifier = Modifier.fillMaxWidth()
                         )
+                        Spacer(Modifier.height(12.dp))
+                        
+                        // Font Preview
+                        Surface(
+                            modifier = Modifier.fillMaxWidth().height(60.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = if (tempTextValue.isEmpty()) "Font Önizleme" else tempTextValue,
+                                    fontFamily = TayfFonts[selectedFont],
+                                    fontSize = 20.sp,
+                                    color = Color(android.graphics.Color.parseColor(currentSettings.colorHex))
+                                )
+                            }
+                        }
+                        
                         Spacer(Modifier.height(16.dp))
                         Text("Font Seçimi", style = MaterialTheme.typography.labelMedium)
-                        Box(modifier = Modifier.height(120.dp)) {
+                        Box(modifier = Modifier.height(150.dp)) {
                              androidx.compose.foundation.lazy.LazyColumn {
                                  items(fonts.size) { index ->
                                      val font = fonts[index]
@@ -252,10 +270,17 @@ fun DrawingCanvas(
                                          modifier = Modifier
                                              .fillMaxWidth()
                                              .clickable { selectedFont = font }
-                                             .background(if (selectedFont == font) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
-                                             .padding(8.dp)
+                                             .background(if (selectedFont == font) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else Color.Transparent)
+                                             .padding(12.dp),
+                                         verticalAlignment = Alignment.CenterVertically
                                      ) {
-                                         Text(font, fontFamily = TayfFonts[font])
+                                         RadioButton(selected = selectedFont == font, onClick = { selectedFont = font })
+                                         Spacer(Modifier.width(8.dp))
+                                         Text(
+                                             text = font, 
+                                             fontFamily = TayfFonts[font],
+                                             style = MaterialTheme.typography.bodyLarge
+                                         )
                                      }
                                  }
                              }
