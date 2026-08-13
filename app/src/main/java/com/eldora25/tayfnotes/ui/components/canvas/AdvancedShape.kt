@@ -3,10 +3,7 @@ package com.eldora25.tayfnotes.ui.components.canvas
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Path
 import com.eldora25.tayfnotes.shared.model.drawing.*
-import kotlin.math.PI
-import kotlin.math.cos
-import kotlin.math.min
-import kotlin.math.sin
+import kotlin.math.*
 
 fun calculateAdvancedShapePath(
     startX: Float,
@@ -75,11 +72,82 @@ fun calculateAdvancedShapePath(
         }
         ShapeType.PENTAGON -> drawPolygon(path, centerX, centerY, width / 2, height / 2, 5)
         ShapeType.HEXAGON -> drawPolygon(path, centerX, centerY, width / 2, height / 2, 6)
+        ShapeType.OCTAGON -> drawPolygon(path, centerX, centerY, width / 2, height / 2, 8)
         ShapeType.STAR -> drawStar(path, centerX, centerY, width / 2, height / 2)
         ShapeType.ARC -> path.addArc(Rect(left, top, right, bottom), 180f, 180f)
         ShapeType.LINE -> {
             path.moveTo(startX, startY)
             path.lineTo(endX, endY)
+        }
+        ShapeType.ARROW_RIGHT -> {
+            val arrowHeadWidth = min(width * 0.3f, 50f)
+            path.moveTo(left, centerY)
+            path.lineTo(right, centerY)
+            path.moveTo(right - arrowHeadWidth, top + height * 0.2f)
+            path.lineTo(right, centerY)
+            path.lineTo(right - arrowHeadWidth, bottom - height * 0.2f)
+        }
+        ShapeType.ARROW_LEFT -> {
+            val arrowHeadWidth = min(width * 0.3f, 50f)
+            path.moveTo(right, centerY)
+            path.lineTo(left, centerY)
+            path.moveTo(left + arrowHeadWidth, top + height * 0.2f)
+            path.lineTo(left, centerY)
+            path.lineTo(left + arrowHeadWidth, bottom - height * 0.2f)
+        }
+        ShapeType.ARROW_UP -> {
+            val arrowHeadHeight = min(height * 0.3f, 50f)
+            path.moveTo(centerX, bottom)
+            path.lineTo(centerX, top)
+            path.moveTo(centerX - width * 0.2f, top + arrowHeadHeight)
+            path.lineTo(centerX, top)
+            path.lineTo(centerX + width * 0.2f, top + arrowHeadHeight)
+        }
+        ShapeType.ARROW_DOWN -> {
+            val arrowHeadHeight = min(height * 0.3f, 50f)
+            path.moveTo(centerX, top)
+            path.lineTo(centerX, bottom)
+            path.moveTo(centerX - width * 0.2f, bottom - arrowHeadHeight)
+            path.lineTo(centerX, bottom)
+            path.lineTo(centerX + width * 0.2f, bottom - arrowHeadHeight)
+        }
+        ShapeType.CHECKMARK -> {
+            path.moveTo(left + width * 0.2f, centerY)
+            path.lineTo(left + width * 0.45f, bottom - height * 0.1f)
+            path.lineTo(right - width * 0.1f, top + height * 0.1f)
+        }
+        ShapeType.CROSS -> {
+            path.moveTo(left, top)
+            path.lineTo(right, bottom)
+            path.moveTo(right, top)
+            path.lineTo(left, bottom)
+        }
+        ShapeType.PLUS -> {
+            path.moveTo(centerX, top)
+            path.lineTo(centerX, bottom)
+            path.moveTo(left, centerY)
+            path.lineTo(right, centerY)
+        }
+        ShapeType.MINUS -> {
+            path.moveTo(left, centerY)
+            path.lineTo(right, centerY)
+        }
+        ShapeType.HEART -> {
+            path.moveTo(centerX, top + height * 0.3f)
+            path.cubicTo(left, top - height * 0.1f, left - width * 0.1f, centerY + height * 0.1f, centerX, bottom)
+            path.cubicTo(right + width * 0.1f, centerY + height * 0.1f, right, top - height * 0.1f, centerX, top + height * 0.3f)
+        }
+        ShapeType.CLOUD -> {
+            path.addOval(Rect(left, centerY - height * 0.2f, left + width * 0.4f, bottom))
+            path.addOval(Rect(centerX - width * 0.2f, top, centerX + width * 0.2f, centerY + height * 0.3f))
+            path.addOval(Rect(right - width * 0.4f, centerY - height * 0.2f, right, bottom))
+            path.addRect(Rect(left + width * 0.2f, centerY, right - width * 0.2f, bottom))
+        }
+        ShapeType.BUBBLE -> {
+            path.addRoundRect(androidx.compose.ui.geometry.RoundRect(Rect(left, top, right, bottom - height * 0.2f), androidx.compose.ui.geometry.CornerRadius(16f)))
+            path.moveTo(left + width * 0.2f, bottom - height * 0.2f)
+            path.lineTo(left + width * 0.1f, bottom)
+            path.lineTo(left + width * 0.3f, bottom - height * 0.2f)
         }
         ShapeType.DOUBLE_ARROW -> {
             path.moveTo(startX, startY)

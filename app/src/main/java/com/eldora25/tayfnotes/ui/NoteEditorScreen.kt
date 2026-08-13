@@ -294,65 +294,94 @@ fun NoteEditorScreen(
         ) {
             if (!isPreviewMode) {
                 if (isSketchMode) {
-                    // Header for Sketch
-                    Column {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(16.dp), 
-                            horizontalArrangement = Arrangement.SpaceBetween, 
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box {
-                                    AssistChip(
-                                        onClick = { showEmojiMenu = true },
-                                        label = { Text(if (emoji.isEmpty()) "Emoji" else emoji) },
-                                        leadingIcon = { Icon(Icons.Default.EmojiEmotions, null, modifier = Modifier.size(18.dp)) },
-                                        shape = RoundedCornerShape(12.dp)
-                                    )
-                                    DropdownMenu(expanded = showEmojiMenu, onDismissRequest = { showEmojiMenu = false }) {
-                                        val emojiList = listOf("📝", "✅", "💡", "📅", "🎨", "🚀", "❤️", "⭐", "🛒", "💻", "🔥", "📌", "🌈", "⚙️")
-                                        Column(modifier = Modifier.padding(8.dp)) {
-                                            emojiList.chunked(4).forEach { row ->
-                                                Row { row.forEach { e -> Text(e, fontSize = 24.sp, modifier = Modifier.clickable { emoji = e; showEmojiMenu = false }.padding(8.dp)) } }
+                    // Header for Sketch - Wrapped in Surface to ensure visibility and prevent overlap
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.surface,
+                        tonalElevation = 2.dp
+                    ) {
+                        Column {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), 
+                                horizontalArrangement = Arrangement.SpaceBetween, 
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Box {
+                                        AssistChip(
+                                            onClick = { showEmojiMenu = true },
+                                            label = { Text(if (emoji.isEmpty()) "Emoji" else emoji) },
+                                            leadingIcon = { Icon(Icons.Default.EmojiEmotions, null, modifier = Modifier.size(18.dp)) },
+                                            shape = RoundedCornerShape(12.dp)
+                                        )
+                                        if (showEmojiMenu) {
+                                            androidx.compose.ui.window.Dialog(onDismissRequest = { showEmojiMenu = false }) {
+                                                Surface(
+                                                    shape = RoundedCornerShape(24.dp),
+                                                    color = MaterialTheme.colorScheme.surface,
+                                                    shadowElevation = 8.dp,
+                                                    modifier = Modifier.widthIn(max = 280.dp)
+                                                ) {
+                                                    Column(modifier = Modifier.padding(16.dp)) {
+                                                        Text("Emoji Seç", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 12.dp))
+                                                        val emojiList = listOf("📝", "✅", "💡", "📅", "🎨", "🚀", "❤️", "⭐", "🛒", "💻", "🔥", "📌", "🌈", "⚙️", "📚", "🏠", "🍕", "🎭", "🏃", "🎧")
+                                                        emojiList.chunked(5).forEach { row ->
+                                                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                                                                row.forEach { e ->
+                                                                    Text(
+                                                                        text = e,
+                                                                        fontSize = 28.sp,
+                                                                        modifier = Modifier
+                                                                            .clickable { emoji = e; showEmojiMenu = false }
+                                                                            .padding(8.dp)
+                                                                    )
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
                                             }
                                         }
                                     }
-                                }
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Box {
-                                    AssistChip(
-                                        onClick = { showFolderMenu = true },
-                                        label = { Text(folders.find { it.id == folderId }?.name ?: "Klasör Seç") },
-                                        leadingIcon = { Icon(Icons.Default.Folder, null, modifier = Modifier.size(18.dp)) },
-                                        shape = RoundedCornerShape(12.dp)
-                                    )
-                                    DropdownMenu(expanded = showFolderMenu, onDismissRequest = { showFolderMenu = false }) {
-                                        folders.forEach { folder -> DropdownMenuItem(text = { Text(folder.name) }, onClick = { folderId = folder.id; showFolderMenu = false }) }
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Box {
+                                        AssistChip(
+                                            onClick = { showFolderMenu = true },
+                                            label = { Text(folders.find { it.id == folderId }?.name ?: "Klasör Seç") },
+                                            leadingIcon = { Icon(Icons.Default.Folder, null, modifier = Modifier.size(18.dp)) },
+                                            shape = RoundedCornerShape(12.dp)
+                                        )
+                                        DropdownMenu(expanded = showFolderMenu, onDismissRequest = { showFolderMenu = false }) {
+                                            folders.forEach { folder -> DropdownMenuItem(text = { Text(folder.name) }, onClick = { folderId = folder.id; showFolderMenu = false }) }
+                                        }
                                     }
                                 }
                             }
+                            TextField(
+                                value = title,
+                                onValueChange = { title = it },
+                                placeholder = { Text("Sketch Başlığı", style = MaterialTheme.typography.titleLarge) },
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                                colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent),
+                                textStyle = MaterialTheme.typography.titleLarge
+                            )
+                            TextField(
+                                value = content,
+                                onValueChange = { content = it },
+                                placeholder = { Text("Açıklama...", style = MaterialTheme.typography.bodyMedium) },
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                                colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent),
+                                textStyle = MaterialTheme.typography.bodyMedium
+                            )
                         }
-                        TextField(
-                            value = title,
-                            onValueChange = { title = it },
-                            placeholder = { Text("Başlık", style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold)) },
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                            colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent)
-                        )
-                        TextField(
-                            value = content,
-                            onValueChange = { content = it },
-                            placeholder = { Text("Sketch Alt Notu...", style = MaterialTheme.typography.bodyMedium) },
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-                            colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent)
-                        )
                     }
                     DrawingCanvas(
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f).fillMaxWidth(),
                         initialData = sketchData,
                         onDataChanged = { sketchData = it }
                     )
-                } else {
+                }
+else {
                     // Regular Note with Full Scroll
                     Column(modifier = Modifier.fillMaxSize().verticalScroll(scrollState)) {
                         Row(
@@ -368,11 +397,31 @@ fun NoteEditorScreen(
                                         leadingIcon = { Icon(Icons.Default.EmojiEmotions, null, modifier = Modifier.size(18.dp)) },
                                         shape = RoundedCornerShape(12.dp)
                                     )
-                                    DropdownMenu(expanded = showEmojiMenu, onDismissRequest = { showEmojiMenu = false }) {
-                                        val emojiList = listOf("📝", "✅", "💡", "📅", "🎨", "🚀", "❤️", "⭐", "🛒", "💻", "🔥", "📌", "🌈", "⚙️")
-                                        Column(modifier = Modifier.padding(8.dp)) {
-                                            emojiList.chunked(4).forEach { row ->
-                                                Row { row.forEach { e -> Text(e, fontSize = 24.sp, modifier = Modifier.clickable { emoji = e; showEmojiMenu = false }.padding(8.dp)) } }
+                                    if (showEmojiMenu) {
+                                        androidx.compose.ui.window.Dialog(onDismissRequest = { showEmojiMenu = false }) {
+                                            Surface(
+                                                shape = RoundedCornerShape(24.dp),
+                                                color = MaterialTheme.colorScheme.surface,
+                                                shadowElevation = 8.dp,
+                                                modifier = Modifier.widthIn(max = 280.dp)
+                                            ) {
+                                                Column(modifier = Modifier.padding(16.dp)) {
+                                                    Text("Emoji Seç", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 12.dp))
+                                                    val emojiList = listOf("📝", "✅", "💡", "📅", "🎨", "🚀", "❤️", "⭐", "🛒", "💻", "🔥", "📌", "🌈", "⚙️", "📚", "🏠", "🍕", "🎭", "🏃", "🎧")
+                                                    emojiList.chunked(5).forEach { row ->
+                                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                                                            row.forEach { e ->
+                                                                Text(
+                                                                    text = e,
+                                                                    fontSize = 28.sp,
+                                                                    modifier = Modifier
+                                                                        .clickable { emoji = e; showEmojiMenu = false }
+                                                                        .padding(8.dp)
+                                                                )
+                                                            }
+                                                        }
+                                                    }
+                                                }
                                             }
                                         }
                                     }

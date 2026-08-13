@@ -6,8 +6,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -33,7 +35,7 @@ fun ShapeSelectionBottomSheet(
         ModalBottomSheet(
             onDismissRequest = onDismissRequest,
             sheetState = sheetState,
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            containerColor = MaterialTheme.colorScheme.surface,
             shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
         ) {
             Column(
@@ -45,7 +47,7 @@ fun ShapeSelectionBottomSheet(
                     text = "Geometrik Şekiller",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(bottom = 24.dp)
                 )
 
@@ -61,10 +63,20 @@ fun ShapeSelectionBottomSheet(
                     ShapeType.DIAMOND to Icons.Default.Diamond,
                     ShapeType.PENTAGON to Icons.Default.Pentagon,
                     ShapeType.HEXAGON to Icons.Default.Hexagon,
+                    ShapeType.OCTAGON to Icons.Default.Polyline,
                     ShapeType.STAR to Icons.Default.Star,
-                    ShapeType.ARC to Icons.Default.Architecture,
+                    ShapeType.HEART to Icons.Default.Favorite,
+                    ShapeType.CLOUD to Icons.Default.Cloud,
+                    ShapeType.BUBBLE to Icons.Default.ChatBubble,
                     ShapeType.LINE to Icons.Default.HorizontalRule,
-                    ShapeType.DOUBLE_ARROW to Icons.Default.SwapHoriz
+                    ShapeType.ARROW_RIGHT to Icons.AutoMirrored.Filled.ArrowForward,
+                    ShapeType.ARROW_LEFT to Icons.AutoMirrored.Filled.ArrowBack,
+                    ShapeType.ARROW_UP to Icons.Default.ArrowUpward,
+                    ShapeType.ARROW_DOWN to Icons.Default.ArrowDownward,
+                    ShapeType.CHECKMARK to Icons.Default.Check,
+                    ShapeType.CROSS to Icons.Default.Close,
+                    ShapeType.PLUS to Icons.Default.Add,
+                    ShapeType.MINUS to Icons.Default.Remove
                 )
 
                 LazyVerticalGrid(
@@ -104,25 +116,25 @@ fun ShapeGridItem(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surface)
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
             .clickable { onClick() }
-            .padding(16.dp)
+            .padding(12.dp)
     ) {
         Box(
             modifier = Modifier
-                .size(48.dp)
-                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), RoundedCornerShape(12.dp)),
+                .size(44.dp)
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), CircleShape),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(28.dp)
+                modifier = Modifier.size(24.dp)
             )
         }
         
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(4.dp))
         
         Text(
             text = displayName,

@@ -9,6 +9,8 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Redo
 import androidx.compose.material.icons.automirrored.filled.Undo
@@ -21,7 +23,9 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.eldora25.tayfnotes.shared.model.drawing.*
 import com.eldora25.tayfnotes.ui.components.canvas.*
 import com.eldora25.tayfnotes.util.PdfHelper
@@ -55,7 +59,8 @@ fun DrawingCanvas(
             ToolType.PENCIL to Color.DarkGray,
             ToolType.HIGHLIGHTER to Color(0xFFFFFF00).copy(alpha = 0.3f),
             ToolType.SHAPE to Color.Blue,
-            ToolType.BRUSH to Color.Green
+            ToolType.BRUSH to Color.Green,
+            ToolType.TEXT to Color.Black
         )) 
     }
     
@@ -66,11 +71,15 @@ fun DrawingCanvas(
     var currentTemplate by remember { mutableStateOf(CanvasTemplate.BLANK) }
     var pdfPagePaths by remember { mutableStateOf<List<String>>(emptyList()) }
 
-    var textInput by remember { mutableStateOf("") }
-    var showTextInput by remember { mutableStateOf(false) }
-    var textObjectToEdit by remember { mutableStateOf<DrawText?>(null) }
+    var showTextInputDialog by remember { mutableStateOf(false) }
+    var tempTextValue by remember { mutableStateOf("") }
     var showSettings by remember { mutableStateOf(false) }
     var showFullColorPicker by remember { mutableStateOf(false) }
+    var showShapeSelection by remember { mutableStateOf(false) }
+    var showResolutionDialog by remember { mutableStateOf(false) }
+    
+    var canvasWidth by remember { mutableStateOf(1080) }
+    var canvasHeight by remember { mutableStateOf(1920) }
 
     val currentColor = toolColors[currentTool] ?: Color.Black
 
@@ -93,20 +102,19 @@ fun DrawingCanvas(
 
     Box(modifier = modifier.fillMaxSize().background(Color.White).clipToBounds()) {
         AdvancedCanvasBoard(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.size(canvasWidth.dp, canvasHeight.dp).align(Alignment.Center),
             currentColor = currentColor,
             currentStrokeWidth = currentStrokeWidth,
             currentTool = currentTool,
             currentShape = currentShape,
             isFillEnabled = isFillEnabled,
-            currentFillColor = currentColor, // Using current color for fill too
+            currentFillColor = currentColor,
             objects = objects,
             selectedObjectIds = selectedObjectIds,
             template = currentTemplate,
             pdfPages = pdfPagePaths,
             onSelectionChanged = { selectedObjectIds = it },
             onObjectAdded = { newObj ->
-                if (newObj is DrawText) { textObjectToEdit = newObj; showTextInput = true }
                 undoStack = undoStack + listOf(objects)
                 objects = objects + newObj
                 onDataChanged(Json.encodeToString(objects))
@@ -127,11 +135,9 @@ fun DrawingCanvas(
             }
         )
 
-        // UI Controls (Toolbar & Popups)
+        // Toolbar
         Column(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 32.dp),
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             if (showSettings) {
@@ -144,9 +150,10 @@ fun DrawingCanvas(
                     activeStrokeWidth = currentStrokeWidth,
                     onStrokeWidthChanged = { currentStrokeWidth = it },
                     activeShape = currentShape,
-                    onShapeSelected = { currentShape = it },
+                    onOpenShapeSelection = { showShapeSelection = true },
                     isFillEnabled = isFillEnabled,
-                    onToggleFill = { isFillEnabled = it }
+                    onToggleFill = { isFillEnabled = it },
+                    onOpenResolutionDialog = { showResolutionDialog = true }
                 )
             }
 
@@ -169,6 +176,7 @@ fun DrawingCanvas(
                     currentTool = currentTool,
                     onToolSelected = { 
                         if (it == ToolType.IMAGE) galleryLauncher.launch("image/*")
+                        else if (it == ToolType.TEXT) { showTextInputDialog = true; currentTool = it }
                         else currentTool = it 
                     }
                 )
@@ -205,6 +213,86 @@ fun DrawingCanvas(
             }
         }
 
+        // Dialogs
+        if (showTextInputDialog) {
+            var selectedFont by remember { mutableStateOf("Default") }
+            val fonts = listOf("Default", "Serif", "Monospace", "Sans Serif")
+
+            AlertDialog(
+                onDismissRequest = { showTextInputDialog = false },
+                title = { Text("Metin Ekle") },
+                text = {
+                    Column {
+                        TextField(
+                            value = tempTextValue,
+                            onValueChange = { tempTextValue = it },
+                            placeholder = { Text("Buraya yazın...") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(Modifier.height(16.dp))
+                        Text("Font Seçimi", style = MaterialTheme.typography.labelMedium)
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            fonts.forEach { font ->
+                                FilterChip(
+                                    selected = selectedFont == font,
+                                    onClick = { selectedFont = font },
+                                    label = { Text(font, fontSize = 10.sp) }
+                                )
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    Button(onClick = {
+                        if (tempTextValue.isNotEmpty()) {
+                            val newText = DrawText(
+                                id = UUID.randomUUID().toString(),
+                                colorHex = String.format("#%06X", 0xFFFFFF and currentColor.toArgb()),
+                                strokeWidth = currentStrokeWidth * 2,
+                                text = tempTextValue,
+                                fontFamily = selectedFont,
+                                offsetX = 100f, offsetY = 100f
+                            )
+                            objects = objects + newText
+                            onDataChanged(Json.encodeToString(objects))
+                            tempTextValue = ""
+                        }
+                        showTextInputDialog = false
+                    }) { Text("Ekle") }
+                },
+                dismissButton = { TextButton(onClick = { showTextInputDialog = false }) { Text("İptal") } }
+            )
+        }
+
+        if (showResolutionDialog) {
+            var w by remember { mutableStateOf(canvasWidth.toString()) }
+            var h by remember { mutableStateOf(canvasHeight.toString()) }
+            AlertDialog(
+                onDismissRequest = { showResolutionDialog = false },
+                title = { Text("Kanvas Çözünürlüğü") },
+                text = {
+                    Column {
+                        TextField(value = w, onValueChange = { w = it }, label = { Text("Genişlik (px)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+                        Spacer(Modifier.height(8.dp))
+                        TextField(value = h, onValueChange = { h = it }, label = { Text("Yükseklik (px)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+                    }
+                },
+                confirmButton = {
+                    Button(onClick = {
+                        canvasWidth = w.toIntOrNull() ?: canvasWidth
+                        canvasHeight = h.toIntOrNull() ?: canvasHeight
+                        showResolutionDialog = false
+                    }) { Text("Uygula") }
+                }
+            )
+        }
+
+        ShapeSelectionBottomSheet(
+            isVisible = showShapeSelection,
+            onDismissRequest = { showShapeSelection = false },
+            onShapeSelected = { currentShape = it; currentTool = ToolType.SHAPE }
+        )
+
         if (showFullColorPicker) {
             PremiumColorPicker(
                 selectedColor = currentColor,
@@ -216,7 +304,6 @@ fun DrawingCanvas(
             )
         }
         
-        // Add PDF Import Button
         IconButton(
             onClick = { pdfLauncher.launch("application/pdf") },
             modifier = Modifier.align(Alignment.TopEnd).padding(16.dp).background(MaterialTheme.colorScheme.primaryContainer, CircleShape)

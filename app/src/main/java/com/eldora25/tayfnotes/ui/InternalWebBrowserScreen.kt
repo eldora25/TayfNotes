@@ -87,9 +87,17 @@ fun InternalWebBrowserScreen(
                     WebView(context).apply {
                         settings.javaScriptEnabled = true
                         settings.domStorageEnabled = true
+                        settings.loadWithOverviewMode = true
+                        settings.useWideViewPort = true
+                        settings.databaseEnabled = true
                         
                         // WebViewClient ile sayfa içi gezinmeyi kendi içinde tutuyoruz
                         webViewClient = object : WebViewClient() {
+                            @Deprecated("Deprecated in Java")
+                            override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
+                                url?.let { view?.loadUrl(it) }
+                                return true
+                            }
                             override fun onPageFinished(view: WebView?, url: String?) {
                                 super.onPageFinished(view, url)
                                 currentUrl = url ?: ""

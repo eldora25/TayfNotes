@@ -86,15 +86,15 @@ class NoteViewModel(
             } catch (e: Exception) {
                 TayfTheme.MIDNIGHT
             }
-        }.stateIn(viewModelScope, SharingStarted.Eagerly, TayfTheme.MIDNIGHT)
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), TayfTheme.MIDNIGHT)
 
     val isDarkMode: StateFlow<Boolean?> = dataStore.data
         .map { pref -> pref[DARK_MODE_KEY] }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     val isBiometricEnabled: StateFlow<Boolean> = dataStore.data
         .map { pref -> pref[BIOMETRIC_KEY] ?: false }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     val currentFontSize: StateFlow<Float> = dataStore.data
         .map { pref -> pref[FONT_SIZE_KEY] ?: 16f }
@@ -134,7 +134,7 @@ class NoteViewModel(
                 !isArchived && !isTrashed && matchesFolder && matchesSearch
             }.sortedBy { it.position }
         }
-    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val archivedNotes: StateFlow<List<Note>> = noteRepository.allNotes.map { all ->
         all.filter { it.isArchived }.sortedByDescending { it.lastModified }

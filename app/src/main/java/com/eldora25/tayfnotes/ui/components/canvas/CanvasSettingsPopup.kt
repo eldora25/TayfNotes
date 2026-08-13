@@ -24,15 +24,16 @@ fun CanvasSettingsPopup(
     activeStrokeWidth: Float,
     onStrokeWidthChanged: (Float) -> Unit,
     activeShape: ShapeType,
-    onShapeSelected: (ShapeType) -> Unit,
+    onOpenShapeSelection: () -> Unit,
     isFillEnabled: Boolean,
     onToggleFill: (Boolean) -> Unit,
+    onOpenResolutionDialog: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val colorPalette = listOf(
         Color(0xFFFFFFFF), Color(0xFF1A1C1E), Color(0xFFFF5252), Color(0xFFFFAB40), 
         Color(0xFFFFD740), Color(0xFF69F0AE), Color(0xFF40C4FF), Color(0xFFB388FF),
-        Color.Transparent // Triggers full color picker
+        Color.Transparent
     )
 
     Surface(
@@ -84,23 +85,29 @@ fun CanvasSettingsPopup(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Shape & Fill
+            // Shape, Fill & Resolution
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Fill Toggle
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(checked = isFillEnabled, onCheckedChange = onToggleFill)
                     Text("Doldur", style = MaterialTheme.typography.labelMedium)
                 }
 
-                // Shape Select (simplified for popup)
-                IconButton(onClick = { onShapeSelected(ShapeType.RECTANGLE) }) {
-                    Icon(Icons.Default.Rectangle, null, tint = if (activeShape == ShapeType.RECTANGLE) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
+                Button(
+                    onClick = onOpenShapeSelection,
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer)
+                ) {
+                    Icon(Icons.Default.Category, null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Şekiller")
                 }
-                IconButton(onClick = { onShapeSelected(ShapeType.CIRCLE) }) {
-                    Icon(Icons.Default.Circle, null, tint = if (activeShape == ShapeType.CIRCLE) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
+
+                IconButton(onClick = onOpenResolutionDialog) {
+                    Icon(Icons.Default.AspectRatio, "Çözünürlük", tint = MaterialTheme.colorScheme.primary)
                 }
             }
         }
