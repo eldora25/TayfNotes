@@ -67,6 +67,7 @@ fun FloatingToolBar(
             
             ToolButton(Icons.Default.AutoFixNormal, "Obje Silgisi", currentTool == ToolType.OBJECT_ERASER) { onToolSelected(ToolType.OBJECT_ERASER) }
             ToolButton(Icons.Default.CleaningServices, "Piksel Silgisi", currentTool == ToolType.PIXEL_ERASER) { onToolSelected(ToolType.PIXEL_ERASER) }
+            ToolButton(Icons.Default.DeleteSweep, "Çizgi Silgisi", currentTool == ToolType.STROKE_ERASER) { onToolSelected(ToolType.STROKE_ERASER) }
             
             VerticalDivider()
             

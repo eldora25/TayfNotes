@@ -55,7 +55,7 @@ data class DrawShape(
 data class DrawText(
     override val id: String,
     override val colorHex: String,
-    override val strokeWidth: Float, // Used for font size in this context
+    override val strokeWidth: Float,
     override val toolType: ToolType = ToolType.TEXT,
     override val alpha: Float = 1f,
     override val offsetX: Float = 0f,
@@ -63,7 +63,7 @@ data class DrawText(
     override val scale: Float = 1f,
     override val rotation: Float = 0f,
     override val zIndex: Int = 0,
-    override val points: List<Point> = emptyList(), // Only first point used for position
+    override val points: List<Point> = emptyList(),
     val text: String,
     val fontFamily: String = "Default"
 ) : DrawObject()
@@ -86,13 +86,22 @@ data class DrawImage(
     val height: Float
 ) : DrawObject()
 
-enum class ToolType { PEN, MARKER, PENCIL, HIGHLIGHTER, BRUSH, PIXEL_ERASER, OBJECT_ERASER, SHAPE, SELECTOR, LASSO, PAINT_BUCKET, PAN, TEXT, IMAGE }
+enum class ToolType { 
+    PEN, MARKER, PENCIL, HIGHLIGHTER, BRUSH, 
+    PIXEL_ERASER, OBJECT_ERASER, STROKE_ERASER,
+    SHAPE, SELECTOR, LASSO, PAINT_BUCKET, PAN, TEXT, IMAGE 
+}
+
 enum class BooleanOperation { INTERSECT, DIFFERENCE, UNION }
+
 enum class ShapeType {
     SQUARE, RECTANGLE, CIRCLE, ELLIPSE, EQUILATERAL_TRIANGLE, RIGHT_TRIANGLE,
     TRAPEZOID, PARALLELOGRAM, DIAMOND, PENTAGON, HEXAGON, STAR, ARC, LINE, DOUBLE_ARROW,
     INTERSECTION
 }
+
+enum class CanvasTemplate { BLANK, RULED, GRID, PDF }
+enum class CanvasSize { INFINITE, A4, LETTER }
 
 @Serializable
 data class Point(val x: Float, val y: Float)
