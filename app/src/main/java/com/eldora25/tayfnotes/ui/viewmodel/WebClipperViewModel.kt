@@ -34,10 +34,6 @@ class WebClipperViewModel(
         }
     }
 
-    /**
-     * Unescapes JSON-encoded strings from JS if needed, but primarily 
-     * used for cleaning HTML entities.
-     */
     fun unescapeHtml(html: String): String {
         if (html == "null") return ""
         return html.removePrefix("\"").removeSuffix("\"")
@@ -54,36 +50,60 @@ class WebClipperViewModel(
     }
 
     /**
-     * Deep cleans HTML to remove buttons, ads, and overlapping menus.
+     * Internal processor for different clip modes to ensure NO overlap in logic.
      */
-    suspend fun parseAndCleanHtml(html: String, url: String): ScrapedContent = withContext(Dispatchers.IO) {
-        try {
-            val doc = Jsoup.parse(html, url)
-            val title = doc.title()
-            
-            val contentElement = doc.select("article").firstOrNull() 
-                ?: doc.select("main").firstOrNull()
-                ?: doc.select(".post-content, .entry-content, .article-body, #content").firstOrNull()
-                ?: doc.body()
+    suspend fun processAndSave(
+        mode: String,
+        rawData: String,
+        url: String,
+        folderId: String?,
+        tags: List<String>,
+        userDescription: String,
+        providedTitle: String? = null
+    ) = withContext(Dispatchers.IO) {
+        val doc = if (mode != "Simplified") Jsoup.parse(rawData, url) else null
+        val pageTitle = providedTitle ?: doc?.title() ?: url
 
-            // Remove non-content interactive elements that cause overlaps
-            contentElement?.select("script, style, nav, footer, header, aside, .ads, .sidebar, .menu, .nav, .share, .cite, button, form, .popup")?.remove()
+        val (finalContent, finalType) = when (mode) {
+            "FullPage" -> {
+                // Keep everything but wrap in standard mobile scaling if missing
+                Pair(rawData, NoteType.WEB_CLIP)
+            }
+            "Article" -> {
+                val contentElement = doc?.select("article")?.firstOrNull() 
+                    ?: doc?.select("main")?.firstOrNull()
+                    ?: doc?.select(".post-content, .entry-content, .article-body, #content")?.firstOrNull()
+                    ?: doc?.body()
 
-            // Deep clean keeping only meaningful tags
-            val cleanedHtml = Jsoup.clean(contentElement?.outerHtml() ?: "", url, Safelist.relaxed()
-                .addAttributes("img", "src", "alt", "width", "height")
-                .addTags("h1", "h2", "h3", "h4", "h5", "h6", "p", "br", "ul", "ol", "li", "b", "i", "strong", "em", "img", "blockquote", "code", "pre")
-            )
-
-            ScrapedContent(
-                title = title.ifEmpty { url },
-                content = cleanedHtml,
-                plainText = contentElement?.text() ?: "",
-                url = url
-            )
-        } catch (e: Exception) {
-            ScrapedContent(title = "Hata", content = "İçerik işlenemedi: ${e.message}", url = url)
+                contentElement?.select("script, style, nav, footer, header, aside, .ads, .sidebar, .menu, .nav, .share, .cite, button, form")?.remove()
+                
+                val cleanedHtml = Jsoup.clean(contentElement?.outerHtml() ?: "", url, Safelist.relaxed()
+                    .addAttributes("img", "src", "alt", "width", "height")
+                    .addTags("h1", "h2", "h3", "h4", "h5", "h6", "p", "br", "ul", "ol", "li", "b", "i", "strong", "em", "img", "blockquote", "code", "pre")
+                )
+                Pair(wrapInReaderTheme(pageTitle, cleanedHtml), NoteType.WEB_CLIP)
+            }
+            "Simplified" -> {
+                // Pure plain text mode
+                Pair(rawData, NoteType.TEXT) 
+            }
+            else -> Pair(rawData, NoteType.TEXT)
         }
+
+        val noteContent = if (userDescription.isNotEmpty()) "$userDescription\n\n$finalContent" else finalContent
+        
+        val note = Note(
+            id = UUID.randomUUID().toString(),
+            title = if (mode == "Simplified") "Basitleştirilmiş: $pageTitle" else pageTitle,
+            content = noteContent,
+            type = finalType,
+            sourceUrl = url,
+            folderId = folderId,
+            tags = tags,
+            createdAt = System.currentTimeMillis(),
+            lastModified = System.currentTimeMillis()
+        )
+        noteRepository.insert(note)
     }
 
     fun wrapInReaderTheme(title: String, content: String): String {
@@ -96,8 +116,8 @@ class WebClipperViewModel(
                 <style>
                     body { font-family: sans-serif; line-height: 1.6; padding: 20px; color: #2c3e50; background-color: #fcfcfc; }
                     h1 { border-bottom: 2px solid #ecf0f1; padding-bottom: 12px; color: #2c3e50; font-size: 1.5em; }
-                    img { max-width: 100%; height: auto; border-radius: 10px; margin: 15px 0; display: block; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-                    pre { background: #f8f9fa; padding: 15px; overflow-x: auto; border-radius: 6px; font-size: 0.9em; border: 1px solid #e9ecef; }
+                    img { max-width: 100%; height: auto; border-radius: 10px; margin: 15px 0; display: block; }
+                    pre { background: #f8f9fa; padding: 15px; overflow-x: auto; border-radius: 6px; font-size: 0.9em; border: 1px solid #e9ecef; white-space: pre-wrap; }
                     blockquote { border-left: 6px solid #3498db; padding-left: 20px; color: #7f8c8d; font-style: italic; margin: 25px 0; }
                     * { max-width: 100%; box-sizing: border-box; }
                 </style>
@@ -110,33 +130,16 @@ class WebClipperViewModel(
         """.trimIndent()
     }
 
-    suspend fun saveClip(
-        title: String,
-        content: String,
-        url: String,
-        folderId: String?,
-        tags: List<String>,
-        description: String,
-        type: NoteType = NoteType.WEB_CLIP
-    ) {
-        // Ensure HTML content is properly wrapped in our theme for consistent offline viewing
-        val isHtml = content.contains("<") && content.contains(">")
-        val finalBody = if (isHtml && !content.contains("<html>")) {
-            wrapInReaderTheme(title, content)
-        } else content
-
-        val finalContent = if (description.isNotEmpty()) "$description\n\n$finalBody" else finalBody
-        
+    // Keep legacy support for external calls if needed
+    suspend fun saveClip(title: String, content: String, url: String, folderId: String?, tags: List<String>, description: String, type: NoteType) {
         val note = Note(
             id = UUID.randomUUID().toString(),
             title = title,
-            content = finalContent,
+            content = if (description.isNotEmpty()) "$description\n\n$content" else content,
             type = type,
             sourceUrl = url,
             folderId = folderId,
-            tags = tags,
-            createdAt = System.currentTimeMillis(),
-            lastModified = System.currentTimeMillis()
+            tags = tags
         )
         noteRepository.insert(note)
     }

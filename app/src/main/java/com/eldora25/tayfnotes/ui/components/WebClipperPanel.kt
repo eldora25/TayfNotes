@@ -30,7 +30,7 @@ fun WebClipperPanel(
     url: String,
     initialMode: String,
     viewModel: WebClipperViewModel,
-    initialHtml: String? = null,
+    capturedRawData: String? = null,
     onDismiss: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
@@ -42,22 +42,14 @@ fun WebClipperPanel(
     var isSaving by remember { mutableStateOf(false) }
     
     val folders by viewModel.folders.collectAsState()
-    var content by remember { mutableStateOf("") }
 
-    // Initial Scraping
-    LaunchedEffect(url, selectedMode, initialHtml) {
-        val result = if (initialHtml != null) {
-            viewModel.parseAndCleanHtml(initialHtml, url)
+    // Title initialization
+    LaunchedEffect(url, capturedRawData) {
+        if (capturedRawData != null && initialMode != "Simplified") {
+            val doc = org.jsoup.Jsoup.parse(capturedRawData, url)
+            title = doc.title().ifEmpty { "Web İçeriği" }
         } else {
-            // Fallback for standalone opening (intent share)
-            viewModel.parseAndCleanHtml("<html><body>$url</body></html>", url)
-        }
-        
-        title = result.title
-        content = when(selectedMode) {
-            "Simplified" -> result.plainText
-            "Bookmark" -> "Link: $url"
-            else -> result.content
+            title = "Web Notu"
         }
     }
 
@@ -73,7 +65,7 @@ fun WebClipperPanel(
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             ModeCard("Makale", Icons.AutoMirrored.Filled.Article, selectedMode == "Article") { selectedMode = "Article" }
             ModeCard("Basit", Icons.Default.TextFields, selectedMode == "Simplified") { selectedMode = "Simplified" }
-            ModeCard("Tam", Icons.Default.Fullscreen, selectedMode == "FullPage") { selectedMode = "FullPage" }
+            ModeCard("Tam Sayfa", Icons.Default.Fullscreen, selectedMode == "FullPage") { selectedMode = "FullPage" }
             ModeCard("Yer İzi", Icons.Default.Bookmark, selectedMode == "Bookmark") { selectedMode = "Bookmark" }
         }
 
@@ -82,7 +74,6 @@ fun WebClipperPanel(
         Text("Organize Et", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Title
         OutlinedTextField(
             value = title,
             onValueChange = { title = it },
@@ -92,7 +83,6 @@ fun WebClipperPanel(
         
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Description
         OutlinedTextField(
             value = description,
             onValueChange = { description = it },
@@ -103,7 +93,6 @@ fun WebClipperPanel(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Folder Selection
         Text("Defter Seçimi", style = MaterialTheme.typography.labelLarge)
         LazyRow(modifier = Modifier.padding(vertical = 8.dp)) {
             items(folders) { folder ->
@@ -125,7 +114,6 @@ fun WebClipperPanel(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Tags
         OutlinedTextField(
             value = tagsInput,
             onValueChange = { tagsInput = it },
@@ -136,26 +124,25 @@ fun WebClipperPanel(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // Save Button
         Button(
             onClick = {
                 scope.launch {
                     isSaving = true
-                    viewModel.saveClip(
-                        title = title,
-                        content = content,
+                    viewModel.processAndSave(
+                        mode = selectedMode,
+                        rawData = capturedRawData ?: url,
                         url = url,
                         folderId = selectedFolder?.id,
                         tags = tagsInput.split(",").map { it.trim() }.filter { it.isNotEmpty() },
-                        description = description,
-                        type = NoteType.WEB_CLIP
+                        userDescription = description,
+                        providedTitle = title
                     )
                     isSaving = false
                     onDismiss()
                 }
             },
             modifier = Modifier.fillMaxWidth(),
-            enabled = !isSaving,
+            enabled = !isSaving && capturedRawData != null,
             shape = RoundedCornerShape(12.dp)
         ) {
             if (isSaving) {
@@ -170,20 +157,16 @@ fun WebClipperPanel(
 }
 
 @Composable
-fun ModeCard(
-    text: String,
-    icon: ImageVector,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
+fun ModeCard(text: String, icon: ImageVector, isSelected: Boolean, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .width(80.dp)
             .clickable { onClick() },
         colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+            containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+            contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
         ),
-        border = if (isSelected) androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null
+        border = if (isSelected) null else androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
     ) {
         Column(
             modifier = Modifier.padding(8.dp),
@@ -191,7 +174,7 @@ fun ModeCard(
         ) {
             Icon(icon, contentDescription = text, modifier = Modifier.size(24.dp))
             Spacer(modifier = Modifier.height(4.dp))
-            Text(text, fontSize = 10.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal)
+            Text(text, fontSize = 9.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal, textAlign = androidx.compose.ui.text.style.TextAlign.Center, maxLines = 1)
         }
     }
 }

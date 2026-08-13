@@ -6,7 +6,6 @@ import android.content.res.Configuration
 import android.os.Bundle
 import android.util.AttributeSet
 import android.view.MotionEvent
-import android.view.View
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -47,8 +46,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
-// Javascript Bridge to receive full HTML content kayıpsız
-class TayfClipperBridge(private val onHtml: (String) -> Unit) {
+// Renamed and ensured @JavascriptInterface for robust large data transfer
+class HTMLOUT(private val onHtml: (String) -> Unit) {
     @JavascriptInterface
     fun processHTML(html: String) {
         onHtml(html)
@@ -73,17 +72,18 @@ fun TayfNotesBrowserScreen(
     var urlInput by rememberSaveable { mutableStateOf(currentUrl) }
     var isLoading by remember { mutableStateOf(false) }
     var showClipper by rememberSaveable { mutableStateOf(false) }
-    var readerModeHtml by rememberSaveable { mutableStateOf<String?>(null) }
     
-    // Store captured HTML from JS Bridge
-    var capturedHtml by remember { mutableStateOf<String?>(null) }
+    // Active State Management for UI highlighting
+    var activeMode by rememberSaveable { mutableStateOf("TamPage") } // default
+    var readerModeHtml by rememberSaveable { mutableStateOf<String?>(null) }
+    var capturedData by remember { mutableStateOf<String?>(null) }
 
     val webViewState = remember { Bundle() }
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
     val sheetState = rememberModalBottomSheetState()
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
 
-    val jsBridge = remember { TayfClipperBridge { capturedHtml = it } }
+    val htmlInterface = remember { HTMLOUT { capturedData = it } }
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -119,7 +119,13 @@ fun TayfNotesBrowserScreen(
                         }
 
                         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-                            IconButton(onClick = { readerModeHtml = null; urlInput = "https://www.google.com"; currentUrl = urlInput }) { Icon(Icons.Default.Home, null) }
+                            IconButton(onClick = { 
+                                readerModeHtml = null
+                                urlInput = "https://www.google.com"
+                                currentUrl = urlInput 
+                                activeMode = "FullPage"
+                            }) { Icon(Icons.Default.Home, null) }
+                            
                             IconButton(onClick = { if (readerModeHtml != null) readerModeHtml = null else webViewRef?.goBack() }, enabled = readerModeHtml != null || webViewRef?.canGoBack() == true) {
                                 Icon(Icons.AutoMirrored.Filled.ArrowBack, null, modifier = Modifier.size(20.dp))
                             }
@@ -146,6 +152,7 @@ fun TayfNotesBrowserScreen(
                                     var target = urlInput
                                     if (!target.startsWith("http")) target = "https://$target"
                                     readerModeHtml = null
+                                    activeMode = "FullPage"
                                     currentUrl = target
                                     focusManager.clearFocus()
                                 })
@@ -153,37 +160,40 @@ fun TayfNotesBrowserScreen(
                         }
 
                         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
-                            PremiumButton("Tam Sayfa", Icons.Default.Fullscreen, isSelected = readerModeHtml == null) {
+                            PremiumButton("Tam Sayfa", Icons.Default.Fullscreen, isSelected = activeMode == "FullPage") {
+                                activeMode = "FullPage"
                                 readerModeHtml = null
                             }
-                            PremiumButton("Makale", Icons.AutoMirrored.Filled.Article, isSelected = readerModeHtml != null) {
-                                webViewRef?.loadUrl("javascript:window.TayfHtmlViewer.processHTML(document.documentElement.outerHTML);")
+                            PremiumButton("Makale", Icons.AutoMirrored.Filled.Article, isSelected = activeMode == "Article") {
+                                activeMode = "Article"
+                                webViewRef?.loadUrl("javascript:window.HTMLOUT.processHTML('<html>'+document.getElementsByTagName('html')[0].innerHTML+'</html>');")
                                 scope.launch {
                                     isLoading = true
-                                    delay(500) // Wait for bridge callback
-                                    capturedHtml?.let { html ->
-                                        val result = viewModel.parseAndCleanHtml(html, currentUrl)
-                                        readerModeHtml = viewModel.wrapInReaderTheme(result.title, result.content)
+                                    delay(600)
+                                    capturedData?.let { html ->
+                                        // Process raw HTML into Article view locally
+                                        val doc = org.jsoup.Jsoup.parse(html, currentUrl)
+                                        val content = doc.select("article, main, .content, #content").firstOrNull() ?: doc.body()
+                                        content.select("script, style, nav, footer, header").remove()
+                                        readerModeHtml = viewModel.wrapInReaderTheme(doc.title(), content.outerHtml())
                                     }
                                     isLoading = false
                                 }
                             }
-                            PremiumButton("Basitleştir", Icons.Default.TextFields) {
+                            PremiumButton("Basitleştir", Icons.Default.TextFields, isSelected = activeMode == "Simplified") {
+                                activeMode = "Simplified"
                                 webViewRef?.evaluateJavascript("(function() { return document.body.innerText; })();") { text ->
-                                    scope.launch {
-                                        isLoading = true
-                                        val plainText = viewModel.unescapeHtml(text).trim()
-                                        readerModeHtml = viewModel.wrapInReaderTheme("Basitleştirilmiş İçerik", "<p>${plainText.replace("\n", "<br>")}</p>")
-                                        isLoading = false
-                                    }
+                                    val plain = viewModel.unescapeHtml(text)
+                                    readerModeHtml = viewModel.wrapInReaderTheme("Okuma Modu", "<p>${plain.replace("\n", "<br>")}</p>")
                                 }
                             }
                             PremiumButton("Kırp (Clipper)", Icons.Default.ContentCut, isMain = true) {
-                                // Capture full HTML via bridge before opening panel
-                                webViewRef?.loadUrl("javascript:window.TayfHtmlViewer.processHTML(document.documentElement.outerHTML);")
-                                scope.launch {
-                                    delay(400)
-                                    showClipper = true
+                                // Trigger full capture before showing panel
+                                if (activeMode == "Simplified") {
+                                    webViewRef?.evaluateJavascript("(function() { return document.body.innerText; })();") { capturedData = viewModel.unescapeHtml(it); showClipper = true }
+                                } else {
+                                    webViewRef?.loadUrl("javascript:window.HTMLOUT.processHTML('<html>'+document.getElementsByTagName('html')[0].innerHTML+'</html>');")
+                                    scope.launch { delay(500); showClipper = true }
                                 }
                             }
                         }
@@ -201,11 +211,8 @@ fun TayfNotesBrowserScreen(
                         settings.domStorageEnabled = true
                         settings.loadWithOverviewMode = true
                         settings.useWideViewPort = true
-                        settings.builtInZoomControls = true
-                        settings.displayZoomControls = false
                         
-                        // Add Javascript Interface for full HTML capture
-                        addJavascriptInterface(jsBridge, "TayfHtmlViewer")
+                        addJavascriptInterface(htmlInterface, "HTMLOUT")
 
                         webViewClient = object : WebViewClient() {
                             override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
@@ -253,9 +260,9 @@ fun TayfNotesBrowserScreen(
             ) {
                 WebClipperPanel(
                     url = currentUrl,
-                    initialMode = "Article",
+                    initialMode = activeMode,
                     viewModel = viewModel,
-                    initialHtml = capturedHtml,
+                    capturedRawData = capturedData,
                     onDismiss = { showClipper = false }
                 )
             }
@@ -269,15 +276,20 @@ fun PremiumButton(text: String, icon: androidx.compose.ui.graphics.vector.ImageV
         FilledTonalIconButton(
             onClick = onClick,
             modifier = Modifier.size(if (isMain) 44.dp else 36.dp),
-            colors = if (isSelected || isMain) IconButtonDefaults.filledTonalIconButtonColors(containerColor = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer) else IconButtonDefaults.filledTonalIconButtonColors()
+            colors = if (isSelected || isMain) IconButtonDefaults.filledTonalIconButtonColors(
+                containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primaryContainer,
+                contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onPrimaryContainer
+            ) else IconButtonDefaults.filledTonalIconButtonColors()
         ) { Icon(icon, contentDescription = text, modifier = Modifier.size(if (isMain) 22.dp else 18.dp)) }
-        Text(text, fontSize = 8.sp, fontWeight = if (isMain || isSelected) FontWeight.Bold else FontWeight.Normal, color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Unspecified)
+        Text(
+            text = text, 
+            fontSize = 8.sp, 
+            fontWeight = if (isMain || isSelected) FontWeight.Bold else FontWeight.Normal, 
+            color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Unspecified
+        )
     }
 }
 
-/**
- * A WebView that supports Nested Scrolling in Compose
- */
 class NestedScrollingWebView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
