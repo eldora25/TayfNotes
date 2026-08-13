@@ -35,7 +35,8 @@ class WebClipperViewModel(
     }
 
     /**
-     * Unescapes JSON-encoded HTML string from evaluateJavascript (if still used as fallback)
+     * Unescapes JSON-encoded strings from JS if needed, but primarily 
+     * used for cleaning HTML entities.
      */
     fun unescapeHtml(html: String): String {
         if (html == "null") return ""
@@ -50,28 +51,25 @@ class WebClipperViewModel(
             .replace("&lt;", "<")
             .replace("&gt;", ">")
             .replace("&amp;", "&")
-            .replace("&quot;", "\"")
-            .replace("&apos;", "'")
     }
 
     /**
-     * Parses and cleans HTML content locally using Jsoup Safelist.
+     * Deep cleans HTML to remove buttons, ads, and overlapping menus.
      */
     suspend fun parseAndCleanHtml(html: String, url: String): ScrapedContent = withContext(Dispatchers.IO) {
         try {
             val doc = Jsoup.parse(html, url)
             val title = doc.title()
             
-            // Find main content area
             val contentElement = doc.select("article").firstOrNull() 
                 ?: doc.select("main").firstOrNull()
-                ?: doc.select(".post-content, .entry-content, .article-body, #content, .content").firstOrNull()
+                ?: doc.select(".post-content, .entry-content, .article-body, #content").firstOrNull()
                 ?: doc.body()
 
-            // Remove clutter before deep clean
-            contentElement?.select("script, style, nav, footer, header, aside, .ads, .sidebar, .menu, .nav, .share, .cite, button, form")?.remove()
+            // Remove non-content interactive elements that cause overlaps
+            contentElement?.select("script, style, nav, footer, header, aside, .ads, .sidebar, .menu, .nav, .share, .cite, button, form, .popup")?.remove()
 
-            // Deep clean to allow only safe tags and attributes, stripping inline styles that cause overlapping
+            // Deep clean keeping only meaningful tags
             val cleanedHtml = Jsoup.clean(contentElement?.outerHtml() ?: "", url, Safelist.relaxed()
                 .addAttributes("img", "src", "alt", "width", "height")
                 .addTags("h1", "h2", "h3", "h4", "h5", "h6", "p", "br", "ul", "ol", "li", "b", "i", "strong", "em", "img", "blockquote", "code", "pre")
@@ -96,11 +94,11 @@ class WebClipperViewModel(
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <style>
-                    body { font-family: sans-serif; line-height: 1.6; padding: 16px; word-wrap: break-word; color: #333; background-color: #fcfcfc; }
-                    h1 { border-bottom: 2px solid #eee; padding-bottom: 10px; color: #111; font-size: 1.4em; }
-                    img { max-width: 100%; height: auto; border-radius: 8px; margin: 10px 0; display: block; }
-                    pre { background: #f4f4f4; padding: 15px; overflow-x: auto; border-radius: 5px; font-size: 0.9em; white-space: pre-wrap; }
-                    blockquote { border-left: 5px solid #ddd; padding-left: 15px; color: #666; font-style: italic; margin: 20px 0; }
+                    body { font-family: sans-serif; line-height: 1.6; padding: 20px; color: #2c3e50; background-color: #fcfcfc; }
+                    h1 { border-bottom: 2px solid #ecf0f1; padding-bottom: 12px; color: #2c3e50; font-size: 1.5em; }
+                    img { max-width: 100%; height: auto; border-radius: 10px; margin: 15px 0; display: block; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+                    pre { background: #f8f9fa; padding: 15px; overflow-x: auto; border-radius: 6px; font-size: 0.9em; border: 1px solid #e9ecef; }
+                    blockquote { border-left: 6px solid #3498db; padding-left: 20px; color: #7f8c8d; font-style: italic; margin: 25px 0; }
                     * { max-width: 100%; box-sizing: border-box; }
                 </style>
             </head>
@@ -121,8 +119,12 @@ class WebClipperViewModel(
         description: String,
         type: NoteType = NoteType.WEB_CLIP
     ) {
+        // Ensure HTML content is properly wrapped in our theme for consistent offline viewing
         val isHtml = content.contains("<") && content.contains(">")
-        val finalBody = if (isHtml) wrapInReaderTheme(title, content) else content
+        val finalBody = if (isHtml && !content.contains("<html>")) {
+            wrapInReaderTheme(title, content)
+        } else content
+
         val finalContent = if (description.isNotEmpty()) "$description\n\n$finalBody" else finalBody
         
         val note = Note(

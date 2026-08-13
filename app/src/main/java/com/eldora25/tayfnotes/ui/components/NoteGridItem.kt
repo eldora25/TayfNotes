@@ -145,7 +145,8 @@ fun NoteGridItem(
                     }
                 } else {
                     val displayContent = if (note.type == NoteType.WEB_CLIP) {
-                        android.text.Html.fromHtml(note.content, android.text.Html.FROM_HTML_MODE_COMPACT).toString().trim()
+                        // Stripping all HTML tags and CSS using Jsoup for a clean preview
+                        org.jsoup.Jsoup.parse(note.content).text().trim()
                     } else {
                         note.content
                     }

@@ -6,6 +6,7 @@ import android.content.res.Configuration
 import android.os.Bundle
 import android.util.AttributeSet
 import android.view.MotionEvent
+import android.view.View
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -42,12 +43,14 @@ import androidx.core.view.ViewCompat
 import com.eldora25.tayfnotes.BuildConfig
 import com.eldora25.tayfnotes.ui.components.WebClipperPanel
 import com.eldora25.tayfnotes.ui.viewmodel.WebClipperViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
-class TayfJsInterface(private val onHtml: (String) -> Unit) {
+// Javascript Bridge to receive full HTML content kayıpsız
+class TayfClipperBridge(private val onHtml: (String) -> Unit) {
     @JavascriptInterface
-    fun onHtmlReceived(html: String) {
+    fun processHTML(html: String) {
         onHtml(html)
     }
 }
@@ -71,14 +74,16 @@ fun TayfNotesBrowserScreen(
     var isLoading by remember { mutableStateOf(false) }
     var showClipper by rememberSaveable { mutableStateOf(false) }
     var readerModeHtml by rememberSaveable { mutableStateOf<String?>(null) }
-    var fullHtmlFromJs by remember { mutableStateOf<String?>(null) }
+    
+    // Store captured HTML from JS Bridge
+    var capturedHtml by remember { mutableStateOf<String?>(null) }
 
     val webViewState = remember { Bundle() }
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
     val sheetState = rememberModalBottomSheetState()
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
 
-    val jsInterface = remember { TayfJsInterface { fullHtmlFromJs = it } }
+    val jsBridge = remember { TayfClipperBridge { capturedHtml = it } }
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -152,11 +157,11 @@ fun TayfNotesBrowserScreen(
                                 readerModeHtml = null
                             }
                             PremiumButton("Makale", Icons.AutoMirrored.Filled.Article, isSelected = readerModeHtml != null) {
-                                webViewRef?.evaluateJavascript("TayfClipper.onHtmlReceived(document.documentElement.outerHTML);", null)
+                                webViewRef?.loadUrl("javascript:window.TayfHtmlViewer.processHTML(document.documentElement.outerHTML);")
                                 scope.launch {
                                     isLoading = true
-                                    kotlinx.coroutines.delay(400)
-                                    fullHtmlFromJs?.let { html ->
+                                    delay(500) // Wait for bridge callback
+                                    capturedHtml?.let { html ->
                                         val result = viewModel.parseAndCleanHtml(html, currentUrl)
                                         readerModeHtml = viewModel.wrapInReaderTheme(result.title, result.content)
                                     }
@@ -174,9 +179,10 @@ fun TayfNotesBrowserScreen(
                                 }
                             }
                             PremiumButton("Kırp (Clipper)", Icons.Default.ContentCut, isMain = true) {
-                                webViewRef?.evaluateJavascript("TayfClipper.onHtmlReceived(document.documentElement.outerHTML);", null)
+                                // Capture full HTML via bridge before opening panel
+                                webViewRef?.loadUrl("javascript:window.TayfHtmlViewer.processHTML(document.documentElement.outerHTML);")
                                 scope.launch {
-                                    kotlinx.coroutines.delay(300)
+                                    delay(400)
                                     showClipper = true
                                 }
                             }
@@ -198,7 +204,8 @@ fun TayfNotesBrowserScreen(
                         settings.builtInZoomControls = true
                         settings.displayZoomControls = false
                         
-                        addJavascriptInterface(jsInterface, "TayfClipper")
+                        // Add Javascript Interface for full HTML capture
+                        addJavascriptInterface(jsBridge, "TayfHtmlViewer")
 
                         webViewClient = object : WebViewClient() {
                             override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
@@ -248,7 +255,7 @@ fun TayfNotesBrowserScreen(
                     url = currentUrl,
                     initialMode = "Article",
                     viewModel = viewModel,
-                    initialHtml = fullHtmlFromJs,
+                    initialHtml = capturedHtml,
                     onDismiss = { showClipper = false }
                 )
             }
@@ -268,6 +275,9 @@ fun PremiumButton(text: String, icon: androidx.compose.ui.graphics.vector.ImageV
     }
 }
 
+/**
+ * A WebView that supports Nested Scrolling in Compose
+ */
 class NestedScrollingWebView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
