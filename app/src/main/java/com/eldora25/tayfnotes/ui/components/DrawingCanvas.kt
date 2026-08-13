@@ -61,6 +61,8 @@ fun DrawingCanvas(
     
     var currentStrokeWidth by remember { mutableStateOf(10f) }
     var currentTool by remember { mutableStateOf(ToolType.PEN) }
+    var currentShape by remember { mutableStateOf(ShapeType.RECTANGLE) }
+    var isFillEnabled by remember { mutableStateOf(false) }
     var currentTemplate by remember { mutableStateOf(CanvasTemplate.BLANK) }
     var pdfPagePaths by remember { mutableStateOf<List<String>>(emptyList()) }
 
@@ -95,6 +97,9 @@ fun DrawingCanvas(
             currentColor = currentColor,
             currentStrokeWidth = currentStrokeWidth,
             currentTool = currentTool,
+            currentShape = currentShape,
+            isFillEnabled = isFillEnabled,
+            currentFillColor = currentColor, // Using current color for fill too
             objects = objects,
             selectedObjectIds = selectedObjectIds,
             template = currentTemplate,
@@ -137,7 +142,11 @@ fun DrawingCanvas(
                         if (color == Color.Transparent) showFullColorPicker = true
                     },
                     activeStrokeWidth = currentStrokeWidth,
-                    onStrokeWidthChanged = { currentStrokeWidth = it }
+                    onStrokeWidthChanged = { currentStrokeWidth = it },
+                    activeShape = currentShape,
+                    onShapeSelected = { currentShape = it },
+                    isFillEnabled = isFillEnabled,
+                    onToggleFill = { isFillEnabled = it }
                 )
             }
 
