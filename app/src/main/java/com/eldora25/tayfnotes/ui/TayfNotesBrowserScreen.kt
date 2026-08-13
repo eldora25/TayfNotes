@@ -25,7 +25,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.compose.ui.platform.LocalFocusManager
 import com.eldora25.tayfnotes.BuildConfig
 import com.eldora25.tayfnotes.ui.components.WebClipperPanel
 import com.eldora25.tayfnotes.ui.viewmodel.WebClipperViewModel
@@ -38,7 +37,6 @@ fun TayfNotesBrowserScreen(
     viewModel: WebClipperViewModel,
     onBack: () -> Unit
 ) {
-    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
     
@@ -49,6 +47,9 @@ fun TayfNotesBrowserScreen(
     
     var showClipper by remember { mutableStateOf(false) }
     var clipperMode by remember { mutableStateOf("Article") }
+    
+    // Reader Mode State
+    var readerModeHtml by remember { mutableStateOf<String?>(null) }
 
     val sheetState = rememberModalBottomSheetState()
 
@@ -82,16 +83,29 @@ fun TayfNotesBrowserScreen(
                         .padding(horizontal = 8.dp, vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(onClick = { urlInput = "https://www.google.com"; currentUrl = urlInput }) {
+                    IconButton(onClick = { 
+                        readerModeHtml = null
+                        urlInput = "https://www.google.com"
+                        currentUrl = urlInput 
+                    }) {
                         Icon(Icons.Default.Home, contentDescription = "Home")
                     }
-                    IconButton(onClick = { webViewRef?.goBack() }, enabled = webViewRef?.canGoBack() == true) {
+                    IconButton(onClick = { 
+                        if (readerModeHtml != null) {
+                            readerModeHtml = null
+                        } else {
+                            webViewRef?.goBack() 
+                        }
+                    }, enabled = readerModeHtml != null || webViewRef?.canGoBack() == true) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Geri", modifier = Modifier.size(20.dp))
                     }
                     IconButton(onClick = { webViewRef?.goForward() }, enabled = webViewRef?.canGoForward() == true) {
                         Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "İleri", modifier = Modifier.size(20.dp))
                     }
-                    IconButton(onClick = { webViewRef?.reload() }) {
+                    IconButton(onClick = { 
+                        if (readerModeHtml != null) readerModeHtml = null
+                        webViewRef?.reload() 
+                    }) {
                         Icon(Icons.Default.Refresh, contentDescription = "Yenile")
                     }
                     
@@ -112,6 +126,7 @@ fun TayfNotesBrowserScreen(
                         keyboardActions = KeyboardActions(onGo = {
                             var target = urlInput
                             if (!target.startsWith("http")) target = "https://$target"
+                            readerModeHtml = null
                             currentUrl = target
                             focusManager.clearFocus()
                         })
@@ -125,20 +140,29 @@ fun TayfNotesBrowserScreen(
                         .padding(horizontal = 8.dp, vertical = 8.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    PremiumButton("Tam Sayfa", Icons.Default.Fullscreen) {
-                        clipperMode = "FullPage"
-                        showClipper = true
+                    PremiumButton("Tam Sayfa", Icons.Default.Fullscreen, isSelected = readerModeHtml == null) {
+                        readerModeHtml = null
+                        webViewRef?.loadUrl(currentUrl)
                     }
                     PremiumButton("Makale", Icons.AutoMirrored.Filled.Article) {
-                        clipperMode = "Article"
-                        showClipper = true
+                        scope.launch {
+                            isLoading = true
+                            val result = viewModel.scrapeArticle(currentUrl)
+                            readerModeHtml = viewModel.wrapInReaderTheme(result.title, result.content)
+                            isLoading = false
+                        }
                     }
                     PremiumButton("Basitleştir", Icons.Default.TextFields) {
-                        clipperMode = "Simplified"
-                        showClipper = true
+                        scope.launch {
+                            isLoading = true
+                            val result = viewModel.scrapeArticle(currentUrl)
+                            val plainHtml = "<p>${result.plainText.replace("\n", "<br>")}</p>"
+                            readerModeHtml = viewModel.wrapInReaderTheme(result.title, plainHtml)
+                            isLoading = false
+                        }
                     }
                     PremiumButton("Kırp (Clipper)", Icons.Default.ContentCut, isMain = true) {
-                        clipperMode = "Selection"
+                        clipperMode = "Article"
                         showClipper = true
                     }
                 }
@@ -155,16 +179,19 @@ fun TayfNotesBrowserScreen(
                     WebView(context).apply {
                         settings.javaScriptEnabled = true
                         settings.domStorageEnabled = true
+                        settings.userAgentString = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
                         webViewClient = object : WebViewClient() {
                             override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
-                                isLoading = true
-                                url?.let { urlInput = it }
+                                if (readerModeHtml == null) isLoading = true
+                                url?.let { if (readerModeHtml == null) urlInput = it }
                             }
                             override fun onPageFinished(view: WebView?, url: String?) {
                                 isLoading = false
                                 url?.let { 
-                                    urlInput = it
-                                    currentUrl = it
+                                    if (readerModeHtml == null) {
+                                        urlInput = it
+                                        currentUrl = it
+                                    }
                                 }
                             }
                         }
@@ -172,7 +199,10 @@ fun TayfNotesBrowserScreen(
                 },
                 update = { view ->
                     webViewRef = view
-                    if (view.url != currentUrl) {
+                    val html = readerModeHtml
+                    if (html != null) {
+                        view.loadDataWithBaseURL(currentUrl, html, "text/html", "UTF-8", null)
+                    } else if (view.url != currentUrl) {
                         view.loadUrl(currentUrl)
                     }
                 },
@@ -203,6 +233,7 @@ fun PremiumButton(
     text: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     isMain: Boolean = false,
+    isSelected: Boolean = false,
     onClick: () -> Unit
 ) {
     Column(
@@ -212,13 +243,18 @@ fun PremiumButton(
         FilledTonalIconButton(
             onClick = onClick,
             modifier = Modifier.size(if (isMain) 56.dp else 48.dp),
-            colors = if (isMain) IconButtonDefaults.filledTonalIconButtonColors(
+            colors = if (isSelected || isMain) IconButtonDefaults.filledTonalIconButtonColors(
                 containerColor = MaterialTheme.colorScheme.primaryContainer,
                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer
             ) else IconButtonDefaults.filledTonalIconButtonColors()
         ) {
             Icon(icon, contentDescription = text, modifier = Modifier.size(if (isMain) 28.dp else 24.dp))
         }
-        Text(text, fontSize = 10.sp, fontWeight = if (isMain) FontWeight.Bold else FontWeight.Normal)
+        Text(
+            text = text, 
+            fontSize = 10.sp, 
+            fontWeight = if (isMain || isSelected) FontWeight.Bold else FontWeight.Normal,
+            color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Unspecified
+        )
     }
 }

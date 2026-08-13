@@ -66,8 +66,8 @@ fun WebClipperPanel(
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             ModeCard("Makale", Icons.AutoMirrored.Filled.Article, selectedMode == "Article") { selectedMode = "Article" }
             ModeCard("Basit", Icons.Default.TextFields, selectedMode == "Simplified") { selectedMode = "Simplified" }
+            ModeCard("Tam", Icons.Default.Fullscreen, selectedMode == "FullPage") { selectedMode = "FullPage" }
             ModeCard("Yer İzi", Icons.Default.Bookmark, selectedMode == "Bookmark") { selectedMode = "Bookmark" }
-            ModeCard("Ekran", Icons.Default.Screenshot, selectedMode == "Screenshot") { selectedMode = "Screenshot" }
         }
 
         Spacer(modifier = Modifier.height(24.dp))
