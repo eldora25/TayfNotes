@@ -7,6 +7,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -28,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.eldora25.tayfnotes.shared.model.drawing.*
 import com.eldora25.tayfnotes.ui.components.canvas.*
+import com.eldora25.tayfnotes.ui.theme.TayfFonts
 import com.eldora25.tayfnotes.util.PdfHelper
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -52,20 +54,26 @@ fun DrawingCanvas(
     var undoStack by remember { mutableStateOf<List<List<DrawObject>>>(emptyList()) }
     var redoStack by remember { mutableStateOf<List<List<DrawObject>>>(emptyList()) }
 
-    var toolColors by remember { 
-        mutableStateOf(mapOf(
-            ToolType.PEN to Color.Black,
-            ToolType.MARKER to Color.Red,
-            ToolType.PENCIL to Color.DarkGray,
-            ToolType.HIGHLIGHTER to Color(0xFFFFFF00).copy(alpha = 0.3f),
-            ToolType.SHAPE to Color.Blue,
-            ToolType.BRUSH to Color.Green,
-            ToolType.TEXT to Color.Black
-        )) 
+    // Madde 2: Araç Hafızası (Tool State Memory)
+    var toolSettingsMap by remember {
+        mutableStateOf(
+            ToolType.entries.associateWith { tool ->
+                when (tool) {
+                    ToolType.PEN -> ToolSettings(colorHex = "#000000", strokeWidth = 8f)
+                    ToolType.MARKER -> ToolSettings(colorHex = "#FF0000", strokeWidth = 15f, alpha = 0.6f)
+                    ToolType.PENCIL -> ToolSettings(colorHex = "#444444", strokeWidth = 4f, alpha = 0.4f)
+                    ToolType.HIGHLIGHTER -> ToolSettings(colorHex = "#FFFF00", strokeWidth = 30f, alpha = 0.3f)
+                    ToolType.BRUSH -> ToolSettings(colorHex = "#00FF00", strokeWidth = 20f)
+                    ToolType.TEXT -> ToolSettings(colorHex = "#000000", strokeWidth = 24f)
+                    else -> ToolSettings()
+                }
+            }
+        )
     }
     
-    var currentStrokeWidth by remember { mutableStateOf(10f) }
     var currentTool by remember { mutableStateOf(ToolType.PEN) }
+    val currentSettings = toolSettingsMap[currentTool] ?: ToolSettings()
+    
     var currentShape by remember { mutableStateOf(ShapeType.RECTANGLE) }
     var isFillEnabled by remember { mutableStateOf(false) }
     var currentTemplate by remember { mutableStateOf(CanvasTemplate.BLANK) }
@@ -80,8 +88,6 @@ fun DrawingCanvas(
     
     var canvasWidth by remember { mutableStateOf(1080) }
     var canvasHeight by remember { mutableStateOf(1920) }
-
-    val currentColor = toolColors[currentTool] ?: Color.Black
 
     val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let {
@@ -103,12 +109,12 @@ fun DrawingCanvas(
     Box(modifier = modifier.fillMaxSize().background(Color.White).clipToBounds()) {
         AdvancedCanvasBoard(
             modifier = Modifier.size(canvasWidth.dp, canvasHeight.dp).align(Alignment.Center),
-            currentColor = currentColor,
-            currentStrokeWidth = currentStrokeWidth,
+            currentColor = Color(android.graphics.Color.parseColor(currentSettings.colorHex)),
+            currentStrokeWidth = currentSettings.strokeWidth,
             currentTool = currentTool,
             currentShape = currentShape,
             isFillEnabled = isFillEnabled,
-            currentFillColor = currentColor,
+            currentFillColor = Color(android.graphics.Color.parseColor(currentSettings.colorHex)),
             objects = objects,
             selectedObjectIds = selectedObjectIds,
             template = currentTemplate,
@@ -142,13 +148,20 @@ fun DrawingCanvas(
         ) {
             if (showSettings) {
                 CanvasSettingsPopup(
-                    activeColor = currentColor,
+                    activeColor = Color(android.graphics.Color.parseColor(currentSettings.colorHex)),
                     onColorSelected = { color ->
-                        toolColors = toolColors.toMutableMap().apply { put(currentTool, color) }
+                        val hex = String.format("#%06X", 0xFFFFFF and color.toArgb())
+                        toolSettingsMap = toolSettingsMap.toMutableMap().apply {
+                            put(currentTool, currentSettings.copy(colorHex = hex))
+                        }
                         if (color == Color.Transparent) showFullColorPicker = true
                     },
-                    activeStrokeWidth = currentStrokeWidth,
-                    onStrokeWidthChanged = { currentStrokeWidth = it },
+                    activeStrokeWidth = currentSettings.strokeWidth,
+                    onStrokeWidthChanged = { width ->
+                        toolSettingsMap = toolSettingsMap.toMutableMap().apply {
+                            put(currentTool, currentSettings.copy(strokeWidth = width))
+                        }
+                    },
                     activeShape = currentShape,
                     onOpenShapeSelection = { showShapeSelection = true },
                     isFillEnabled = isFillEnabled,
@@ -215,8 +228,8 @@ fun DrawingCanvas(
 
         // Dialogs
         if (showTextInputDialog) {
-            var selectedFont by remember { mutableStateOf("Default") }
-            val fonts = listOf("Default", "Serif", "Monospace", "Sans Serif")
+            var selectedFont by remember { mutableStateOf(currentSettings.fontFamily) }
+            val fonts = TayfFonts.keys.toList()
 
             AlertDialog(
                 onDismissRequest = { showTextInputDialog = false },
@@ -231,14 +244,21 @@ fun DrawingCanvas(
                         )
                         Spacer(Modifier.height(16.dp))
                         Text("Font Seçimi", style = MaterialTheme.typography.labelMedium)
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            fonts.forEach { font ->
-                                FilterChip(
-                                    selected = selectedFont == font,
-                                    onClick = { selectedFont = font },
-                                    label = { Text(font, fontSize = 10.sp) }
-                                )
-                            }
+                        Box(modifier = Modifier.height(120.dp)) {
+                             androidx.compose.foundation.lazy.LazyColumn {
+                                 items(fonts.size) { index ->
+                                     val font = fonts[index]
+                                     Row(
+                                         modifier = Modifier
+                                             .fillMaxWidth()
+                                             .clickable { selectedFont = font }
+                                             .background(if (selectedFont == font) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
+                                             .padding(8.dp)
+                                     ) {
+                                         Text(font, fontFamily = TayfFonts[font])
+                                     }
+                                 }
+                             }
                         }
                     }
                 },
@@ -247,14 +267,20 @@ fun DrawingCanvas(
                         if (tempTextValue.isNotEmpty()) {
                             val newText = DrawText(
                                 id = UUID.randomUUID().toString(),
-                                colorHex = String.format("#%06X", 0xFFFFFF and currentColor.toArgb()),
-                                strokeWidth = currentStrokeWidth * 2,
+                                colorHex = currentSettings.colorHex,
+                                strokeWidth = currentSettings.strokeWidth,
                                 text = tempTextValue,
                                 fontFamily = selectedFont,
                                 offsetX = 100f, offsetY = 100f
                             )
                             objects = objects + newText
                             onDataChanged(Json.encodeToString(objects))
+                            
+                            // Update tool settings
+                            toolSettingsMap = toolSettingsMap.toMutableMap().apply {
+                                put(ToolType.TEXT, currentSettings.copy(fontFamily = selectedFont))
+                            }
+                            
                             tempTextValue = ""
                         }
                         showTextInputDialog = false
@@ -295,9 +321,12 @@ fun DrawingCanvas(
 
         if (showFullColorPicker) {
             PremiumColorPicker(
-                selectedColor = currentColor,
+                selectedColor = Color(android.graphics.Color.parseColor(currentSettings.colorHex)),
                 onColorSelected = { color ->
-                    toolColors = toolColors.toMutableMap().apply { put(currentTool, color) }
+                    val hex = String.format("#%06X", 0xFFFFFF and color.toArgb())
+                    toolSettingsMap = toolSettingsMap.toMutableMap().apply {
+                        put(currentTool, currentSettings.copy(colorHex = hex))
+                    }
                     showFullColorPicker = false
                 },
                 onDismiss = { showFullColorPicker = false }

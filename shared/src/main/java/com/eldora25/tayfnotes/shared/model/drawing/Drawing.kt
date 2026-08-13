@@ -101,6 +101,15 @@ enum class ShapeType {
     HEART, CLOUD, BUBBLE, DOUBLE_ARROW, INTERSECTION
 }
 
+@Serializable
+data class ToolSettings(
+    val colorHex: String = "#000000",
+    val strokeWidth: Float = 5f,
+    val alpha: Float = 1f,
+    val fontFamily: String = "Default",
+    val fontSize: Float = 24f
+)
+
 enum class CanvasTemplate { BLANK, RULED, GRID, PDF }
 enum class CanvasSize { INFINITE, A4, LETTER }
 

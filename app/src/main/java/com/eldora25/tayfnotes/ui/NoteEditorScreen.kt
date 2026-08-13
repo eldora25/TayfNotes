@@ -1,11 +1,7 @@
 package com.eldora25.tayfnotes.ui
 
-import android.app.AlarmManager
 import android.app.DatePickerDialog
-import android.app.PendingIntent
 import android.app.TimePickerDialog
-import android.content.Context
-import android.content.Intent
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -27,15 +23,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.eldora25.tayfnotes.receiver.ReminderReceiver
 import com.eldora25.tayfnotes.shared.model.ChecklistItem
 import com.eldora25.tayfnotes.shared.model.Folder
 import com.eldora25.tayfnotes.shared.model.Note
@@ -44,13 +37,13 @@ import com.eldora25.tayfnotes.ui.components.ColorSelector
 import com.eldora25.tayfnotes.ui.components.DrawingCanvas
 import com.eldora25.tayfnotes.ui.components.TodoEditor
 import com.eldora25.tayfnotes.ui.theme.EditorNeonIcon
+import com.eldora25.tayfnotes.ui.theme.TayfFonts
 import com.eldora25.tayfnotes.util.AudioRecorder
 import com.eldora25.tayfnotes.util.FileExportHelper
 import kotlinx.coroutines.delay
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
-import java.text.SimpleDateFormat
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -68,14 +61,7 @@ fun NoteEditorScreen(
     val context = LocalContext.current
     val noteId = remember { note?.id ?: System.currentTimeMillis().toString() }
 
-    val composeFontFamily = remember(fontFamily) {
-        when(fontFamily) {
-            "Serif" -> androidx.compose.ui.text.font.FontFamily.Serif
-            "Monospace" -> androidx.compose.ui.text.font.FontFamily.Monospace
-            "Sans Serif" -> androidx.compose.ui.text.font.FontFamily.SansSerif
-            else -> androidx.compose.ui.text.font.FontFamily.Default
-        }
-    }
+    val composeFontFamily = TayfFonts[fontFamily] ?: androidx.compose.ui.text.font.FontFamily.Default
     
     var title by remember { mutableStateOf(note?.title ?: "") }
     var emoji by remember { mutableStateOf(note?.emoji ?: "") }
@@ -156,7 +142,7 @@ fun NoteEditorScreen(
     // Auto-save logic
     LaunchedEffect(title, content, colorHex, reminderTimestamp, folderId, imageUris, audioPath, checklistItems, sketchData, emoji) {
         if (title.isNotEmpty() || content.isNotEmpty() || imageUris.isNotEmpty() || audioPath != null || checklistItems.isNotEmpty() || sketchData != null || emoji.isNotEmpty()) {
-            delay(1000) // Debounce save
+            delay(2000) // Debounce save
             saveCurrentNote()
         }
     }
@@ -294,7 +280,7 @@ fun NoteEditorScreen(
         ) {
             if (!isPreviewMode) {
                 if (isSketchMode) {
-                    // Header for Sketch - Wrapped in Surface to ensure visibility and prevent overlap
+                    // Madde 2: Header for Sketch - Ensuring visibility
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
                         color = MaterialTheme.colorScheme.surface,
@@ -380,8 +366,7 @@ fun NoteEditorScreen(
                         initialData = sketchData,
                         onDataChanged = { sketchData = it }
                     )
-                }
-else {
+                } else {
                     // Regular Note with Full Scroll
                     Column(modifier = Modifier.fillMaxSize().verticalScroll(scrollState)) {
                         Row(
@@ -417,7 +402,7 @@ else {
                                                                     modifier = Modifier
                                                                         .clickable { emoji = e; showEmojiMenu = false }
                                                                         .padding(8.dp)
-                                                                )
+                                                                    )
                                                             }
                                                         }
                                                     }
@@ -466,6 +451,7 @@ else {
                                     }
                                 }
                             }
+                            // Rich Text support could be added here using a custom TextField or BasicTextField
                             TextField(
                                 value = content,
                                 onValueChange = { content = it },
@@ -491,7 +477,7 @@ else {
                             }
                         }
                     } else {
-                        Text(content, style = MaterialTheme.typography.bodyLarge.copy(fontSize = fontSize.sp))
+                        Text(content, style = MaterialTheme.typography.bodyLarge.copy(fontSize = fontSize.sp, fontFamily = composeFontFamily))
                     }
                     imageUris.forEach { uri ->
                         AsyncImage(model = uri, contentDescription = null, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).clip(RoundedCornerShape(8.dp)), contentScale = ContentScale.FillWidth)

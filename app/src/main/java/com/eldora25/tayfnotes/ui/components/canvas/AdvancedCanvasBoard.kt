@@ -1,23 +1,28 @@
 package com.eldora25.tayfnotes.ui.components.canvas
 
 import android.graphics.BitmapFactory
+import android.view.MotionEvent
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.*
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.*
 import androidx.compose.ui.input.pointer.*
 import androidx.compose.ui.text.*
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.eldora25.tayfnotes.shared.model.drawing.*
+import com.eldora25.tayfnotes.ui.theme.TayfFonts
 import java.io.File
 import java.util.UUID
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun AdvancedCanvasBoard(
     modifier: Modifier = Modifier,
@@ -66,7 +71,7 @@ fun AdvancedCanvasBoard(
                 .fillMaxSize()
                 .background(Color.Transparent)
                 
-                // 1. Pan & Zoom (2+ fingers)
+                // 1. Pan & Zoom (Always active, but 1-finger drawing logic might clash)
                 .pointerInput(Unit) {
                     detectTransformGestures { _, pan, zoom, _ ->
                         globalScale *= zoom
@@ -74,104 +79,109 @@ fun AdvancedCanvasBoard(
                     }
                 }
                 
-                // 2. Drawing / Selection / Eraser (1 finger) - Simplified
+                // 2. Drawing / Selection / Eraser (1 finger) with Palm Rejection
                 .pointerInput(currentTool, globalOffset, globalScale) {
-                    detectDragGestures(
-                        onDragStart = { offset ->
-                            val adjusted = (offset - globalOffset) / globalScale
-                            if (currentTool in listOf(ToolType.PEN, ToolType.PENCIL, ToolType.MARKER, ToolType.BRUSH, ToolType.HIGHLIGHTER, ToolType.PIXEL_ERASER)) {
-                                currentPathPoints = listOf(adjusted)
-                                latestOnSelectionChanged(emptySet())
-                            } else if (currentTool == ToolType.SHAPE) {
-                                tempShapeStart = adjusted
-                                tempShapeEnd = adjusted
-                            } else if (currentTool == ToolType.SELECTOR) {
-                                val hit = latestObjects.findLast { cachedBounds[it.id]?.contains(adjusted) == true }
-                                latestOnSelectionChanged(hit?.let { setOf(it.id) } ?: emptySet())
-                            } else if (currentTool == ToolType.LASSO) {
-                                lassoPath = Path().apply { moveTo(adjusted.x, adjusted.y) }
-                            }
-                        },
-                        onDrag = { change, dragAmount ->
-                            val adjustedPos = (change.position - globalOffset) / globalScale
-                            when (currentTool) {
-                                ToolType.PEN, ToolType.PENCIL, ToolType.MARKER, ToolType.BRUSH, ToolType.HIGHLIGHTER, ToolType.PIXEL_ERASER -> {
-                                    currentPathPoints = currentPathPoints + adjustedPos
-                                }
-                                ToolType.SHAPE -> { tempShapeEnd = adjustedPos }
-                                ToolType.LASSO -> { lassoPath?.lineTo(adjustedPos.x, adjustedPos.y) }
-                                ToolType.SELECTOR -> {
-                                    if (selectedObjectIds.isNotEmpty()) {
-                                        selectedObjectIds.forEach { selId ->
-                                            latestObjects.find { it.id == selId }?.let { obj ->
-                                                val updated = when (obj) {
-                                                    is DrawPath -> obj.copy(offsetX = obj.offsetX + dragAmount.x / globalScale, offsetY = obj.offsetY + dragAmount.y / globalScale)
-                                                    is DrawShape -> obj.copy(offsetX = obj.offsetX + dragAmount.x / globalScale, offsetY = obj.offsetY + dragAmount.y / globalScale)
-                                                    is DrawText -> obj.copy(offsetX = obj.offsetX + dragAmount.x / globalScale, offsetY = obj.offsetY + dragAmount.y / globalScale)
-                                                    is DrawImage -> obj.copy(offsetX = obj.offsetX + dragAmount.x / globalScale, offsetY = obj.offsetY + dragAmount.y / globalScale)
-                                                }
-                                                latestOnObjectUpdated(updated)
+                    awaitPointerEventScope {
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val pointerChange = event.changes.first()
+                            
+                            // Palm Rejection: Only allow Stylus for drawing if Stylus is present?
+                            // Actually, just checking toolType for drawing logic
+                            val isStylus = pointerChange.type == PointerType.Stylus
+                            val isMouse = pointerChange.type == PointerType.Mouse
+                            val isFinger = pointerChange.type == PointerType.Touch
+                            
+                            // If user is drawing with finger but we want palm rejection (stylus only),
+                            // we would filter here. But common request is: Finger PANS, Stylus DRAWS.
+                            
+                            val adjustedPos = (pointerChange.position - globalOffset) / globalScale
+                            
+                            if (pointerChange.pressed) {
+                                // Draw/Edit Logic
+                                // If current tool is PAN, or if it's a finger and we are in stylus-only mode
+                                if (currentTool == ToolType.PAN || (isFinger && currentTool != ToolType.SELECTOR)) {
+                                    // Let transform gestures handle it
+                                } else {
+                                    // Tool Logic
+                                    when (currentTool) {
+                                        ToolType.PEN, ToolType.PENCIL, ToolType.MARKER, ToolType.BRUSH, ToolType.HIGHLIGHTER -> {
+                                            if (pointerChange.changedToDown()) {
+                                                currentPathPoints = listOf(adjustedPos)
+                                                latestOnSelectionChanged(emptySet())
+                                            } else {
+                                                currentPathPoints = currentPathPoints + adjustedPos
                                             }
                                         }
+                                        ToolType.SHAPE -> {
+                                            if (pointerChange.changedToDown()) tempShapeStart = adjustedPos
+                                            tempShapeEnd = adjustedPos
+                                        }
+                                        ToolType.SELECTOR -> {
+                                            if (pointerChange.changedToDown()) {
+                                                val hit = latestObjects.findLast { cachedBounds[it.id]?.contains(adjustedPos) == true }
+                                                latestOnSelectionChanged(hit?.let { setOf(it.id) } ?: emptySet())
+                                            } else if (selectedObjectIds.isNotEmpty()) {
+                                                // Moving logic
+                                                val delta = pointerChange.position - pointerChange.previousPosition
+                                                selectedObjectIds.forEach { selId ->
+                                                    latestObjects.find { it.id == selId }?.let { obj ->
+                                                        val updated = when (obj) {
+                                                            is DrawPath -> obj.copy(offsetX = obj.offsetX + delta.x / globalScale, offsetY = obj.offsetY + delta.y / globalScale)
+                                                            is DrawShape -> obj.copy(offsetX = obj.offsetX + delta.x / globalScale, offsetY = obj.offsetY + delta.y / globalScale)
+                                                            is DrawText -> obj.copy(offsetX = obj.offsetX + delta.x / globalScale, offsetY = obj.offsetY + delta.y / globalScale)
+                                                            is DrawImage -> obj.copy(offsetX = obj.offsetX + delta.x / globalScale, offsetY = obj.offsetY + delta.y / globalScale)
+                                                        }
+                                                        latestOnObjectUpdated(updated)
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        ToolType.OBJECT_ERASER -> {
+                                             latestObjects.findLast { cachedBounds[it.id]?.contains(adjustedPos) == true }?.let { latestOnObjectDeleted(it) }
+                                        }
+                                        else -> {}
                                     }
                                 }
-                                ToolType.PAN -> { globalOffset += dragAmount }
-                                ToolType.OBJECT_ERASER, ToolType.STROKE_ERASER -> {
-                                    latestObjects.findLast { cachedBounds[it.id]?.contains(adjustedPos) == true }?.let { latestOnObjectDeleted(it) }
+                                pointerChange.consume()
+                            } else {
+                                // Drag End
+                                if (currentPathPoints.isNotEmpty()) {
+                                    val colorHex = String.format("#%06X", 0xFFFFFF and currentColor.toArgb())
+                                    val newPath = DrawPath(
+                                        id = UUID.randomUUID().toString(),
+                                        colorHex = colorHex,
+                                        strokeWidth = currentStrokeWidth,
+                                        toolType = currentTool,
+                                        alpha = when(currentTool) {
+                                            ToolType.PENCIL -> 0.35f
+                                            ToolType.MARKER -> 0.5f
+                                            ToolType.HIGHLIGHTER -> 0.3f
+                                            else -> 1f
+                                        },
+                                        points = currentPathPoints.map { Point(it.x, it.y) }
+                                    )
+                                    latestOnObjectAdded(newPath)
+                                    currentPathPoints = emptyList()
+                                } else if (tempShapeStart != null && tempShapeEnd != null) {
+                                    val colorHex = String.format("#%06X", 0xFFFFFF and currentColor.toArgb())
+                                    val fillHex = if (isFillEnabled) String.format("#%06X", 0xFFFFFF and currentFillColor.toArgb()) else null
+                                    val newShape = DrawShape(
+                                        id = UUID.randomUUID().toString(),
+                                        colorHex = colorHex,
+                                        strokeWidth = currentStrokeWidth,
+                                        points = listOf(Point(tempShapeStart!!.x, tempShapeStart!!.y), Point(tempShapeEnd!!.x, tempShapeEnd!!.y)),
+                                        shapeType = currentShape,
+                                        isFilled = isFillEnabled,
+                                        fillColorHex = fillHex
+                                    )
+                                    latestOnObjectAdded(newShape)
+                                    tempShapeStart = null
+                                    tempShapeEnd = null
                                 }
-                                else -> {}
-                            }
-                            change.consume()
-                        },
-                        onDragEnd = {
-                            if (currentPathPoints.isNotEmpty()) {
-                                val colorHex = String.format("#%06X", 0xFFFFFF and currentColor.toArgb())
-                                val newPath = DrawPath(
-                                    id = UUID.randomUUID().toString(),
-                                    colorHex = colorHex,
-                                    strokeWidth = currentStrokeWidth,
-                                    toolType = currentTool,
-                                    alpha = when(currentTool) {
-                                        ToolType.PENCIL -> 0.35f
-                                        ToolType.MARKER -> 0.5f
-                                        ToolType.HIGHLIGHTER -> 0.3f
-                                        else -> 1f
-                                    },
-                                    points = currentPathPoints.map { Point(it.x, it.y) }
-                                )
-                                latestOnObjectAdded(newPath)
-                                currentPathPoints = emptyList()
-                            } else if (tempShapeStart != null && tempShapeEnd != null) {
-                                val colorHex = String.format("#%06X", 0xFFFFFF and currentColor.toArgb())
-                                val fillHex = if (isFillEnabled) String.format("#%06X", 0xFFFFFF and currentFillColor.toArgb()) else null
-                                val newShape = DrawShape(
-                                    id = UUID.randomUUID().toString(),
-                                    colorHex = colorHex,
-                                    strokeWidth = currentStrokeWidth,
-                                    points = listOf(Point(tempShapeStart!!.x, tempShapeStart!!.y), Point(tempShapeEnd!!.x, tempShapeEnd!!.y)),
-                                    shapeType = currentShape,
-                                    isFilled = isFillEnabled,
-                                    fillColorHex = fillHex
-                                )
-                                latestOnObjectAdded(newShape)
-                                tempShapeStart = null
-                                tempShapeEnd = null
-                            } else if (lassoPath != null) {
-                                val lassoBounds = lassoPath!!.getBounds()
-                                val newSelection = latestObjects.filter { obj ->
-                                    lassoBounds.overlaps(cachedBounds[obj.id] ?: Rect.Zero)
-                                }.map { it.id }.toSet()
-                                latestOnSelectionChanged(newSelection)
-                                lassoPath = null
                             }
                         }
-                    )
-                }
-                .pointerInput(Unit) {
-                    detectTapGestures(onDoubleTap = {
-                        globalOffset = Offset.Zero
-                        globalScale = 1f
-                    })
+                    }
                 }
         ) {
             withTransform({
@@ -207,12 +217,7 @@ fun AdvancedCanvasBoard(
                                 drawAdvancedShape(obj, color, fillCol, objects)
                             }
                             is DrawText -> {
-                                val fontFamily = when(obj.fontFamily) {
-                                    "Serif" -> androidx.compose.ui.text.font.FontFamily.Serif
-                                    "Monospace" -> androidx.compose.ui.text.font.FontFamily.Monospace
-                                    "Sans Serif" -> androidx.compose.ui.text.font.FontFamily.SansSerif
-                                    else -> androidx.compose.ui.text.font.FontFamily.Default
-                                }
+                                val fontFamily = TayfFonts[obj.fontFamily] ?: FontFamily.Default
                                 drawText(
                                     textMeasurer = textMeasurer,
                                     text = obj.text,
@@ -238,6 +243,10 @@ fun AdvancedCanvasBoard(
                         val bounds = cachedBounds[obj.id] ?: Rect.Zero
                         drawRect(Color.Blue.copy(alpha = 0.1f), bounds.topLeft, bounds.size)
                         drawRect(Color.Blue, bounds.topLeft, bounds.size, style = Stroke(width = 1f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)))
+                        
+                        // Resize handles
+                        drawCircle(Color.White, 8f, bounds.bottomRight, style = Fill)
+                        drawCircle(Color.Blue, 8f, bounds.bottomRight, style = Stroke(2f))
                     }
                 }
 
@@ -250,7 +259,7 @@ fun AdvancedCanvasBoard(
                 
                 if (tempShapeStart != null && tempShapeEnd != null) {
                     val path = calculateAdvancedShapePath(tempShapeStart!!.x, tempShapeStart!!.y, tempShapeEnd!!.x, tempShapeEnd!!.y, currentShape)
-                    if (isFillEnabled) drawPath(path, currentFillColor.copy(alpha = 0.5f))
+                    if (isFillEnabled) drawPath(path, currentColor.copy(alpha = 0.5f))
                     drawPath(path, currentColor, style = Stroke(currentStrokeWidth))
                 }
 
