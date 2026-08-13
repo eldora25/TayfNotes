@@ -8,6 +8,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.eldora25.tayfnotes.shared.model.Note
 
+import androidx.activity.compose.BackHandler
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NoteDetailScreen(
@@ -18,6 +20,10 @@ fun NoteDetailScreen(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
+    BackHandler {
+        onBack()
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(

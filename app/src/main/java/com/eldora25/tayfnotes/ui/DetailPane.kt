@@ -49,6 +49,10 @@ import androidx.compose.material.icons.filled.Share
 import java.text.SimpleDateFormat
 import java.util.*
 
+import android.webkit.WebView
+import android.webkit.WebViewClient
+import androidx.compose.ui.viewinterop.AndroidView
+
 @Composable
 fun DetailPane(
     note: Note?,
@@ -134,6 +138,17 @@ fun DetailPane(
                         )
                     }
                 }
+            } else if (note.type == NoteType.WEB_CLIP) {
+                AndroidView(
+                    factory = { context ->
+                        WebView(context).apply {
+                            settings.javaScriptEnabled = true
+                            webViewClient = WebViewClient()
+                            loadDataWithBaseURL(note.sourceUrl, note.content, "text/html", "UTF-8", null)
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().height(600.dp).clip(RoundedCornerShape(12.dp))
+                )
             } else {
                 Text(
                     text = note.content,

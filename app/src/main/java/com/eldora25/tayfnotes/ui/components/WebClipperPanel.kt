@@ -30,6 +30,7 @@ fun WebClipperPanel(
     url: String,
     initialMode: String,
     viewModel: WebClipperViewModel,
+    initialHtml: String? = null,
     onDismiss: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
@@ -44,12 +45,14 @@ fun WebClipperPanel(
     var content by remember { mutableStateOf("") }
 
     // Initial Scraping
-    LaunchedEffect(url, selectedMode) {
-        // Since we moved to Local DOM scraping in the browser, 
-        // the WebClipperPanel will receive a URL but no HTML directly if opened standalone.
-        // We will keep a basic connect as fallback for external intents or simple bookmarks.
-        // For Browser-triggered clips, the data is usually passed through.
-        val result = viewModel.parseHtmlContent("<html><body>$url</body></html>", url) 
+    LaunchedEffect(url, selectedMode, initialHtml) {
+        val result = if (initialHtml != null) {
+            viewModel.parseHtmlContent(initialHtml, url)
+        } else {
+            // Fallback for standalone opening (intent share)
+            viewModel.parseHtmlContent("<html><body>$url</body></html>", url)
+        }
+        
         title = result.title
         content = when(selectedMode) {
             "Simplified" -> result.plainText
