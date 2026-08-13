@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -46,23 +47,40 @@ class MainActivity : FragmentActivity() {
         
         setContent {
             val context = LocalContext.current
-            val currentTheme by noteViewModel.currentTheme.collectAsState(initial = TayfTheme.MIDNIGHT)
-            val isDarkModePref by noteViewModel.isDarkMode.collectAsState(initial = null)
-            val isBiometricEnabled by noteViewModel.isBiometricEnabled.collectAsState(initial = false)
+            val currentTheme by noteViewModel.currentTheme.collectAsState()
+            val isDarkModePref by noteViewModel.isDarkMode.collectAsState()
+            val isBiometricEnabled by noteViewModel.isBiometricEnabled.collectAsState()
+            val currentFontFamily by noteViewModel.currentFontFamily.collectAsState()
             
-            // Temporary: Disable lock by default to fix emulator hangs
-            var isAuthenticated by remember { mutableStateOf(true) }
+            // Auto-lock logic restored but with safe defaults
+            var isAuthenticated by rememberSaveable(isBiometricEnabled) { 
+                val isAvailable = BiometricHelper.isBiometricAvailable(context)
+                mutableStateOf(!isBiometricEnabled || !isAvailable) 
+            }
 
-            TayfNotesTheme(
-                darkTheme = isDarkModePref ?: isSystemInDarkTheme(),
-                currentTheme = currentTheme
-            ) {
-                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                    if (isAuthenticated) {
-                        MainAppContent()
-                    } else {
-                        LockedScreen(onAuthenticate = { isAuthenticated = true })
+            key(currentTheme, isDarkModePref, currentFontFamily) {
+                TayfNotesTheme(
+                    darkTheme = isDarkModePref ?: isSystemInDarkTheme(),
+                    currentTheme = currentTheme,
+                    defaultFontFamily = currentFontFamily
+                ) {
+                    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                        if (isAuthenticated) {
+                            MainAppContent()
+                        } else {
+                            LockedScreen(onAuthenticate = { isAuthenticated = true })
+                        }
                     }
+                }
+            }
+
+            LaunchedEffect(isBiometricEnabled, isAuthenticated) {
+                if (isBiometricEnabled && !isAuthenticated && BiometricHelper.isBiometricAvailable(context)) {
+                    BiometricHelper.authenticate(
+                        activity = this@MainActivity,
+                        onSuccess = { isAuthenticated = true },
+                        onError = { error -> Toast.makeText(this@MainActivity, error, Toast.LENGTH_SHORT).show() }
+                    )
                 }
             }
         }

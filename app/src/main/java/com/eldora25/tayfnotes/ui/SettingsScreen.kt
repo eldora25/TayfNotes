@@ -23,6 +23,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.eldora25.tayfnotes.ui.theme.TayfFonts
 import com.eldora25.tayfnotes.ui.theme.TayfTheme
 import com.eldora25.tayfnotes.ui.components.DropboxAuthLauncher
 import com.eldora25.tayfnotes.ui.components.GoogleDriveAuthLauncher
@@ -159,7 +160,7 @@ fun FontSettingsSection(
     onFontFamilyChanged: (String) -> Unit
 ) {
     val fontSizes = listOf(12f, 14f, 16f, 18f, 20f, 24f, 28f)
-    val fontFamilies = listOf("Default", "Serif", "Monospace", "Sans Serif")
+    val fontNames = TayfFonts.keys.toList()
     
     var showSizeMenu by remember { mutableStateOf(false) }
     var showFontMenu by remember { mutableStateOf(false) }
@@ -173,9 +174,20 @@ fun FontSettingsSection(
                 }
             }
             Box(modifier = Modifier.weight(1f)) {
-                OutlinedButton(onClick = { showFontMenu = true }, modifier = Modifier.fillMaxWidth()) { Text(currentFontFamily) }
-                DropdownMenu(expanded = showFontMenu, onDismissRequest = { showFontMenu = false }) {
-                    fontFamilies.forEach { font -> DropdownMenuItem(text = { Text(font) }, onClick = { onFontFamilyChanged(font); showFontMenu = false }) }
+                OutlinedButton(onClick = { showFontMenu = true }, modifier = Modifier.fillMaxWidth()) { 
+                    Text(currentFontFamily, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) 
+                }
+                DropdownMenu(
+                    expanded = showFontMenu, 
+                    onDismissRequest = { showFontMenu = false },
+                    modifier = Modifier.heightIn(max = 300.dp)
+                ) {
+                    fontNames.forEach { fontName -> 
+                        DropdownMenuItem(
+                            text = { Text(fontName, fontFamily = TayfFonts[fontName]) }, 
+                            onClick = { onFontFamilyChanged(fontName); showFontMenu = false }
+                        ) 
+                    }
                 }
             }
         }
@@ -192,12 +204,7 @@ fun FontSettingsSection(
                 Text(
                     text = "Yazı Tipi Önizleme\nBu metin nasıl görünüyor?",
                     fontSize = currentFontSize.sp,
-                    fontFamily = when(currentFontFamily) {
-                        "Serif" -> androidx.compose.ui.text.font.FontFamily.Serif
-                        "Monospace" -> androidx.compose.ui.text.font.FontFamily.Monospace
-                        "Sans Serif" -> androidx.compose.ui.text.font.FontFamily.SansSerif
-                        else -> androidx.compose.ui.text.font.FontFamily.Default
-                    },
+                    fontFamily = TayfFonts[currentFontFamily] ?: androidx.compose.ui.text.font.FontFamily.Default,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                     color = MaterialTheme.colorScheme.onSurface
                 )

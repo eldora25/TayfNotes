@@ -61,7 +61,8 @@ fun NoteEditorScreen(
     val context = LocalContext.current
     val noteId = remember { note?.id ?: System.currentTimeMillis().toString() }
 
-    val composeFontFamily = TayfFonts[fontFamily] ?: androidx.compose.ui.text.font.FontFamily.Default
+    var currentNoteFontFamily by remember { mutableStateOf(note?.fontFamily ?: fontFamily) }
+    val noteFontFamily = TayfFonts[currentNoteFontFamily] ?: androidx.compose.ui.text.font.FontFamily.Default
     
     var title by remember { mutableStateOf(note?.title ?: "") }
     var emoji by remember { mutableStateOf(note?.emoji ?: "") }
@@ -133,14 +134,15 @@ fun NoteEditorScreen(
                 imageUris = imageUris,
                 audioPath = audioPath,
                 sketchData = sketchData,
-                lastModified = System.currentTimeMillis()
+                lastModified = System.currentTimeMillis(),
+                fontFamily = currentNoteFontFamily
             )
             onSave(finalNote)
         }
     }
 
     // Auto-save logic
-    LaunchedEffect(title, content, colorHex, reminderTimestamp, folderId, imageUris, audioPath, checklistItems, sketchData, emoji) {
+    LaunchedEffect(title, content, colorHex, reminderTimestamp, folderId, imageUris, audioPath, checklistItems, sketchData, emoji, currentNoteFontFamily) {
         if (title.isNotEmpty() || content.isNotEmpty() || imageUris.isNotEmpty() || audioPath != null || checklistItems.isNotEmpty() || sketchData != null || emoji.isNotEmpty()) {
             delay(2000) // Debounce save
             saveCurrentNote()
@@ -424,7 +426,23 @@ fun NoteEditorScreen(
                                     }
                                 }
                             }
-                            ColorSelector(selectedColorHex = colorHex, onColorSelected = { colorHex = it })
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                var showFontMenu by remember { mutableStateOf(false) }
+                                Box {
+                                    IconButton(onClick = { showFontMenu = true }) {
+                                        Icon(Icons.Default.FontDownload, "Font Seç", tint = MaterialTheme.colorScheme.primary)
+                                    }
+                                    DropdownMenu(expanded = showFontMenu, onDismissRequest = { showFontMenu = false }) {
+                                        TayfFonts.keys.forEach { fontName ->
+                                            DropdownMenuItem(
+                                                text = { Text(fontName, fontFamily = TayfFonts[fontName]) },
+                                                onClick = { currentNoteFontFamily = fontName; showFontMenu = false }
+                                            )
+                                        }
+                                    }
+                                }
+                                ColorSelector(selectedColorHex = colorHex, onColorSelected = { colorHex = it })
+                            }
                         }
 
                         TextField(
@@ -455,10 +473,10 @@ fun NoteEditorScreen(
                             TextField(
                                 value = content,
                                 onValueChange = { content = it },
-                                placeholder = { Text("Notunuzu yazın...", style = MaterialTheme.typography.bodyLarge.copy(fontSize = fontSize.sp, fontFamily = composeFontFamily)) },
+                                placeholder = { Text("Notunuzu yazın...", style = MaterialTheme.typography.bodyLarge.copy(fontSize = fontSize.sp, fontFamily = noteFontFamily)) },
                                 modifier = Modifier.fillMaxWidth().padding(16.dp),
                                 colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent),
-                                textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = fontSize.sp, lineHeight = (fontSize * 1.5).sp, fontFamily = composeFontFamily)
+                                textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = fontSize.sp, lineHeight = (fontSize * 1.5).sp, fontFamily = noteFontFamily)
                             )
                         }
                         Spacer(modifier = Modifier.height(200.dp)) // Extra space for keyboard/scrolling
@@ -477,7 +495,7 @@ fun NoteEditorScreen(
                             }
                         }
                     } else {
-                        Text(content, style = MaterialTheme.typography.bodyLarge.copy(fontSize = fontSize.sp, fontFamily = composeFontFamily))
+                        Text(content, style = MaterialTheme.typography.bodyLarge.copy(fontSize = fontSize.sp, fontFamily = noteFontFamily))
                     }
                     imageUris.forEach { uri ->
                         AsyncImage(model = uri, contentDescription = null, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).clip(RoundedCornerShape(8.dp)), contentScale = ContentScale.FillWidth)

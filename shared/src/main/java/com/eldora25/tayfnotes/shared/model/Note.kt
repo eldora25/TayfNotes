@@ -24,8 +24,9 @@ data class Note(
     val reminderTimestamp: Long? = null,
     val reminderRepeat: RepeatInterval? = null,
     val isLocked: Boolean = false,
-    val isArchived: Boolean = false, // Madde 4
-    val position: Int = 0 
+    val isArchived: Boolean = false,
+    val position: Int = 0,
+    val fontFamily: String? = null
 )
 
 enum class NoteType {

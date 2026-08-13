@@ -27,7 +27,8 @@ data class NoteEntity(
     val reminderRepeat: String? = null,
     val isLocked: Boolean,
     val isArchived: Boolean = false,
-    val position: Int = 0
+    val position: Int = 0,
+    val fontFamily: String? = null
 ) {
     fun toDomain(): Note = Note(
         id = id,
@@ -48,7 +49,8 @@ data class NoteEntity(
         reminderRepeat = reminderRepeat?.let { RepeatInterval.valueOf(it) },
         isLocked = isLocked,
         isArchived = isArchived,
-        position = position
+        position = position,
+        fontFamily = fontFamily
     )
 
     companion object {
@@ -71,7 +73,8 @@ data class NoteEntity(
             reminderRepeat = note.reminderRepeat?.name,
             isLocked = note.isLocked,
             isArchived = note.isArchived,
-            position = note.position
+            position = note.position,
+            fontFamily = note.fontFamily
         )
     }
 }

@@ -107,6 +107,7 @@ fun TayfNotesTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     currentTheme: TayfTheme = TayfTheme.MIDNIGHT,
     dynamicColor: Boolean = false,
+    defaultFontFamily: String = "Default",
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
@@ -118,9 +119,19 @@ fun TayfNotesTheme(
         else -> getLightColorScheme(currentTheme)
     }
 
+    val selectedFont = TayfFonts[defaultFontFamily] ?: androidx.compose.ui.text.font.FontFamily.Default
+    val customTypography = Typography.copy(
+        headlineLarge = Typography.headlineLarge.copy(fontFamily = selectedFont),
+        headlineMedium = Typography.headlineMedium.copy(fontFamily = selectedFont),
+        titleLarge = Typography.titleLarge.copy(fontFamily = selectedFont),
+        bodyLarge = Typography.bodyLarge.copy(fontFamily = selectedFont),
+        bodyMedium = Typography.bodyMedium.copy(fontFamily = selectedFont),
+        labelSmall = Typography.labelSmall.copy(fontFamily = selectedFont)
+    )
+
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = Typography,
+        typography = customTypography,
         content = content
     )
 }
