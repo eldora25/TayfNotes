@@ -2,12 +2,14 @@ package com.eldora25.tayfnotes.ui
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.res.Configuration
 import android.os.Bundle
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -25,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
@@ -51,7 +54,13 @@ fun TayfNotesBrowserScreen(
 ) {
     val scope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     
+    BackHandler {
+        onBack()
+    }
+
     var currentUrl by rememberSaveable { mutableStateOf("https://www.google.com") }
     var urlInput by rememberSaveable { mutableStateOf(currentUrl) }
     var isLoading by remember { mutableStateOf(false) }
@@ -62,123 +71,120 @@ fun TayfNotesBrowserScreen(
     val webViewState = remember { Bundle() }
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
     val sheetState = rememberModalBottomSheetState()
-
-    // Scroll Behavior to hide header
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            // Using a custom container that responds to scrollBehavior to allow more height
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .offset { IntOffset(0, scrollBehavior.state.heightOffset.roundToInt()) }
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
-                tonalElevation = 3.dp,
-                shadowElevation = 2.dp
-            ) {
-                Column(modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp)) {
-                    // Header Info
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "TayfNotes Dahili Tarayıcı V.01.${BuildConfig.BUILD_NO}",
-                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                        )
-                        IconButton(onClick = onBack, modifier = Modifier.size(24.dp)) {
-                            Icon(Icons.Default.Close, contentDescription = "Kapat")
+            if (!isLandscape) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .offset { IntOffset(0, scrollBehavior.state.heightOffset.roundToInt()) }
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    tonalElevation = 3.dp,
+                    shadowElevation = 2.dp
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp)) {
+                        // Header
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                IconButton(onClick = onBack, modifier = Modifier.size(32.dp)) {
+                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Geri")
+                                }
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    text = "TayfNotes Dahili Tarayıcı V.01.${BuildConfig.BUILD_NO}",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                )
+                            }
+                            IconButton(onClick = onBack, modifier = Modifier.size(24.dp)) {
+                                Icon(Icons.Default.Close, contentDescription = "Kapat")
+                            }
                         }
-                    }
 
-                    // Browser Controls
-                    Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = { 
-                            readerModeHtml = null
-                            urlInput = "https://www.google.com"
-                            currentUrl = urlInput 
-                        }) { Icon(Icons.Default.Home, contentDescription = "Home") }
-                        
-                        IconButton(onClick = { 
-                            if (readerModeHtml != null) readerModeHtml = null else webViewRef?.goBack() 
-                        }, enabled = readerModeHtml != null || webViewRef?.canGoBack() == true) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Geri", modifier = Modifier.size(20.dp))
+                        // Controls
+                        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(onClick = { readerModeHtml = null; urlInput = "https://www.google.com"; currentUrl = urlInput }) { 
+                                Icon(Icons.Default.Home, null) 
+                            }
+                            IconButton(onClick = { if (readerModeHtml != null) readerModeHtml = null else webViewRef?.goBack() }, enabled = readerModeHtml != null || webViewRef?.canGoBack() == true) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, null, modifier = Modifier.size(20.dp))
+                            }
+                            IconButton(onClick = { webViewRef?.goForward() }, enabled = webViewRef?.canGoForward() == true) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowForward, null, modifier = Modifier.size(20.dp))
+                            }
+                            IconButton(onClick = { if (readerModeHtml != null) readerModeHtml = null; webViewRef?.reload() }) { 
+                                Icon(Icons.Default.Refresh, null) 
+                            }
+                            
+                            OutlinedTextField(
+                                value = urlInput,
+                                onValueChange = { urlInput = it },
+                                modifier = Modifier.weight(1f).padding(horizontal = 4.dp),
+                                textStyle = MaterialTheme.typography.bodySmall,
+                                singleLine = true,
+                                shape = RoundedCornerShape(24.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = Color.Transparent
+                                ),
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
+                                keyboardActions = KeyboardActions(onGo = {
+                                    var target = urlInput
+                                    if (!target.startsWith("http")) target = "https://$target"
+                                    readerModeHtml = null
+                                    currentUrl = target
+                                    focusManager.clearFocus()
+                                })
+                            )
                         }
-                        
-                        IconButton(onClick = { webViewRef?.goForward() }, enabled = webViewRef?.canGoForward() == true) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "İleri", modifier = Modifier.size(20.dp))
-                        }
-                        
-                        IconButton(onClick = { 
-                            if (readerModeHtml != null) readerModeHtml = null
-                            webViewRef?.reload() 
-                        }) { Icon(Icons.Default.Refresh, contentDescription = "Yenile") }
-                        
-                        OutlinedTextField(
-                            value = urlInput,
-                            onValueChange = { urlInput = it },
-                            modifier = Modifier.weight(1f).padding(horizontal = 4.dp),
-                            textStyle = MaterialTheme.typography.bodySmall,
-                            singleLine = true,
-                            shape = RoundedCornerShape(24.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedContainerColor = MaterialTheme.colorScheme.surface,
-                                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                unfocusedBorderColor = Color.Transparent
-                            ),
-                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
-                            keyboardActions = KeyboardActions(onGo = {
-                                var target = urlInput
-                                if (!target.startsWith("http")) target = "https://$target"
+
+                        // Premium Actions
+                        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
+                            PremiumButton("Tam Sayfa", Icons.Default.Fullscreen, isSelected = readerModeHtml == null) {
                                 readerModeHtml = null
-                                currentUrl = target
-                                focusManager.clearFocus()
-                            })
-                        )
-                    }
-
-                    // Premium Action Buttons
-                    Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
-                        PremiumButton("Tam Sayfa", Icons.Default.Fullscreen, isSelected = readerModeHtml == null) {
-                            readerModeHtml = null
-                        }
-                        PremiumButton("Makale", Icons.AutoMirrored.Filled.Article, isSelected = readerModeHtml != null) {
-                            webViewRef?.evaluateJavascript("(function() { return document.documentElement.outerHTML; })();") { html ->
-                                scope.launch {
-                                    isLoading = true
-                                    val decoded = viewModel.unescapeHtml(html)
-                                    currentHtmlContent = decoded
-                                    val result = viewModel.parseHtmlContent(decoded, currentUrl)
-                                    readerModeHtml = viewModel.wrapInReaderTheme(result.title, result.content)
-                                    isLoading = false
+                            }
+                            PremiumButton("Makale", Icons.AutoMirrored.Filled.Article, isSelected = readerModeHtml != null) {
+                                webViewRef?.evaluateJavascript("(function() { return document.documentElement.outerHTML; })();") { html ->
+                                    scope.launch {
+                                        isLoading = true
+                                        val decoded = viewModel.unescapeHtml(html)
+                                        currentHtmlContent = decoded
+                                        val result = viewModel.parseHtmlContent(decoded, currentUrl)
+                                        readerModeHtml = viewModel.wrapInReaderTheme(result.title, result.content)
+                                        isLoading = false
+                                    }
+                                }
+                            }
+                            PremiumButton("Basitleştir", Icons.Default.TextFields) {
+                                webViewRef?.evaluateJavascript("(function() { return document.documentElement.outerHTML; })();") { html ->
+                                    scope.launch {
+                                        isLoading = true
+                                        val decoded = viewModel.unescapeHtml(html)
+                                        currentHtmlContent = decoded
+                                        val result = viewModel.parseHtmlContent(decoded, currentUrl)
+                                        val plainHtml = "<p>${result.plainText.replace("\n", "<br>")}</p>"
+                                        readerModeHtml = viewModel.wrapInReaderTheme(result.title, plainHtml)
+                                        isLoading = false
+                                    }
+                                }
+                            }
+                            PremiumButton("Kırp (Clipper)", Icons.Default.ContentCut, isMain = true) {
+                                webViewRef?.evaluateJavascript("(function() { return document.documentElement.outerHTML; })();") { html ->
+                                    currentHtmlContent = viewModel.unescapeHtml(html)
+                                    showClipper = true
                                 }
                             }
                         }
-                        PremiumButton("Basitleştir", Icons.Default.TextFields) {
-                            webViewRef?.evaluateJavascript("(function() { return document.documentElement.outerHTML; })();") { html ->
-                                scope.launch {
-                                    isLoading = true
-                                    val decoded = viewModel.unescapeHtml(html)
-                                    currentHtmlContent = decoded
-                                    val result = viewModel.parseHtmlContent(decoded, currentUrl)
-                                    val plainHtml = "<p>${result.plainText.replace("\n", "<br>")}</p>"
-                                    readerModeHtml = viewModel.wrapInReaderTheme(result.title, plainHtml)
-                                    isLoading = false
-                                }
-                            }
-                        }
-                        PremiumButton("Kırp (Clipper)", Icons.Default.ContentCut, isMain = true) {
-                            webViewRef?.evaluateJavascript("(function() { return document.documentElement.outerHTML; })();") { html ->
-                                currentHtmlContent = viewModel.unescapeHtml(html)
-                                showClipper = true
-                            }
-                        }
+                        if (isLoading) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                     }
-                    if (isLoading) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                 }
             }
         }
@@ -216,9 +222,16 @@ fun TayfNotesBrowserScreen(
                     webViewRef = view
                     val html = readerModeHtml
                     if (html != null) {
-                        view.loadDataWithBaseURL(currentUrl, html, "text/html", "UTF-8", null)
-                    } else if (view.url != currentUrl) {
-                        view.loadUrl(currentUrl)
+                        // Use tag to track if we already loaded this specific HTML to prevent reload loops
+                        if (view.tag != html) {
+                            view.loadDataWithBaseURL(currentUrl, html, "text/html", "UTF-8", null)
+                            view.tag = html
+                        }
+                    } else {
+                        if (view.url != currentUrl) {
+                            view.loadUrl(currentUrl)
+                        }
+                        view.tag = null
                     }
                 },
                 modifier = Modifier.fillMaxSize(),
@@ -256,9 +269,6 @@ fun PremiumButton(text: String, icon: androidx.compose.ui.graphics.vector.ImageV
     }
 }
 
-/**
- * A WebView that supports Nested Scrolling in Compose
- */
 class NestedScrollingWebView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,

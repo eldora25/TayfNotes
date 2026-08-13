@@ -101,13 +101,13 @@ fun MainScreen(
                     .zIndex(10f) // Guaranteed to be on top
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    FloatingActionPill(Icons.Default.Add, "Not", MaterialTheme.colorScheme.primary, onAddNote)
-                    FloatingActionPill(Icons.Default.FactCheck, "Yapılacaklar", MaterialTheme.colorScheme.secondary, onAddChecklist)
-                    FloatingActionPill(Icons.Default.Gesture, "Sketch", MaterialTheme.colorScheme.tertiary, onAddSketch)
+                    FloatingActionPill(Icons.Default.Add, "Not", MaterialTheme.colorScheme.primary, onAddNote, modifier = Modifier.weight(1f))
+                    FloatingActionPill(Icons.Default.FactCheck, "Yapılacaklar", MaterialTheme.colorScheme.secondary, onAddChecklist, modifier = Modifier.weight(1f))
+                    FloatingActionPill(Icons.Default.Gesture, "Sketch", MaterialTheme.colorScheme.tertiary, onAddSketch, modifier = Modifier.weight(1f))
                 }
             }
         },
@@ -300,12 +300,20 @@ fun PremiumTopBar(
 }
 
 @Composable
-fun FloatingActionPill(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, color: Color, onClick: () -> Unit) {
-    Box(modifier = Modifier.clip(CircleShape).background(color.copy(alpha = 0.15f)).clickable { onClick() }.padding(horizontal = 16.dp, vertical = 12.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(icon, null, tint = color, modifier = Modifier.size(18.dp))
-            Spacer(modifier = Modifier.width(6.dp))
-            Text(label, style = MaterialTheme.typography.labelMedium, color = color, fontWeight = FontWeight.Bold)
+fun FloatingActionPill(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, color: Color, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Box(modifier = modifier.clip(CircleShape).background(color.copy(alpha = 0.15f)).clickable { onClick() }.padding(horizontal = 12.dp, vertical = 10.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
+            Icon(icon, null, tint = color, modifier = Modifier.size(16.dp))
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = label, 
+                style = MaterialTheme.typography.labelMedium, 
+                color = color, 
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                softWrap = false,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+            )
         }
     }
 }

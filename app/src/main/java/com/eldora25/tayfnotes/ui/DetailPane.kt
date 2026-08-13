@@ -139,16 +139,23 @@ fun DetailPane(
                     }
                 }
             } else if (note.type == NoteType.WEB_CLIP) {
-                AndroidView(
-                    factory = { context ->
-                        WebView(context).apply {
-                            settings.javaScriptEnabled = true
-                            webViewClient = WebViewClient()
-                            loadDataWithBaseURL(note.sourceUrl, note.content, "text/html", "UTF-8", null)
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth().height(600.dp).clip(RoundedCornerShape(12.dp))
-                )
+                Surface(
+                    modifier = Modifier.fillMaxWidth().height(600.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray.copy(0.5f))
+                ) {
+                    AndroidView(
+                        factory = { context ->
+                            WebView(context).apply {
+                                settings.javaScriptEnabled = true
+                                settings.domStorageEnabled = true
+                                webViewClient = WebViewClient()
+                                loadDataWithBaseURL(note.sourceUrl, note.content, "text/html", "UTF-8", null)
+                            }
+                        },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
             } else {
                 Text(
                     text = note.content,

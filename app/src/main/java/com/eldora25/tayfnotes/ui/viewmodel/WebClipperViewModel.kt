@@ -37,6 +37,7 @@ class WebClipperViewModel(
      * Unescapes JSON-encoded HTML string from evaluateJavascript
      */
     fun unescapeHtml(html: String): String {
+        if (html == "null") return ""
         return html.removePrefix("\"").removeSuffix("\"")
             .replace("\\u003C", "<")
             .replace("\\u003E", ">")
@@ -45,6 +46,11 @@ class WebClipperViewModel(
             .replace("\\r", "\r")
             .replace("\\t", "\t")
             .replace("\\\\", "\\")
+            .replace("&lt;", "<")
+            .replace("&gt;", ">")
+            .replace("&amp;", "&")
+            .replace("&quot;", "\"")
+            .replace("&apos;", "'")
     }
 
     /**
