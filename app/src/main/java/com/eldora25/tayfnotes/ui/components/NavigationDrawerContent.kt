@@ -177,8 +177,8 @@ fun NavigationDrawerContent(
             DrawerItem(
                 icon = Icons.AutoMirrored.Filled.Help,
                 label = "İnfo",
-                isSelected = false,
-                onClick = { onPlaceholderSelected("Bilgi") }
+                isSelected = currentScreen is Screen.Info,
+                onClick = { onScreenSelected(Screen.Info) }
             )
 
             Spacer(modifier = Modifier.weight(1f))

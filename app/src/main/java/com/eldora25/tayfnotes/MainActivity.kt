@@ -53,6 +53,7 @@ sealed class Screen {
     object Trash : Screen()
     object Settings : Screen()
     object ThemeSelection : Screen()
+    object Info : Screen() // Madde 3
     data class EditNote(val note: Note? = null, val initialSketch: Boolean = false) : Screen()
     data class WebClipper(val url: String, val title: String? = null, val content: String? = null) : Screen()
     object InternalBrowser : Screen()
@@ -369,6 +370,9 @@ class MainActivity : FragmentActivity() {
                             onBiometricToggle = { noteViewModel.setBiometricEnabled(it) },
                             onFullBackupClick = { noteViewModel.exportFullBackup { BackupPackageHelper.shareBackup(this@MainActivity, it) } },
                             onImportBackupClick = { importLauncher.launch("application/zip") },
+                            onMenuClick = onMenuClick
+                        )
+                        is Screen.Info -> InfoScreen(
                             onMenuClick = onMenuClick
                         )
                         else -> {}
