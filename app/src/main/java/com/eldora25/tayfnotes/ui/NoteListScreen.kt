@@ -1,6 +1,5 @@
 package com.eldora25.tayfnotes.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
@@ -92,6 +91,7 @@ fun NoteListScreen(
                     val isSelected = selectedIds.contains(note.id)
                     NoteGridItem(
                         note = note, 
+                        isSelected = isSelected,
                         onClick = { 
                             if (isSelectionMode) {
                                 selectedIds = if (isSelected) selectedIds - note.id else selectedIds + note.id
@@ -102,8 +102,7 @@ fun NoteListScreen(
                             } else {
                                 onEditNote(note)
                             }
-                        },
-                        modifier = if (isSelected) Modifier.background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(20.dp)) else Modifier
+                        }
                     )
                 }
             }

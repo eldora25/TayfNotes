@@ -59,6 +59,9 @@ val Honk = FontFamily(Font(R.font.honk_regular_variablefont_morfshln, FontWeight
 // Comprehensive Font Map for UI Selection
 val TayfFonts = mapOf(
     "Default" to FontFamily.Default,
+    "Sans Serif" to FontFamily.SansSerif,
+    "Serif" to FontFamily.Serif,
+    "Monospace" to FontFamily.Monospace,
     "Alkatra" to Alkatra,
     "Poppins" to Poppins,
     "Noto Serif" to NotoSerif,

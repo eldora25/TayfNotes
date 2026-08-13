@@ -229,6 +229,7 @@ fun DrawingCanvas(
         // Dialogs
         if (showTextInputDialog) {
             var selectedFont by remember { mutableStateOf(currentSettings.fontFamily) }
+            var selectedSize by remember { mutableStateOf(currentSettings.strokeWidth * 2) } // Text size usually larger
             val fonts = TayfFonts.keys.toList()
 
             AlertDialog(
@@ -254,13 +255,22 @@ fun DrawingCanvas(
                                 Text(
                                     text = if (tempTextValue.isEmpty()) "Font Önizleme" else tempTextValue,
                                     fontFamily = TayfFonts[selectedFont],
-                                    fontSize = 20.sp,
+                                    fontSize = selectedSize.sp,
                                     color = Color(android.graphics.Color.parseColor(currentSettings.colorHex))
                                 )
                             }
                         }
                         
                         Spacer(Modifier.height(16.dp))
+                        Text("Boyut: ${selectedSize.toInt()} sp", style = MaterialTheme.typography.labelMedium)
+                        Slider(
+                            value = selectedSize,
+                            onValueChange = { selectedSize = it },
+                            valueRange = 8f..100f, // Expanded range for canvas text
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        
+                        Spacer(Modifier.height(8.dp))
                         Text("Font Seçimi", style = MaterialTheme.typography.labelMedium)
                         Box(modifier = Modifier.height(150.dp)) {
                              androidx.compose.foundation.lazy.LazyColumn {
@@ -293,7 +303,7 @@ fun DrawingCanvas(
                             val newText = DrawText(
                                 id = UUID.randomUUID().toString(),
                                 colorHex = currentSettings.colorHex,
-                                strokeWidth = currentSettings.strokeWidth,
+                                strokeWidth = selectedSize,
                                 text = tempTextValue,
                                 fontFamily = selectedFont,
                                 offsetX = 100f, offsetY = 100f
@@ -303,7 +313,7 @@ fun DrawingCanvas(
                             
                             // Update tool settings
                             toolSettingsMap = toolSettingsMap.toMutableMap().apply {
-                                put(ToolType.TEXT, currentSettings.copy(fontFamily = selectedFont))
+                                put(ToolType.TEXT, currentSettings.copy(fontFamily = selectedFont, strokeWidth = selectedSize / 2))
                             }
                             
                             tempTextValue = ""

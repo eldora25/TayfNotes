@@ -26,7 +26,8 @@ data class Note(
     val isLocked: Boolean = false,
     val isArchived: Boolean = false,
     val position: Int = 0,
-    val fontFamily: String? = null
+    val fontFamily: String? = null,
+    val fontSize: Float? = null
 )
 
 enum class NoteType {

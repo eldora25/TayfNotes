@@ -159,20 +159,12 @@ fun FontSettingsSection(
     currentFontFamily: String,
     onFontFamilyChanged: (String) -> Unit
 ) {
-    val fontSizes = listOf(12f, 14f, 16f, 18f, 20f, 24f, 28f)
     val fontNames = TayfFonts.keys.toList()
-    
-    var showSizeMenu by remember { mutableStateOf(false) }
     var showFontMenu by remember { mutableStateOf(false) }
 
     Column {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Box(modifier = Modifier.weight(1f)) {
-                OutlinedButton(onClick = { showSizeMenu = true }, modifier = Modifier.fillMaxWidth()) { Text("${currentFontSize.toInt()} px") }
-                DropdownMenu(expanded = showSizeMenu, onDismissRequest = { showSizeMenu = false }) {
-                    fontSizes.forEach { size -> DropdownMenuItem(text = { Text("${size.toInt()} px") }, onClick = { onFontSizeChanged(size); showSizeMenu = false }) }
-                }
-            }
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            // Font Family Selection
             Box(modifier = Modifier.weight(1f)) {
                 OutlinedButton(onClick = { showFontMenu = true }, modifier = Modifier.fillMaxWidth()) { 
                     Text(currentFontFamily, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) 
@@ -180,7 +172,7 @@ fun FontSettingsSection(
                 DropdownMenu(
                     expanded = showFontMenu, 
                     onDismissRequest = { showFontMenu = false },
-                    modifier = Modifier.heightIn(max = 300.dp)
+                    modifier = Modifier.heightIn(max = 350.dp)
                 ) {
                     fontNames.forEach { fontName -> 
                         DropdownMenuItem(
@@ -190,23 +182,50 @@ fun FontSettingsSection(
                     }
                 }
             }
+            
+            // Font Size Display
+            Surface(
+                color = MaterialTheme.colorScheme.primaryContainer,
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text(
+                    "${currentFontSize.toInt()} sp", 
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        // Font Size Slider (8-50)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.FormatSize, null, tint = MaterialTheme.colorScheme.primary)
+            Slider(
+                value = currentFontSize,
+                onValueChange = onFontSizeChanged,
+                valueRange = 8f..50f,
+                modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
+            )
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
         Surface(
-            modifier = Modifier.fillMaxWidth().height(100.dp),
-            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.fillMaxWidth().height(120.dp),
+            shape = RoundedCornerShape(16.dp),
             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
             border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Text(
-                    text = "Yazı Tipi Önizleme\nBu metin nasıl görünüyor?",
+                    text = "Görünüm Önizleme\nBu metin nasıl görünüyor?",
                     fontSize = currentFontSize.sp,
                     fontFamily = TayfFonts[currentFontFamily] ?: androidx.compose.ui.text.font.FontFamily.Default,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
+                    lineHeight = (currentFontSize * 1.3).sp
                 )
             }
         }

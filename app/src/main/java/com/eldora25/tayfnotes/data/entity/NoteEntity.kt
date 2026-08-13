@@ -28,7 +28,8 @@ data class NoteEntity(
     val isLocked: Boolean,
     val isArchived: Boolean = false,
     val position: Int = 0,
-    val fontFamily: String? = null
+    val fontFamily: String? = null,
+    val fontSize: Float? = null
 ) {
     fun toDomain(): Note = Note(
         id = id,
@@ -50,7 +51,8 @@ data class NoteEntity(
         isLocked = isLocked,
         isArchived = isArchived,
         position = position,
-        fontFamily = fontFamily
+        fontFamily = fontFamily,
+        fontSize = fontSize
     )
 
     companion object {
@@ -74,7 +76,8 @@ data class NoteEntity(
             isLocked = note.isLocked,
             isArchived = note.isArchived,
             position = note.position,
-            fontFamily = note.fontFamily
+            fontFamily = note.fontFamily,
+            fontSize = note.fontSize
         )
     }
 }

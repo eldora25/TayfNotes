@@ -62,6 +62,7 @@ fun NoteEditorScreen(
     val noteId = remember { note?.id ?: System.currentTimeMillis().toString() }
 
     var currentNoteFontFamily by remember { mutableStateOf(note?.fontFamily ?: fontFamily) }
+    var currentNoteFontSize by remember { mutableStateOf(note?.fontSize ?: fontSize) }
     val noteFontFamily = TayfFonts[currentNoteFontFamily] ?: androidx.compose.ui.text.font.FontFamily.Default
     
     var title by remember { mutableStateOf(note?.title ?: "") }
@@ -135,14 +136,15 @@ fun NoteEditorScreen(
                 audioPath = audioPath,
                 sketchData = sketchData,
                 lastModified = System.currentTimeMillis(),
-                fontFamily = currentNoteFontFamily
+                fontFamily = currentNoteFontFamily,
+                fontSize = currentNoteFontSize
             )
             onSave(finalNote)
         }
     }
 
     // Auto-save logic
-    LaunchedEffect(title, content, colorHex, reminderTimestamp, folderId, imageUris, audioPath, checklistItems, sketchData, emoji, currentNoteFontFamily) {
+    LaunchedEffect(title, content, colorHex, reminderTimestamp, folderId, imageUris, audioPath, checklistItems, sketchData, emoji, currentNoteFontFamily, currentNoteFontSize) {
         if (title.isNotEmpty() || content.isNotEmpty() || imageUris.isNotEmpty() || audioPath != null || checklistItems.isNotEmpty() || sketchData != null || emoji.isNotEmpty()) {
             delay(2000) // Debounce save
             saveCurrentNote()
@@ -426,11 +428,15 @@ fun NoteEditorScreen(
                                     }
                                 }
                             }
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
                                 var showFontMenu by remember { mutableStateOf(false) }
-                                Box {
+                                Box(modifier = Modifier.weight(0.4f)) {
                                     IconButton(onClick = { showFontMenu = true }) {
-                                        Icon(Icons.Default.FontDownload, "Font Seç", tint = MaterialTheme.colorScheme.primary)
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(Icons.Default.FontDownload, "Font Seç", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                                            Spacer(Modifier.width(4.dp))
+                                            Text(currentNoteFontFamily, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                                        }
                                     }
                                     DropdownMenu(expanded = showFontMenu, onDismissRequest = { showFontMenu = false }) {
                                         TayfFonts.keys.forEach { fontName ->
@@ -441,6 +447,19 @@ fun NoteEditorScreen(
                                         }
                                     }
                                 }
+                                
+                                // Font Size Slider (8-50)
+                                Row(modifier = Modifier.weight(0.6f), verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.FormatSize, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                                    Slider(
+                                        value = currentNoteFontSize,
+                                        onValueChange = { currentNoteFontSize = it },
+                                        valueRange = 8f..50f,
+                                        modifier = Modifier.weight(1f).padding(horizontal = 4.dp)
+                                    )
+                                    Text("${currentNoteFontSize.toInt()}px", style = MaterialTheme.typography.labelSmall)
+                                }
+                                
                                 ColorSelector(selectedColorHex = colorHex, onColorSelected = { colorHex = it })
                             }
                         }
@@ -473,10 +492,10 @@ fun NoteEditorScreen(
                             TextField(
                                 value = content,
                                 onValueChange = { content = it },
-                                placeholder = { Text("Notunuzu yazın...", style = MaterialTheme.typography.bodyLarge.copy(fontSize = fontSize.sp, fontFamily = noteFontFamily)) },
+                                placeholder = { Text("Notunuzu yazın...", style = MaterialTheme.typography.bodyLarge.copy(fontSize = currentNoteFontSize.sp, fontFamily = noteFontFamily)) },
                                 modifier = Modifier.fillMaxWidth().padding(16.dp),
                                 colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent),
-                                textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = fontSize.sp, lineHeight = (fontSize * 1.5).sp, fontFamily = noteFontFamily)
+                                textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = currentNoteFontSize.sp, lineHeight = (currentNoteFontSize * 1.5).sp, fontFamily = noteFontFamily)
                             )
                         }
                         Spacer(modifier = Modifier.height(200.dp)) // Extra space for keyboard/scrolling
@@ -495,7 +514,7 @@ fun NoteEditorScreen(
                             }
                         }
                     } else {
-                        Text(content, style = MaterialTheme.typography.bodyLarge.copy(fontSize = fontSize.sp, fontFamily = noteFontFamily))
+                        Text(content, style = MaterialTheme.typography.bodyLarge.copy(fontSize = currentNoteFontSize.sp, fontFamily = noteFontFamily))
                     }
                     imageUris.forEach { uri ->
                         AsyncImage(model = uri, contentDescription = null, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).clip(RoundedCornerShape(8.dp)), contentScale = ContentScale.FillWidth)

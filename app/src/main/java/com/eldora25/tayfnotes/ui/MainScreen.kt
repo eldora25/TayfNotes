@@ -227,8 +227,9 @@ fun MainScreen(
                                             note = note,
                                             onClick = { onNoteClick(note) },
                                             onTitleClick = { onEditNote(note) },
+                                            isSelected = note.id == selectedNoteId,
                                             elevation = elevation,
-                                            modifier = if (note.id == selectedNoteId) Modifier.background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(20.dp)) else Modifier
+                                            modifier = Modifier.fillMaxWidth()
                                         )
                                     }
                                 }

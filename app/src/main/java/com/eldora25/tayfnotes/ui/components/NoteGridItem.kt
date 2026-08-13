@@ -32,9 +32,9 @@ fun NoteGridItem(
     onClick: () -> Unit,
     onTitleClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
-    elevation: androidx.compose.ui.unit.Dp = 0.dp
+    isSelected: Boolean = false, // Madde 3: Selection Indicator
+    elevation: androidx.compose.ui.unit.Dp = 2.dp
 ) {
-    // ...
     val customColor = parseNoteColor(note.colorHex)
     val baseSurface = MaterialTheme.colorScheme.surfaceVariant
     val backgroundColor = if (customColor != Color.Unspecified) {
@@ -44,6 +44,15 @@ fun NoteGridItem(
     }
     val contentColor = MaterialTheme.colorScheme.onSurface
     val accentColor = if (customColor != Color.Unspecified) customColor else MaterialTheme.colorScheme.primary
+    
+    // Madde 3: Enhanced Selection Visuals
+    val selectionBorder = if (isSelected) {
+        androidx.compose.foundation.BorderStroke(2.5.dp, MaterialTheme.colorScheme.primary)
+    } else {
+        androidx.compose.foundation.BorderStroke(1.dp, accentColor.copy(alpha = 0.2f))
+    }
+    
+    val targetElevation = if (isSelected) 12.dp else elevation
 
     Card(
         modifier = modifier
@@ -51,8 +60,8 @@ fun NoteGridItem(
             .clickable { onClick() },
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = backgroundColor),
-        border = androidx.compose.foundation.BorderStroke(1.dp, accentColor.copy(alpha = 0.2f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = elevation)
+        border = selectionBorder,
+        elevation = CardDefaults.cardElevation(defaultElevation = targetElevation)
     ) {
         Row(modifier = Modifier.height(IntrinsicSize.Min)) {
             Box(
