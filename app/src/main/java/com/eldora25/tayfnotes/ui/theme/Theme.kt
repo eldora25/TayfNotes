@@ -65,16 +65,18 @@ private fun getDarkColorScheme(theme: TayfTheme): ColorScheme {
     return darkColorScheme(
         primary = primary,
         onPrimary = Color.Black,
-        primaryContainer = primary.copy(alpha = 0.3f),
+        primaryContainer = primary.copy(alpha = 0.35f),
         onPrimaryContainer = Color.White,
-        secondary = primary.copy(alpha = 0.7f),
+        secondary = primary.copy(alpha = 0.8f),
         onSecondary = Color.Black,
-        background = Color(0xFF0A0A0A),
+        tertiary = Color(0xFFFFD700), // Gold as tertiary for default visibility
+        onTertiary = Color.Black,
+        background = Color(0xFF0F0F0F), // Slightly lighter than absolute black
         onBackground = Color.White,
-        surface = Color(0xFF121212),
+        surface = Color(0xFF161616),
         onSurface = Color.White,
-        surfaceVariant = Color(0xFF1E1E1E),
-        onSurfaceVariant = Color(0xFFB0B0B0),
+        surfaceVariant = Color(0xFF222222), // More contrast for surfaces
+        onSurfaceVariant = Color(0xFFD1D1D1),
         outline = primary.copy(alpha = 0.5f)
     )
 }
@@ -88,11 +90,13 @@ private fun getLightColorScheme(theme: TayfTheme): ColorScheme {
         onPrimaryContainer = primary,
         secondary = primary.copy(alpha = 0.6f),
         onSecondary = Color.White,
+        tertiary = Color(0xFFDAA520), // GoldenRod for light mode
+        onTertiary = Color.White,
         background = Color.White,
         onBackground = Color(0xFF0A0A0A),
         surface = Color(0xFFF8F9FA),
         onSurface = Color(0xFF0A0A0A),
-        surfaceVariant = Color(0xFFE9ECEF),
+        surfaceVariant = Color(0xFFF0F2F5),
         onSurfaceVariant = Color(0xFF495057),
         outline = primary.copy(alpha = 0.3f)
     )

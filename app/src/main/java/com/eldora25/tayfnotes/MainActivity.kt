@@ -100,8 +100,34 @@ class MainActivity : FragmentActivity() {
             val isDarkModePref by noteViewModel.isDarkMode.collectAsState()
             val isBiometricEnabled by noteViewModel.isBiometricEnabled.collectAsState()
             
+            // Initialization fix: Ensure we don't flash unauthenticated state if biometric is likely enabled
             var isAuthenticated by rememberSaveable(isBiometricEnabled) { 
                 mutableStateOf(!isBiometricEnabled) 
+            }
+
+            // Guaranteed initial theme
+            val darkTheme = isDarkModePref ?: isSystemInDarkTheme()
+
+            TayfNotesTheme(
+                darkTheme = darkTheme,
+                currentTheme = currentTheme
+            ) {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    if (isAuthenticated) {
+                        MainAppContent()
+                    } else {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(
+                                "TayfNotes Kilitli",
+                                style = MaterialTheme.typography.headlineMedium,
+                                color = MaterialTheme.colorScheme.onBackground
+                            )
+                        }
+                    }
+                }
             }
 
             LaunchedEffect(isBiometricEnabled) {
@@ -109,18 +135,10 @@ class MainActivity : FragmentActivity() {
                     BiometricHelper.authenticate(
                         activity = this@MainActivity,
                         onSuccess = { isAuthenticated = true },
-                        onError = { error -> Toast.makeText(this@MainActivity, "Güvenlik: $error", Toast.LENGTH_SHORT).show() }
+                        onError = { error -> 
+                            Toast.makeText(this@MainActivity, "Güvenlik: $error", Toast.LENGTH_SHORT).show()
+                        }
                     )
-                }
-            }
-
-            TayfNotesTheme(
-                darkTheme = isDarkModePref ?: isSystemInDarkTheme(),
-                currentTheme = currentTheme
-            ) {
-                if (isAuthenticated) MainAppContent()
-                else Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                    Box(contentAlignment = Alignment.Center) { Text("TayfNotes Kilitli", style = MaterialTheme.typography.headlineMedium) }
                 }
             }
         }

@@ -16,8 +16,8 @@ val SpectrumBlue = Color(0xFF40C4FF)
 val SpectrumPurple = Color(0xFFB388FF)
 
 // 10 Theme Palettes
-// 1. Midnight Blue (Default)
-val MidnightPrimary = Color(0xFF1A1C1E)
+// 1. Midnight Blue (Default) - Accent updated for visibility
+val MidnightPrimary = Color(0xFF00E5FF) // Electric Cyan for high contrast
 // 2. Sunset Orange
 val SunsetPrimary = Color(0xFFFF5722)
 // 3. Forest Green

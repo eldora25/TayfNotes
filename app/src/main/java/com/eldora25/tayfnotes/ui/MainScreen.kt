@@ -92,16 +92,17 @@ fun MainScreen(
         floatingActionButton = {
             Surface(
                 shape = RoundedCornerShape(32.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f),
-                tonalElevation = 8.dp,
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.98f), // Increased opacity
+                tonalElevation = 12.dp, // Increased elevation
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.15f)),
                 modifier = Modifier
                     .padding(bottom = 16.dp)
                     .wrapContentWidth()
+                    .zIndex(10f) // Guaranteed to be on top
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     FloatingActionPill(Icons.Default.Add, "Not", MaterialTheme.colorScheme.primary, onAddNote)
