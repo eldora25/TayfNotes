@@ -139,7 +139,12 @@ fun DetailPane(
                     }
                 }
             } else if (note.type == NoteType.WEB_CLIP) {
-                val isHtml = note.content.contains("<html>") || (note.content.contains("<") && note.content.contains(">"))
+                // If content contains HTML tags, render with WebView. 
+                // Article/Full Page clips are wrapped in <html> tags by saveClip.
+                val isHtml = note.content.trim().startsWith("<!DOCTYPE", ignoreCase = true) || 
+                             note.content.contains("<html>", ignoreCase = true) ||
+                             (note.content.contains("<") && note.content.contains(">"))
+
                 if (isHtml) {
                     Surface(
                         modifier = Modifier.fillMaxWidth().height(600.dp),
@@ -151,7 +156,10 @@ fun DetailPane(
                                 WebView(context).apply {
                                     settings.javaScriptEnabled = true
                                     settings.domStorageEnabled = true
+                                    settings.loadWithOverviewMode = true
+                                    settings.useWideViewPort = true
                                     webViewClient = WebViewClient()
+                                    // Use loadDataWithBaseURL to render images and relative links correctly
                                     loadDataWithBaseURL(note.sourceUrl, note.content, "text/html", "UTF-8", null)
                                 }
                             },
@@ -159,6 +167,7 @@ fun DetailPane(
                         )
                     }
                 } else {
+                    // "Basit" mode (Simplified) is plain text, render with Text()
                     Text(
                         text = note.content,
                         style = MaterialTheme.typography.bodyLarge.copy(

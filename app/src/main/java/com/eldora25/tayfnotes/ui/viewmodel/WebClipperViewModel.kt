@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
+import org.jsoup.safety.Safelist
 import java.util.UUID
 
 class WebClipperViewModel(
@@ -34,7 +35,7 @@ class WebClipperViewModel(
     }
 
     /**
-     * Unescapes JSON-encoded HTML string from evaluateJavascript
+     * Unescapes JSON-encoded HTML string from evaluateJavascript (if still used as fallback)
      */
     fun unescapeHtml(html: String): String {
         if (html == "null") return ""
@@ -54,25 +55,32 @@ class WebClipperViewModel(
     }
 
     /**
-     * Parses HTML content locally using Jsoup.
+     * Parses and cleans HTML content locally using Jsoup Safelist.
      */
-    suspend fun parseHtmlContent(html: String, url: String): ScrapedContent = withContext(Dispatchers.IO) {
+    suspend fun parseAndCleanHtml(html: String, url: String): ScrapedContent = withContext(Dispatchers.IO) {
         try {
             val doc = Jsoup.parse(html, url)
             val title = doc.title()
             
-            val articleElement = doc.select("article").firstOrNull() 
+            // Find main content area
+            val contentElement = doc.select("article").firstOrNull() 
                 ?: doc.select("main").firstOrNull()
                 ?: doc.select(".post-content, .entry-content, .article-body, #content, .content").firstOrNull()
                 ?: doc.body()
 
-            val cleanElement = articleElement?.clone()
-            cleanElement?.select("script, style, nav, footer, header, aside, .ads, .sidebar, .menu, .nav, .share, .cite")?.remove()
+            // Remove clutter before deep clean
+            contentElement?.select("script, style, nav, footer, header, aside, .ads, .sidebar, .menu, .nav, .share, .cite, button, form")?.remove()
+
+            // Deep clean to allow only safe tags and attributes, stripping inline styles that cause overlapping
+            val cleanedHtml = Jsoup.clean(contentElement?.outerHtml() ?: "", url, Safelist.relaxed()
+                .addAttributes("img", "src", "alt", "width", "height")
+                .addTags("h1", "h2", "h3", "h4", "h5", "h6", "p", "br", "ul", "ol", "li", "b", "i", "strong", "em", "img", "blockquote", "code", "pre")
+            )
 
             ScrapedContent(
                 title = title.ifEmpty { url },
-                content = cleanElement?.outerHtml() ?: "",
-                plainText = cleanElement?.text() ?: "",
+                content = cleanedHtml,
+                plainText = contentElement?.text() ?: "",
                 url = url
             )
         } catch (e: Exception) {
@@ -82,6 +90,7 @@ class WebClipperViewModel(
 
     fun wrapInReaderTheme(title: String, content: String): String {
         return """
+            <!DOCTYPE html>
             <html>
             <head>
                 <meta charset="UTF-8">
@@ -89,8 +98,9 @@ class WebClipperViewModel(
                 <style>
                     body { font-family: sans-serif; line-height: 1.6; padding: 16px; word-wrap: break-word; color: #333; background-color: #fcfcfc; }
                     h1 { border-bottom: 2px solid #eee; padding-bottom: 10px; color: #111; font-size: 1.4em; }
-                    img { max-width: 100%; height: auto; border-radius: 8px; margin: 10px 0; }
-                    pre { background: #f4f4f4; padding: 15px; overflow-x: auto; border-radius: 5px; font-size: 0.9em; }
+                    img { max-width: 100%; height: auto; border-radius: 8px; margin: 10px 0; display: block; }
+                    pre { background: #f4f4f4; padding: 15px; overflow-x: auto; border-radius: 5px; font-size: 0.9em; white-space: pre-wrap; }
+                    blockquote { border-left: 5px solid #ddd; padding-left: 15px; color: #666; font-style: italic; margin: 20px 0; }
                     * { max-width: 100%; box-sizing: border-box; }
                 </style>
             </head>
@@ -111,10 +121,8 @@ class WebClipperViewModel(
         description: String,
         type: NoteType = NoteType.WEB_CLIP
     ) {
-        // If content looks like HTML, wrap it. Otherwise keep it as plain text.
         val isHtml = content.contains("<") && content.contains(">")
         val finalBody = if (isHtml) wrapInReaderTheme(title, content) else content
-
         val finalContent = if (description.isNotEmpty()) "$description\n\n$finalBody" else finalBody
         
         val note = Note(

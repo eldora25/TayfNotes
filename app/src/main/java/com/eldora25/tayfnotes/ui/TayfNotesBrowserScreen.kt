@@ -6,7 +6,7 @@ import android.content.res.Configuration
 import android.os.Bundle
 import android.util.AttributeSet
 import android.view.MotionEvent
-import android.view.View
+import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.compose.BackHandler
@@ -45,6 +45,13 @@ import com.eldora25.tayfnotes.ui.viewmodel.WebClipperViewModel
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
+class TayfJsInterface(private val onHtml: (String) -> Unit) {
+    @JavascriptInterface
+    fun onHtmlReceived(html: String) {
+        onHtml(html)
+    }
+}
+
 @SuppressLint("SetJavaScriptEnabled", "ClickableViewAccessibility")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,21 +64,21 @@ fun TayfNotesBrowserScreen(
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     
-    BackHandler {
-        onBack()
-    }
+    BackHandler { onBack() }
 
     var currentUrl by rememberSaveable { mutableStateOf("https://www.google.com") }
     var urlInput by rememberSaveable { mutableStateOf(currentUrl) }
     var isLoading by remember { mutableStateOf(false) }
     var showClipper by rememberSaveable { mutableStateOf(false) }
     var readerModeHtml by rememberSaveable { mutableStateOf<String?>(null) }
-    var currentHtmlContent by remember { mutableStateOf<String?>(null) }
+    var fullHtmlFromJs by remember { mutableStateOf<String?>(null) }
 
     val webViewState = remember { Bundle() }
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
     val sheetState = rememberModalBottomSheetState()
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+
+    val jsInterface = remember { TayfJsInterface { fullHtmlFromJs = it } }
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -86,7 +93,6 @@ fun TayfNotesBrowserScreen(
                     shadowElevation = 2.dp
                 ) {
                     Column(modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp)) {
-                        // Header
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically,
@@ -107,20 +113,15 @@ fun TayfNotesBrowserScreen(
                             }
                         }
 
-                        // Controls
                         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-                            IconButton(onClick = { readerModeHtml = null; urlInput = "https://www.google.com"; currentUrl = urlInput }) { 
-                                Icon(Icons.Default.Home, null) 
-                            }
+                            IconButton(onClick = { readerModeHtml = null; urlInput = "https://www.google.com"; currentUrl = urlInput }) { Icon(Icons.Default.Home, null) }
                             IconButton(onClick = { if (readerModeHtml != null) readerModeHtml = null else webViewRef?.goBack() }, enabled = readerModeHtml != null || webViewRef?.canGoBack() == true) {
                                 Icon(Icons.AutoMirrored.Filled.ArrowBack, null, modifier = Modifier.size(20.dp))
                             }
                             IconButton(onClick = { webViewRef?.goForward() }, enabled = webViewRef?.canGoForward() == true) {
                                 Icon(Icons.AutoMirrored.Filled.ArrowForward, null, modifier = Modifier.size(20.dp))
                             }
-                            IconButton(onClick = { if (readerModeHtml != null) readerModeHtml = null; webViewRef?.reload() }) { 
-                                Icon(Icons.Default.Refresh, null) 
-                            }
+                            IconButton(onClick = { if (readerModeHtml != null) readerModeHtml = null; webViewRef?.reload() }) { Icon(Icons.Default.Refresh, null) }
                             
                             OutlinedTextField(
                                 value = urlInput,
@@ -146,21 +147,20 @@ fun TayfNotesBrowserScreen(
                             )
                         }
 
-                        // Premium Actions
                         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
                             PremiumButton("Tam Sayfa", Icons.Default.Fullscreen, isSelected = readerModeHtml == null) {
                                 readerModeHtml = null
                             }
                             PremiumButton("Makale", Icons.AutoMirrored.Filled.Article, isSelected = readerModeHtml != null) {
-                                webViewRef?.evaluateJavascript("(function() { return document.documentElement.outerHTML; })();") { html ->
-                                    scope.launch {
-                                        isLoading = true
-                                        val decoded = viewModel.unescapeHtml(html)
-                                        currentHtmlContent = decoded
-                                        val result = viewModel.parseHtmlContent(decoded, currentUrl)
+                                webViewRef?.evaluateJavascript("TayfClipper.onHtmlReceived(document.documentElement.outerHTML);", null)
+                                scope.launch {
+                                    isLoading = true
+                                    kotlinx.coroutines.delay(400)
+                                    fullHtmlFromJs?.let { html ->
+                                        val result = viewModel.parseAndCleanHtml(html, currentUrl)
                                         readerModeHtml = viewModel.wrapInReaderTheme(result.title, result.content)
-                                        isLoading = false
                                     }
+                                    isLoading = false
                                 }
                             }
                             PremiumButton("Basitleştir", Icons.Default.TextFields) {
@@ -174,8 +174,9 @@ fun TayfNotesBrowserScreen(
                                 }
                             }
                             PremiumButton("Kırp (Clipper)", Icons.Default.ContentCut, isMain = true) {
-                                webViewRef?.evaluateJavascript("(function() { return document.documentElement.outerHTML; })();") { html ->
-                                    currentHtmlContent = viewModel.unescapeHtml(html)
+                                webViewRef?.evaluateJavascript("TayfClipper.onHtmlReceived(document.documentElement.outerHTML);", null)
+                                scope.launch {
+                                    kotlinx.coroutines.delay(300)
                                     showClipper = true
                                 }
                             }
@@ -197,6 +198,8 @@ fun TayfNotesBrowserScreen(
                         settings.builtInZoomControls = true
                         settings.displayZoomControls = false
                         
+                        addJavascriptInterface(jsInterface, "TayfClipper")
+
                         webViewClient = object : WebViewClient() {
                             override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
                                 if (readerModeHtml == null) isLoading = true
@@ -219,7 +222,6 @@ fun TayfNotesBrowserScreen(
                     webViewRef = view
                     val html = readerModeHtml
                     if (html != null) {
-                        // Use tag to track if we already loaded this specific HTML to prevent reload loops
                         if (view.tag != html) {
                             view.loadDataWithBaseURL(currentUrl, html, "text/html", "UTF-8", null)
                             view.tag = html
@@ -246,7 +248,7 @@ fun TayfNotesBrowserScreen(
                     url = currentUrl,
                     initialMode = "Article",
                     viewModel = viewModel,
-                    initialHtml = currentHtmlContent,
+                    initialHtml = fullHtmlFromJs,
                     onDismiss = { showClipper = false }
                 )
             }

@@ -47,10 +47,10 @@ fun WebClipperPanel(
     // Initial Scraping
     LaunchedEffect(url, selectedMode, initialHtml) {
         val result = if (initialHtml != null) {
-            viewModel.parseHtmlContent(initialHtml, url)
+            viewModel.parseAndCleanHtml(initialHtml, url)
         } else {
             // Fallback for standalone opening (intent share)
-            viewModel.parseHtmlContent("<html><body>$url</body></html>", url)
+            viewModel.parseAndCleanHtml("<html><body>$url</body></html>", url)
         }
         
         title = result.title
