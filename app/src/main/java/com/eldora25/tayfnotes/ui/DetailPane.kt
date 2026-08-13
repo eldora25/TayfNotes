@@ -139,21 +139,34 @@ fun DetailPane(
                     }
                 }
             } else if (note.type == NoteType.WEB_CLIP) {
-                Surface(
-                    modifier = Modifier.fillMaxWidth().height(600.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray.copy(0.5f))
-                ) {
-                    AndroidView(
-                        factory = { context ->
-                            WebView(context).apply {
-                                settings.javaScriptEnabled = true
-                                settings.domStorageEnabled = true
-                                webViewClient = WebViewClient()
-                                loadDataWithBaseURL(note.sourceUrl, note.content, "text/html", "UTF-8", null)
-                            }
-                        },
-                        modifier = Modifier.fillMaxSize()
+                val isHtml = note.content.contains("<html>") || (note.content.contains("<") && note.content.contains(">"))
+                if (isHtml) {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth().height(600.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray.copy(0.5f))
+                    ) {
+                        AndroidView(
+                            factory = { context ->
+                                WebView(context).apply {
+                                    settings.javaScriptEnabled = true
+                                    settings.domStorageEnabled = true
+                                    webViewClient = WebViewClient()
+                                    loadDataWithBaseURL(note.sourceUrl, note.content, "text/html", "UTF-8", null)
+                                }
+                            },
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                } else {
+                    Text(
+                        text = note.content,
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            fontSize = fontSize.sp,
+                            lineHeight = (fontSize * 1.5).sp,
+                            fontFamily = composeFontFamily
+                        ),
+                        color = MaterialTheme.colorScheme.onBackground
                     )
                 }
             } else {

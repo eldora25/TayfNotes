@@ -164,14 +164,11 @@ fun TayfNotesBrowserScreen(
                                 }
                             }
                             PremiumButton("Basitleştir", Icons.Default.TextFields) {
-                                webViewRef?.evaluateJavascript("(function() { return document.documentElement.outerHTML; })();") { html ->
+                                webViewRef?.evaluateJavascript("(function() { return document.body.innerText; })();") { text ->
                                     scope.launch {
                                         isLoading = true
-                                        val decoded = viewModel.unescapeHtml(html)
-                                        currentHtmlContent = decoded
-                                        val result = viewModel.parseHtmlContent(decoded, currentUrl)
-                                        val plainHtml = "<p>${result.plainText.replace("\n", "<br>")}</p>"
-                                        readerModeHtml = viewModel.wrapInReaderTheme(result.title, plainHtml)
+                                        val plainText = viewModel.unescapeHtml(text).trim()
+                                        readerModeHtml = viewModel.wrapInReaderTheme("Basitleştirilmiş İçerik", "<p>${plainText.replace("\n", "<br>")}</p>")
                                         isLoading = false
                                     }
                                 }

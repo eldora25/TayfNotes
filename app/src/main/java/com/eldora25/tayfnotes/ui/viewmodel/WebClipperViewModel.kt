@@ -67,7 +67,7 @@ class WebClipperViewModel(
                 ?: doc.body()
 
             val cleanElement = articleElement?.clone()
-            cleanElement?.select("script, style, nav, footer, header, aside, .ads, .sidebar, .menu, .nav")?.remove()
+            cleanElement?.select("script, style, nav, footer, header, aside, .ads, .sidebar, .menu, .nav, .share, .cite")?.remove()
 
             ScrapedContent(
                 title = title.ifEmpty { url },
@@ -82,18 +82,16 @@ class WebClipperViewModel(
 
     fun wrapInReaderTheme(title: String, content: String): String {
         return """
-            <!DOCTYPE html>
             <html>
             <head>
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <style>
-                    body { font-family: -apple-system, system-ui, sans-serif; line-height: 1.6; padding: 20px; color: #333; background-color: #fcfcfc; }
-                    h1 { border-bottom: 2px solid #eee; padding-bottom: 10px; color: #111; font-size: 1.5em; }
+                    body { font-family: sans-serif; line-height: 1.6; padding: 16px; word-wrap: break-word; color: #333; background-color: #fcfcfc; }
+                    h1 { border-bottom: 2px solid #eee; padding-bottom: 10px; color: #111; font-size: 1.4em; }
                     img { max-width: 100%; height: auto; border-radius: 8px; margin: 10px 0; }
                     pre { background: #f4f4f4; padding: 15px; overflow-x: auto; border-radius: 5px; font-size: 0.9em; }
-                    blockquote { border-left: 5px solid #ddd; padding-left: 15px; color: #666; font-style: italic; margin: 20px 0; }
-                    a { color: #007AFF; text-decoration: none; }
+                    * { max-width: 100%; box-sizing: border-box; }
                 </style>
             </head>
             <body>
@@ -113,12 +111,11 @@ class WebClipperViewModel(
         description: String,
         type: NoteType = NoteType.WEB_CLIP
     ) {
-        // Wrap content in theme if it's HTML to ensure good display later
-        val finalHtml = if (content.contains("<") && content.contains(">")) {
-            wrapInReaderTheme(title, content)
-        } else content
+        // If content looks like HTML, wrap it. Otherwise keep it as plain text.
+        val isHtml = content.contains("<") && content.contains(">")
+        val finalBody = if (isHtml) wrapInReaderTheme(title, content) else content
 
-        val finalContent = if (description.isNotEmpty()) "$description\n\n$finalHtml" else finalHtml
+        val finalContent = if (description.isNotEmpty()) "$description\n\n$finalBody" else finalBody
         
         val note = Note(
             id = UUID.randomUUID().toString(),

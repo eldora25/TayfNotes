@@ -144,8 +144,13 @@ fun NoteGridItem(
                         }
                     }
                 } else {
+                    val displayContent = if (note.type == NoteType.WEB_CLIP) {
+                        android.text.Html.fromHtml(note.content, android.text.Html.FROM_HTML_MODE_COMPACT).toString().trim()
+                    } else {
+                        note.content
+                    }
                     Text(
-                        text = note.content,
+                        text = displayContent,
                         style = MaterialTheme.typography.bodyMedium,
                         color = contentColor.copy(alpha = 0.75f),
                         lineHeight = 20.sp,
