@@ -67,15 +67,17 @@ fun DrawingCanvas(
     var textInput by remember { mutableStateOf("") }
     var showTextInput by remember { mutableStateOf(false) }
     var textObjectToEdit by remember { mutableStateOf<DrawText?>(null) }
-    var showSizeSettings by remember { mutableStateOf(false) }
+    var showSettings by remember { mutableStateOf(false) }
+    var showFullColorPicker by remember { mutableStateOf(false) }
 
     val currentColor = toolColors[currentTool] ?: Color.Black
 
     val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let {
             val id = UUID.randomUUID().toString()
-            onDataChanged(Json.encodeToString(objects + DrawImage(id, imageUri = it.toString(), width = 500f, height = 500f)))
-            objects = objects + DrawImage(id, imageUri = it.toString(), width = 500f, height = 500f)
+            val newImage = DrawImage(id, imageUri = it.toString(), width = 500f, height = 500f)
+            objects = objects + newImage
+            onDataChanged(Json.encodeToString(objects))
         }
     }
 
@@ -121,15 +123,38 @@ fun DrawingCanvas(
         )
 
         // UI Controls (Toolbar & Popups)
-        Column(modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 32.dp)) {
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            if (showSettings) {
+                CanvasSettingsPopup(
+                    activeColor = currentColor,
+                    onColorSelected = { color ->
+                        toolColors = toolColors.toMutableMap().apply { put(currentTool, color) }
+                        if (color == Color.Transparent) showFullColorPicker = true
+                    },
+                    activeStrokeWidth = currentStrokeWidth,
+                    onStrokeWidthChanged = { currentStrokeWidth = it }
+                )
+            }
+
             Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { 
-                    if (undoStack.isNotEmpty()) {
-                        redoStack = redoStack + listOf(objects)
-                        objects = undoStack.last()
-                        undoStack = undoStack.dropLast(1)
-                    }
-                }) { Icon(Icons.AutoMirrored.Filled.Undo, null) }
+                IconButton(
+                    onClick = { 
+                        if (undoStack.isNotEmpty()) {
+                            redoStack = redoStack + listOf(objects)
+                            objects = undoStack.last()
+                            undoStack = undoStack.dropLast(1)
+                            onDataChanged(Json.encodeToString(objects))
+                        }
+                    },
+                    modifier = Modifier.background(MaterialTheme.colorScheme.surface.copy(alpha = 0.8f), CircleShape)
+                ) { Icon(Icons.AutoMirrored.Filled.Undo, null) }
+
+                Spacer(modifier = Modifier.width(8.dp))
 
                 FloatingToolBar(
                     currentTool = currentTool,
@@ -139,14 +164,47 @@ fun DrawingCanvas(
                     }
                 )
 
-                IconButton(onClick = {
-                    if (redoStack.isNotEmpty()) {
-                        undoStack = undoStack + listOf(objects)
-                        objects = redoStack.last()
-                        redoStack = redoStack.dropLast(1)
-                    }
-                }) { Icon(Icons.AutoMirrored.Filled.Redo, null) }
+                Spacer(modifier = Modifier.width(8.dp))
+
+                IconButton(
+                    onClick = { showSettings = !showSettings },
+                    modifier = Modifier.background(
+                        if (showSettings) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
+                        CircleShape
+                    )
+                ) { 
+                    Icon(
+                        Icons.Default.Settings, 
+                        contentDescription = "Ayarlar",
+                        tint = if (showSettings) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+                    ) 
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                IconButton(
+                    onClick = {
+                        if (redoStack.isNotEmpty()) {
+                            undoStack = undoStack + listOf(objects)
+                            objects = redoStack.last()
+                            redoStack = redoStack.dropLast(1)
+                            onDataChanged(Json.encodeToString(objects))
+                        }
+                    },
+                    modifier = Modifier.background(MaterialTheme.colorScheme.surface.copy(alpha = 0.8f), CircleShape)
+                ) { Icon(Icons.AutoMirrored.Filled.Redo, null) }
             }
+        }
+
+        if (showFullColorPicker) {
+            PremiumColorPicker(
+                selectedColor = currentColor,
+                onColorSelected = { color ->
+                    toolColors = toolColors.toMutableMap().apply { put(currentTool, color) }
+                    showFullColorPicker = false
+                },
+                onDismiss = { showFullColorPicker = false }
+            )
         }
         
         // Add PDF Import Button

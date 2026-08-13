@@ -86,38 +86,37 @@ fun AdvancedCanvasBoard(
 
                 // 2. DRAWING & SMART STYLUS
                 .pointerInput(currentTool, currentColor, currentStrokeWidth, globalOffset, globalScale) {
-                    detectDragGestures(
-                        onDragStart = { offset ->
-                            val adjusted = (offset - globalOffset) / globalScale
-                            currentPathPoints = listOf(adjusted)
-                            onSelectionChanged(emptySet())
-                        },
-                        onDrag = { change, _ ->
-                            val isStylus = change.type == PointerType.Stylus
-                            
-                            // Madde 1: Stylus only drawing if preferred
-                            if (currentTool in listOf(ToolType.PEN, ToolType.PENCIL, ToolType.MARKER, ToolType.BRUSH, ToolType.HIGHLIGHTER, ToolType.PIXEL_ERASER)) {
+                    if (currentTool in listOf(ToolType.PEN, ToolType.PENCIL, ToolType.MARKER, ToolType.BRUSH, ToolType.HIGHLIGHTER, ToolType.PIXEL_ERASER)) {
+                        detectDragGestures(
+                            onDragStart = { offset ->
+                                val adjusted = (offset - globalOffset) / globalScale
+                                currentPathPoints = listOf(adjusted)
+                                onSelectionChanged(emptySet())
+                            },
+                            onDrag = { change, _ ->
+                                val isStylus = change.type == PointerType.Stylus
+                                // Madde 1: Stylus only drawing if preferred (optional feature)
                                 if (isStylus || currentTool != ToolType.PAN) {
                                     currentPathPoints = currentPathPoints + ((change.position - globalOffset) / globalScale)
                                 }
+                            },
+                            onDragEnd = {
+                                if (currentPathPoints.isNotEmpty()) {
+                                    val colorHex = String.format("#%06X", 0xFFFFFF and currentColor.toArgb())
+                                    val newPath = DrawPath(
+                                        id = UUID.randomUUID().toString(),
+                                        colorHex = colorHex,
+                                        strokeWidth = currentStrokeWidth,
+                                        toolType = currentTool,
+                                        alpha = if (currentTool == ToolType.HIGHLIGHTER) 0.3f else 1f,
+                                        points = currentPathPoints.map { Point(it.x, it.y) }
+                                    )
+                                    onObjectAdded(newPath)
+                                    currentPathPoints = emptyList()
+                                }
                             }
-                        },
-                        onDragEnd = {
-                            if (currentPathPoints.isNotEmpty() && currentTool in listOf(ToolType.PEN, ToolType.PENCIL, ToolType.MARKER, ToolType.BRUSH, ToolType.HIGHLIGHTER, ToolType.PIXEL_ERASER)) {
-                                val colorHex = String.format("#%06X", 0xFFFFFF and currentColor.toArgb())
-                                val newPath = DrawPath(
-                                    id = UUID.randomUUID().toString(),
-                                    colorHex = colorHex,
-                                    strokeWidth = currentStrokeWidth,
-                                    toolType = currentTool,
-                                    alpha = if (currentTool == ToolType.HIGHLIGHTER) 0.3f else 1f,
-                                    points = currentPathPoints.map { Point(it.x, it.y) }
-                                )
-                                onObjectAdded(newPath)
-                                currentPathPoints = emptyList()
-                            }
-                        }
-                    )
+                        )
+                    }
                 }
 
                 // 3. SELECTION & MANIPULATION
