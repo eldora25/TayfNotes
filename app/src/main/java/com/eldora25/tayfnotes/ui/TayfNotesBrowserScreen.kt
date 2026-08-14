@@ -48,8 +48,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
-// Class must be outside the composable and use @JavascriptInterface
-class HTMLOUT(private val onHtml: (String) -> Unit, private val onBookmark: (String) -> Unit) {
+// Class defined outside to ensure @JavascriptInterface detection
+class HtmlOutInterface(private val onHtml: (String) -> Unit, private val onBookmark: (String) -> Unit) {
     @JavascriptInterface
     fun processHTML(html: String) {
         onHtml(html)
@@ -92,8 +92,9 @@ fun TayfNotesBrowserScreen(
     val sheetState = rememberModalBottomSheetState()
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
 
+    // JS Bridge
     val jsInterface = remember { 
-        HTMLOUT(
+        HtmlOutInterface(
             onHtml = { capturedData = it },
             onBookmark = { bookmarkJson = it }
         ) 
@@ -180,22 +181,26 @@ fun TayfNotesBrowserScreen(
                             }
                             PremiumButton("Makale", Icons.AutoMirrored.Filled.Article, isSelected = activeMode == "Article") {
                                 activeMode = "Article"
-                                webViewRef?.loadUrl("javascript:window.HTMLOUT.processHTML('<html>'+document.documentElement.innerHTML+'</html>');")
+                                webViewRef?.evaluateJavascript("(function() { window.HtmlViewer.processHTML(document.documentElement.outerHTML); })();", null)
                                 scope.launch {
                                     isLoading = true
-                                    delay(600)
+                                    delay(700) // Wait for bridge transfer
                                     capturedData?.let { html ->
-                                        val result = viewModel.parseAndCleanHtml(html, currentUrl)
-                                        readerModeHtml = viewModel.wrapInReaderTheme(result.title, result.content)
+                                        readerModeHtml = viewModel.getCleanedHtmlForPreview(html, currentUrl)
                                     }
                                     isLoading = false
                                 }
                             }
                             PremiumButton("Basitleştir", Icons.Default.TextFields, isSelected = activeMode == "Simplified") {
                                 activeMode = "Simplified"
-                                webViewRef?.evaluateJavascript("(function() { return document.body.innerText; })();") { text ->
-                                    val plain = viewModel.unescapeHtml(text)
-                                    readerModeHtml = viewModel.wrapInReaderTheme("Okuma Modu", "<p>${plain.replace("\n", "<br>")}</p>")
+                                webViewRef?.evaluateJavascript("(function() { window.HtmlViewer.processHTML(document.body.innerText || document.body.textContent); })();", null)
+                                scope.launch {
+                                    isLoading = true
+                                    delay(500)
+                                    capturedData?.let { text ->
+                                        readerModeHtml = viewModel.wrapInReaderTheme("Okuma Modu", "<p>${text.replace("\n", "<br>")}</p>")
+                                    }
+                                    isLoading = false
                                 }
                             }
                             PremiumButton("Yer İzi", Icons.Default.Bookmark, isSelected = activeMode == "Bookmark") {
@@ -206,27 +211,17 @@ fun TayfNotesBrowserScreen(
                             PremiumButton("Kırp (Clipper)", Icons.Default.ContentCut, isMain = true) {
                                 when (activeMode) {
                                     "Bookmark" -> {
-                                        val js = """
-                                            (function() {
-                                                var data = {
-                                                    title: document.title,
-                                                    description: document.querySelector('meta[name="description"]')?.content || "",
-                                                    imageUrl: document.querySelector('meta[property="og:image"]')?.content || "",
-                                                    url: window.location.href
-                                                };
-                                                window.HTMLOUT.processBookmark(JSON.stringify(data));
-                                            })();
-                                        """.trimIndent()
-                                        webViewRef?.loadUrl("javascript:$js")
+                                        val js = "(function() { var data = { title: document.title, description: document.querySelector('meta[name=\"description\"]')?.content || \"\", imageUrl: document.querySelector('meta[property=\"og:image\"]')?.content || \"\", url: window.location.href }; window.HtmlViewer.processBookmark(JSON.stringify(data)); })();"
+                                        webViewRef?.evaluateJavascript(js, null)
                                     }
                                     "Simplified" -> {
-                                        webViewRef?.evaluateJavascript("(function() { return document.body.innerText; })();") { capturedData = viewModel.unescapeHtml(it) }
+                                        webViewRef?.evaluateJavascript("(function() { window.HtmlViewer.processHTML(document.body.innerText || document.body.textContent); })();", null)
                                     }
                                     else -> {
-                                        webViewRef?.loadUrl("javascript:window.HTMLOUT.processHTML('<html>'+document.documentElement.innerHTML+'</html>');")
+                                        webViewRef?.evaluateJavascript("(function() { window.HtmlViewer.processHTML(document.documentElement.outerHTML); })();", null)
                                     }
                                 }
-                                scope.launch { delay(700); showClipper = true }
+                                scope.launch { delay(800); showClipper = true }
                             }
                         }
                         if (isLoading) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
@@ -244,7 +239,7 @@ fun TayfNotesBrowserScreen(
                         settings.loadWithOverviewMode = true
                         settings.useWideViewPort = true
                         
-                        addJavascriptInterface(jsInterface, "HTMLOUT")
+                        addJavascriptInterface(jsInterface, "HtmlViewer")
 
                         webViewClient = object : WebViewClient() {
                             override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {

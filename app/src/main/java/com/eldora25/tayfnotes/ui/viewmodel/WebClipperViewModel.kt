@@ -44,49 +44,9 @@ class WebClipperViewModel(
         }
     }
 
-    fun unescapeHtml(html: String): String {
-        if (html == "null") return ""
-        return html.removePrefix("\"").removeSuffix("\"")
-            .replace("\\u003C", "<")
-            .replace("\\u003E", ">")
-            .replace("\\\"", "\"")
-            .replace("\\n", "\n")
-            .replace("\\r", "\r")
-            .replace("\\t", "\t")
-            .replace("\\\\", "\\")
-            .replace("&lt;", "<")
-            .replace("&gt;", ">")
-            .replace("&amp;", "&")
-    }
-
     /**
-     * Helper to parse and clean HTML for LIVE PREVIEW (Reader Mode)
-     */
-    suspend fun parseAndCleanHtml(html: String, url: String): ScrapedContent = withContext(Dispatchers.IO) {
-        try {
-            val doc = Jsoup.parse(html, url)
-            val contentElement = doc.select("article, main, .post-content, .entry-content, .article-body, #content").firstOrNull() ?: doc.body()
-            
-            contentElement.select("script, style, nav, footer, header, aside, .ads, .sidebar, .menu, .nav, .share, .cite, button, form").remove()
-
-            val cleanedHtml = Jsoup.clean(contentElement.outerHtml(), url, Safelist.relaxed()
-                .addAttributes("img", "src", "alt", "width", "height")
-                .addTags("h1", "h2", "h3", "h4", "h5", "h6", "p", "br", "ul", "ol", "li", "b", "i", "strong", "em", "img", "blockquote", "code", "pre")
-            )
-
-            ScrapedContent(
-                title = doc.title().ifEmpty { "Web İçeriği" },
-                content = cleanedHtml,
-                plainText = contentElement.text(),
-                url = url
-            )
-        } catch (e: Exception) {
-            ScrapedContent(title = "Hata", content = "İçerik işlenemedi", url = url)
-        }
-    }
-
-    /**
-     * Internal processor for different clip modes to ensure NO overlap in logic.
+     * Internal processor for different clip modes.
+     * Ensures large data from Bridge is handled and cleaned correctly.
      */
     suspend fun processAndSave(
         mode: String,
@@ -106,13 +66,21 @@ class WebClipperViewModel(
                 Pair(bookmarkJson ?: "", NoteType.WEB_CLIP)
             }
             "FullPage" -> {
+                // Return full HTML as received from Bridge
                 Pair(rawData, NoteType.WEB_CLIP)
             }
             "Article" -> {
-                val scraped = parseAndCleanHtml(rawData, url)
-                Pair(wrapInReaderTheme(pageTitle, scraped.content), NoteType.WEB_CLIP)
+                val contentElement = doc?.select("article, main, .post-content, .entry-content, .article-body, #content")?.firstOrNull() ?: doc?.body()
+                
+                // Deep cleaning using Jsoup Safelist to remove all clutter and script overlapping
+                val cleanedHtml = Jsoup.clean(contentElement?.outerHtml() ?: "", url, Safelist.relaxed()
+                    .addAttributes("img", "src", "alt", "width", "height")
+                    .addTags("h1", "h2", "h3", "h4", "h5", "h6", "p", "br", "ul", "ol", "li", "b", "i", "strong", "em", "img", "blockquote", "code", "pre")
+                )
+                Pair(wrapInReaderTheme(pageTitle, cleanedHtml), NoteType.WEB_CLIP)
             }
             "Simplified" -> {
+                // Pure plain text mode, no HTML processing
                 Pair(rawData, NoteType.TEXT) 
             }
             else -> Pair(rawData, NoteType.TEXT)
@@ -142,11 +110,11 @@ class WebClipperViewModel(
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <style>
-                    body { font-family: sans-serif; line-height: 1.6; padding: 20px; color: #2c3e50; background-color: #fcfcfc; }
-                    h1 { border-bottom: 2px solid #ecf0f1; padding-bottom: 12px; color: #2c3e50; font-size: 1.5em; }
-                    img { max-width: 100%; height: auto; border-radius: 10px; margin: 15px 0; display: block; }
-                    pre { background: #f8f9fa; padding: 15px; overflow-x: auto; border-radius: 6px; font-size: 0.9em; border: 1px solid #e9ecef; white-space: pre-wrap; }
-                    blockquote { border-left: 6px solid #3498db; padding-left: 20px; color: #7f8c8d; font-style: italic; margin: 25px 0; }
+                    body { font-family: -apple-system, sans-serif; line-height: 1.6; padding: 20px; color: #333; background-color: #fdfdfd; }
+                    h1 { border-bottom: 2px solid #eee; padding-bottom: 10px; color: #111; font-size: 1.4em; }
+                    img { max-width: 100%; height: auto; border-radius: 8px; margin: 15px 0; display: block; }
+                    pre { background: #f4f4f4; padding: 15px; overflow-x: auto; border-radius: 5px; font-size: 0.9em; white-space: pre-wrap; }
+                    blockquote { border-left: 5px solid #ddd; padding-left: 15px; color: #666; font-style: italic; margin: 20px 0; }
                     * { max-width: 100%; box-sizing: border-box; }
                 </style>
             </head>
@@ -156,6 +124,26 @@ class WebClipperViewModel(
             </body>
             </html>
         """.trimIndent()
+    }
+
+    // Helper for Live Reader mode in Browser
+    suspend fun getCleanedHtmlForPreview(html: String, url: String): String {
+        val doc = Jsoup.parse(html, url)
+        val content = doc.select("article, main, .content").firstOrNull() ?: doc.body()
+        val cleaned = Jsoup.clean(content.outerHtml(), url, Safelist.relaxed())
+        return wrapInReaderTheme(doc.title(), cleaned)
+    }
+
+    fun unescapeHtml(html: String): String {
+        if (html == "null") return ""
+        return html.removePrefix("\"").removeSuffix("\"")
+            .replace("\\u003C", "<")
+            .replace("\\u003E", ">")
+            .replace("\\\"", "\"")
+            .replace("\\n", "\n")
+            .replace("\\r", "\r")
+            .replace("\\t", "\t")
+            .replace("\\\\", "\\")
     }
 }
 
